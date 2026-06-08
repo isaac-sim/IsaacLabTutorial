@@ -104,7 +104,7 @@ class IsaacLabTutorialEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         self.velocity = self.robot.data.root_com_vel_w 
-        self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
+        self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w.torch, self.robot.data.FORWARD_VEC_B.torch)
         # obs = torch.hstack((self.velocity, self.commands))
 
         dot = torch.sum(self.forwards * self.commands, dim=-1, keepdim=True)
