@@ -52,13 +52,13 @@ It allows you to develop in an isolated environment, outside of the core Isaac L
 
             ```bash
             # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/zero_agent.py --task=<TASK_NAME>
+            python scripts/zero_agent.py --task=<TASK_NAME> --viz kit
             ```
         - Random-action agent
 
             ```bash
             # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/random_agent.py --task=<TASK_NAME>
+            python scripts/random_agent.py --task=<TASK_NAME> --viz kit
             ```
 
 ### Set up IDE (Optional)
