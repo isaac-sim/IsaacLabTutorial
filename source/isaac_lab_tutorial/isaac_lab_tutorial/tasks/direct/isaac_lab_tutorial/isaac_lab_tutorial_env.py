@@ -104,7 +104,16 @@ class IsaacLabTutorialEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         self.velocity = self.robot.data.root_com_vel_w 
-        self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w.torch, self.robot.data.FORWARD_VEC_B.torch)
+        # Support both older Isaac Lab (wrapped buffers with .torch accessor) and
+        # newer Isaac Lab (native PyTorch Tensors returned directly).
+        quat = self.robot.data.root_link_quat_w
+        fwd_vec = self.robot.data.FORWARD_VEC_B
+        
+        if hasattr(quat, "torch"):
+            quat = quat.torch
+            fwd_vec = fwd_vec.torch
+            
+        self.forwards = math_utils.quat_apply(quat, fwd_vec)
         # obs = torch.hstack((self.velocity, self.commands))
 
         dot = torch.sum(self.forwards * self.commands, dim=-1, keepdim=True)
