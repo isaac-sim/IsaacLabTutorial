@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "isaaclab": {
+    "source_branch": "develop",
+    "resolved_commit": "fa4de7d35b64db94e3ce004e1d4640cf0de0507e"
+  },
+  "checkpoints": [
+    {
+      "task": "Isaac-Place-Vial-SO101",
+      "seed": 42,
+      "command": "uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 4096 --max_iterations 10 --run_name final_canonical_from_scratch presets=newton_mjwarp",
+      "local_checkpoint": "logs/rsl_rl/so101_vial_state/2026-08-19_22-56-19_final_canonical_from_scratch/model_9.pt",
+      "evaluation_command": "uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_state/2026-08-19_22-56-19_final_canonical_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp",
+      "evaluation_episodes": 1000,
+      "confirmed_successes": 997,
+      "confirmed_success_rate": 0.997,
+      "nucleus_uri": null,
+      "sha256": "3f8457191996a1756c48476962822dd102110d1de5dd2ee2ac787e6e6d2cda77",
+      "status": "locally-verified"
+    },
+    {
+      "task": "Isaac-Place-Vial-SO101-Camera",
+      "seed": 42,
+      "command": "uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 4096 --max_iterations 10 --run_name camera_fixed_view_from_scratch presets=newton_mjwarp,newton_renderer",
+      "local_checkpoint": "logs/rsl_rl/so101_vial_camera/2026-08-19_23-22-35_camera_fixed_view_from_scratch/model_9.pt",
+      "evaluation_command": "uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_camera/2026-08-19_23-22-35_camera_fixed_view_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp,newton_renderer",
+      "evaluation_episodes": 1000,
+      "confirmed_successes": 996,
+      "confirmed_success_rate": 0.996,
+      "nucleus_uri": null,
+      "sha256": "f93d73a7b38ae907c8063c5c44badc3b19fef1e1970340289c97cc95363497bb",
+      "status": "locally-verified"
+    }
+  ]
+}

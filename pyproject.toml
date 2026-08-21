@@ -1,0 +1,103 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "so101-vial-lift"
+version = "0.1.0"
+description = "Newton-native Isaac Lab tutorial for placing a vial with an SO-101 arm"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "coacd>=1.0.7",
+  "fast-simplification>=0.1.11",
+  "filelock",
+  "gymnasium>=1.2",
+  "h5py>=3.15",
+  "hidapi>=0.14",
+  "hydra-core",
+  "isaaclab",
+  "isaaclab-assets",
+  "isaaclab-experimental",
+  "isaaclab-newton",
+  "isaaclab-ov",
+  "isaaclab-physx",
+  "isaaclab-rl",
+  "isaaclab-tasks",
+  "isaaclab-visualizers",
+  "lazy-loader>=0.4",
+  "mujoco~=3.11.0",
+  "mujoco-warp~=3.11.0",
+  "numba>=0.63.1",
+  "numpy>=2",
+  "onnx>=1.18",
+  "onnxscript>=0.5",
+  "packaging",
+  "pillow>=12.1.1",
+  "prettytable>=3.3",
+  "protobuf>=4.25.8,!=5.26.0",
+  "psutil",
+  "pycollada>=0.9",
+  "pyglet>=2.1.6,<3",
+  "requests>=2.25",
+  "resolve-robotics-uri-py>=0.4",
+  "rich",
+  "rsl-rl-lib==5.4.1",
+  "scipy>=1.11",
+  "tensorboard",
+  "torch>=2.11",
+  "torchvision>=0.26",
+  "tqdm>=4.67",
+  "trimesh>=4.6.8",
+  "usd-exchange==2.3.0",
+  "newton[sim]>=1.2.0",
+  "newton-usd-schemas>=0.2.0",
+  "warp-lang==1.16.0",
+  "moviepy<2",
+]
+
+[project.scripts]
+isaaclab = "so101_vial_lift.cli:main"
+
+[dependency-groups]
+dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
+
+[tool.uv.sources]
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab" }
+isaaclab-assets = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_assets" }
+isaaclab-experimental = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_experimental" }
+isaaclab-newton = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_newton" }
+isaaclab-ov = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_ov" }
+isaaclab-physx = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_physx" }
+isaaclab-rl = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_rl" }
+isaaclab-tasks = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_tasks" }
+isaaclab-visualizers = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_visualizers" }
+
+[tool.uv]
+override-dependencies = [
+  "mujoco~=3.11.0",
+  "mujoco-warp~=3.11.0",
+  "newton @ git+https://github.com/newton-physics/newton.git@release-1.5",
+  "newton-usd-schemas>=0.4.1",
+  "torch>=2.11",
+  "torchvision>=0.26",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/so101_vial_lift"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.codespell]
+skip = "*.usd,*.usda,*.usdc,*.json,uv.lock,logs"
+ignore-words-list = "nd"
