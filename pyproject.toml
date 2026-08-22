@@ -3,14 +3,13 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "so101-vial-lift"
+name = "so101-vial-place"
 version = "0.1.0"
 description = "Newton-native Isaac Lab tutorial for placing a vial with an SO-101 arm"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "coacd>=1.0.7",
   "fast-simplification>=0.1.11",
   "filelock",
   "gymnasium>=1.2",
@@ -58,7 +57,7 @@ dependencies = [
 ]
 
 [project.scripts]
-isaaclab = "so101_vial_lift.cli:main"
+isaaclab = "so101_vial_place.cli:main"
 
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
@@ -85,7 +84,7 @@ override-dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/so101_vial_lift"]
+packages = ["src/so101_vial_place"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -99,5 +98,5 @@ line-length = 120
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.codespell]
-skip = "*.usd,*.usda,*.usdc,*.json,uv.lock,logs"
+skip = "*.usd,*.usda,*.usdc,*.json,*.onnx,*.pt,*.mp4,*.data,uv.lock,logs"
 ignore-words-list = "nd"

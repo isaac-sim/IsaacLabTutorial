@@ -1,35 +1,46 @@
 {
-  "schema_version": 1,
+  "schema_version": 4,
   "isaaclab": {
     "source_branch": "develop",
     "resolved_commit": "fa4de7d35b64db94e3ce004e1d4640cf0de0507e"
   },
-  "checkpoints": [
+  "reset_dataset": {
+    "path": "src/so101_vial_place/assets/reset_poses.pt",
+    "rows": 1024,
+    "rows_per_phase": 128,
+    "schema_version": 2,
+    "content_sha256": "3704912036a4ac3de628ba1c71c3545a0e579534c8b1ec8f5e1cc56d62b3a282",
+    "file_sha256": "8a6c1fbdce85210ba81218e7689fdc5b8ce557e6e1ef742d178b784a47d7ab9b"
+  },
+  "accepted_checkpoints": [],
+  "diagnostic_checkpoints": [
     {
-      "task": "Isaac-Place-Vial-SO101",
-      "seed": 42,
-      "command": "uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 4096 --max_iterations 10 --run_name final_canonical_from_scratch presets=newton_mjwarp",
-      "local_checkpoint": "logs/rsl_rl/so101_vial_state/2026-08-19_22-56-19_final_canonical_from_scratch/model_9.pt",
-      "evaluation_command": "uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_state/2026-08-19_22-56-19_final_canonical_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp",
-      "evaluation_episodes": 1000,
-      "confirmed_successes": 997,
-      "confirmed_success_rate": 0.997,
-      "nucleus_uri": null,
-      "sha256": "3f8457191996a1756c48476962822dd102110d1de5dd2ee2ac787e6e6d2cda77",
-      "status": "locally-verified"
-    },
-    {
-      "task": "Isaac-Place-Vial-SO101-Camera",
-      "seed": 42,
-      "command": "uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 4096 --max_iterations 10 --run_name camera_fixed_view_from_scratch presets=newton_mjwarp,newton_renderer",
-      "local_checkpoint": "logs/rsl_rl/so101_vial_camera/2026-08-19_23-22-35_camera_fixed_view_from_scratch/model_9.pt",
-      "evaluation_command": "uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_camera/2026-08-19_23-22-35_camera_fixed_view_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp,newton_renderer",
-      "evaluation_episodes": 1000,
-      "confirmed_successes": 996,
-      "confirmed_success_rate": 0.996,
-      "nucleus_uri": null,
-      "sha256": "f93d73a7b38ae907c8063c5c44badc3b19fef1e1970340289c97cc95363497bb",
-      "status": "locally-verified"
+      "name": "sparse_joint_horizon_model_499",
+      "path": "checkpoints/candidates/sparse_joint_horizon_model_499.pt",
+      "sha256": "795f3a5c2e58b769ccef6f0695dacf58552dd0429507bf31dcdb6a7acbd51ac0",
+      "actor_observations": "state",
+      "actions": 6,
+      "training_transitions": 4096000,
+      "canonical_initial_audit": {
+        "episodes": 128,
+        "success_rate": 0.0,
+        "grasp_rate": 0.0,
+        "lift_rate": 0.0,
+        "vial_lost_rate": 0.0625,
+        "timeout_rate": 0.9375,
+        "unsafe_rack_contact_rate": 0.0
+      },
+      "full_horizon_diagnostic": {
+        "episodes": 1024,
+        "success_rate": 0.4033203125,
+        "phase_5_success_rate": 0.9921875,
+        "phase_6_success_rate": 1.0,
+        "phase_7_success_rate": 1.0,
+        "unsafe_rack_contact_rate": 0.0,
+        "max_rack_contact_force_n": 10.273785591125488
+      },
+      "accepted": false,
+      "note": "Clean sparse-reward joint-action ablation; useful for diagnosis only."
     }
   ]
 }

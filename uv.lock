@@ -96,20 +96,6 @@ wheels = [
 ]
 
 [[package]]
-name = "coacd"
-version = "1.0.13"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/d0/424900eda088a32e01aca62eca136a43db472c2cf4ab707c028aba56c13b/coacd-1.0.13-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:9a3c9500fcb46b624e8828134829708d8ed5d8abf5b71f05ce5395121187d47b", size = 3423733, upload-time = "2026-08-19T04:50:32.042Z" },
-    { url = "https://files.pythonhosted.org/packages/d9/65/5fb42e1aded3f832beb8310c32756d96e56f3c8b93c8437837e23b486c0f/coacd-1.0.13-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:95ea07f1b1956707775ce957d03d4fc4747abb8db777139e0d49640bbc6d9399", size = 2584653, upload-time = "2026-08-19T04:50:33.62Z" },
-    { url = "https://files.pythonhosted.org/packages/78/e9/74e2e1d8afb1c73cb74d2b2e55b3c2ec6c49d75d4d9cd9142c265371402d/coacd-1.0.13-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb360e184333174d98bbfee714ef9e8714cb0440d78abd081087e660d2a26095", size = 2651984, upload-time = "2026-08-19T04:50:34.989Z" },
-    { url = "https://files.pythonhosted.org/packages/33/11/48a72d2ecc108d087ad9f79a5305d81798df5e6352e694b76dc1f4bf88db/coacd-1.0.13-cp39-abi3-win_amd64.whl", hash = "sha256:1f7c613769a90d1d6d467b764f6367cd5c524ef270c30472aa86749c11a74d03", size = 1485399, upload-time = "2026-08-19T04:50:36.16Z" },
-]
-
-[[package]]
 name = "codespell"
 version = "2.4.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1378,11 +1364,10 @@ wheels = [
 ]
 
 [[package]]
-name = "so101-vial-lift"
+name = "so101-vial-place"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "coacd" },
     { name = "fast-simplification" },
     { name = "filelock" },
     { name = "gymnasium" },
@@ -1439,7 +1424,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coacd", specifier = ">=1.0.7" },
     { name = "fast-simplification", specifier = ">=0.1.11" },
     { name = "filelock" },
     { name = "gymnasium", specifier = ">=1.2" },

@@ -1,14 +1,100 @@
+# Python bytecode and native extension artifacts
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+
+# Python packaging
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments and local environment variables
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# Test, coverage, lint, and type-checker caches
 .pytest_cache/
 .ruff_cache/
-.venv/
-logs/
-outputs/
-videos/
-.vscode/settings.json
-.vscode/launch.json
+.mypy_cache/
+.pyright/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.cache/
 
-# The archive is the local source of the extracted, tracked asset tree.
-/so101_new_calib_SysID.zip
+# Jupyter and profiling output
+.ipynb_checkpoints/
+*.prof
+*.lprof
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Isaac Lab, Hydra, and reinforcement-learning run output
+/logs/
+/outputs/
+/output/
+/multirun/
+/runs/
+/recordings/
+/wandb/
+/.neptune/
+/videos/
+
+# Isaac Sim / Omniverse generated state
+/.isaac-sim/
+/_isaac_sim*/
+/_isaaclab_install_ci_*/
+/_repo/
+/_build/
+.lastformat
+*.dmp
+.thumbs/
+*.last_generated
+
+# Generated documentation and benchmark output
+docs/_build/
+docs/generated/
+benchmark_*.json
+
+# Temporary files and local datasets
+*.tmp
+*.temp
+*.bak
+/datasets/
+
+# Keep tracked task assets and curated artifacts visible to Git. In
+# particular, do not ignore *.usd, *.pt, *.png, or *.mp4: required assets,
+# reset datasets, accepted checkpoints, and tutorial media use Git LFS.

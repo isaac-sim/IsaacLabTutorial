@@ -1,198 +1,239 @@
-# Place a vial with SO-101: state and vision RL on Newton
+# SO-101 vial placement with physical task-horizon resets
 
-This tutorial builds one manager-based Isaac Lab task in two policy variants. The robot must pick up a horizontal
-vial, rotate it upright, move it into the rack, and release it. Both variants use Newton/MJWarp at 120 Hz, a 30 Hz
-control loop, and RSL-RL PPO:
+This is a Newton-native Isaac Lab 3.0 tutorial task for learning an SO-101 robot to pick up a workshop vial and
+place it into a four-hole rack. The public task name is:
 
-- `Isaac-Place-Vial-SO101`: state actor and critic, 4,096 environments by default.
-- `Isaac-Place-Vial-SO101-Camera`: dual-RGB actor and privileged state critic, 4,096 environments by default.
+```text
+IsaacTutorial-Place-Vial-SO101
+```
 
-The tutorial deliberately covers reinforcement learning only. Teleoperation, imitation learning, LeRobot, GR00T,
-and hardware deployment are outside its scope.
+The design goal is a policy that can transfer to the real robot. Robot motion uses ordinary bounded joint-position
+increments and the actuator dynamics authored in the supplied Sys-ID USD. The vial remains a free rigid body: there
+are no grasp constraints, object writes during an episode, collision proxies, orientation scripts, or hidden motion
+controllers.
 
-## Quick start
+The state policy is still under development. The latest clean sparse baseline solves transport, insertion, and
+release resets, but not the canonical start. See [MULTI_GPU_HANDOFF.md](MULTI_GPU_HANDOFF.md) for exact results and the
+next experiment plan. Do not treat older files under `checkpoints/` as accepted results.
 
-Python 3.12 and `uv` are required. Resolve and install the locked project:
+## Install and test
+
+This project expects the current Isaac Lab 3.0 development stack and Python 3.12.
 
 ```bash
 uv sync
-```
-
-Smoke-test the state task on a small GPU allocation:
-
-```bash
-uv run isaaclab zero_agent --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 8 presets=newton_mjwarp
-uv run isaaclab random_agent --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 8 presets=newton_mjwarp
-```
-
-Train and play a state policy:
-
-```bash
-uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101 presets=newton_mjwarp
-uv run isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101 presets=newton_mjwarp --checkpoint logs/rsl_rl/so101_vial_state/<run>/model_<iteration>.pt
-```
-
-For smaller GPUs, append `--num_envs 64` (or any suitable value). Both checked-in training defaults are 4,096 as
-the throughput-oriented target. The dual-camera run needs substantially more memory than the state run, so use an
-explicit smaller override if 4,096 rendered environments do not fit the available GPU.
-
-## 1. Reproducible setup with `uv`
-
-The root `pyproject.toml` requires Python 3.12 and sources the Isaac Lab packages from the upstream `develop`
-branch. `uv.lock` freezes the resolved commit, Newton release, RSL-RL version, and upstream compatibility
-overrides. Refresh the resolution only when intentionally updating the tutorial:
-
-```bash
-uv lock --upgrade
-uv run pytest
+uv run pytest -q
 uv run ruff check .
-uv run ruff format --check .
-uv run codespell
 ```
 
-The module prefix in `so101_vial_lift:Isaac-...` makes Gym import this external package before looking up the task.
-There are no copied training launchers or simulator shell wrappers.
-
-## 2. Inspect the multiphysics SO-101 asset
-
-The complete supplied archive is extracted under `src/so101_vial_lift/assets/so101/`; the original ZIP remains local
-and ignored. Large USD and image files are tracked with Git LFS. The interface layer selects:
-
-- `Robot=robot` for Isaac robot and joint metadata.
-- `Sensor=sensors` for the calibrated gripper camera payload.
-- `Physics=physics` for Newton-authored joint dynamics.
-
-The robot exposes five arm joints plus `gripper`. The asset-validation tests walk every relative USD dependency and
-verify the variants, camera prim, and local prop files:
+Smoke-test the state and wrist-camera environments:
 
 ```bash
-uv run pytest tests/test_assets.py
+uv run isaaclab zero_agent \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 8 presets=newton_mjwarp
+
+uv run isaaclab zero_agent \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --num_envs 8 presets=newton_mjwarp,newton_renderer
 ```
 
-The workshop vial, rack, and mat are local Apache-2.0 USD assets, so training never depends on a workstation-only
-path or asset server. Attribution is in `THIRD_PARTY_NOTICES.md`.
+## Why reset across the task horizon
 
-The original high-detail collision meshes remain in the archive but are disabled for this task: several contain
-degenerate planar decomposition fragments that MJWarp cannot solve reliably. One compact box proxy on each
-fingertip provides stable, filtered grasp contacts while preserving the supplied visual, joint, dynamics, and sensor
-data. A high-grip task material is bound only to those two proxies; the mat and vial retain the scene default
-friction. No arm-link, wrist, camera-mount, or decorative hand geometry participates in collision detection.
+Pick-and-place is a long-horizon task for a small arm with compliant, identified drives. Waiting for random PPO
+exploration to discover grasp, lift, reorientation, transport, insertion, and release in one uninterrupted episode
+is inefficient.
 
-## 3. Construct the Newton scene
+The reset generator follows one connected physical trajectory and stores valid states throughout it. Every state is
+reached through robot targets, gravity, contacts, and the untouched actuator model. Candidates are rejected when the
+grasp is not load-bearing, the robot is unstable, the vial is lost, rack contact is unsafe, or the endpoint is not
+physically valid.
 
-`SO101SceneCfg` creates one active vial, one kinematic rack, the mat, the SO-101, and filtered contact sensors on
-the fixed and moving jaws. The vial starts horizontal at a randomized reachable pose. At each reset its XY location
-and yaw change while the rack stays fixed, which makes the target simple to interpret in rack-local coordinates.
+The tracked reset dataset contains 1,024 states, 128 for each phase:
 
-`PhysicsCfg` exposes the `newton_mjwarp` preset. Simulation runs at 120 Hz with 12 Newton substeps; action
-decimation 4 produces the 30 Hz control rate. Start with a few environments when debugging geometry:
+```text
+approach -> pregrasp -> grasp -> lift -> reorient -> transport -> insert -> release
+```
+
+Training samples these phases uniformly. Canonical evaluation samples only `approach`, from the real workshop
+controller's farther operational start.
+
+Generate a replacement dataset only when physics, assets, or reset logic intentionally change:
 
 ```bash
-uv run isaaclab random_agent --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 4 presets=newton_mjwarp --visualizer newton
+uv run isaaclab generate_resets \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 128 --poses_per_phase 128 \
+  --output src/so101_vial_place/assets/reset_poses.pt \
+  --visualizer none presets=newton_mjwarp
 ```
 
-## 4. Actions, observations, resets, rewards, and success
-
-The six policy outputs are relative joint-position increments. Arm deltas are scaled by 0.05 rad, the gripper
-delta by 0.10 rad, and persistent targets are clamped to the asset's soft limits. The task uses the residual-RL
-controller decomposition common in contact-rich manipulation: a finite-state controller closes and lifts after
-physical bilateral contact, supplies a safe joint-space transport reference, and holds the arm during release.
-PPO supplies bounded transport residuals and the gripper release action. This keeps exploration from repeatedly
-destroying grasps while leaving contact acquisition, residual positioning, and release timing in the MDP.
-
-MJWarp does not currently expose a batched per-environment fixed-joint API. After bilateral jaw contact, the action
-term therefore maintains the measured vial-to-gripper transform at simulation rate until the policy opens the
-gripper at a valid insertion pose. Once released inside the rack capture volume, the kinematic fixture holds the
-vial during the 15-step confirmation dwell. These two explicit constraints are part of the task definition, not
-privileged observations; state and camera actors use the same controller.
-
-The state actor and critic each receive joint position and velocity, previous action, end-effector state, vial
-state, the vial position in rack coordinates, and irreversible grasp/lift flags. Resets perturb robot joints and the
-horizontal vial pose without changing other environments in the batch.
-
-Rewards progress through reach, bilateral grasp acquisition and retention, lift height, upright rotation, transport,
-insertion, and released placement. Potential-difference terms reward progress toward the transport joint goal and
-rack-local target without paying the policy for remaining still. Later dense terms switch off after their milestone,
-and every stage after grasping is gated by stored episode progress. This prevents reward farming and prevents a
-policy from earning placement success by pushing an unlifted vial into the rack. Action changes, excessive joint
-velocity, drops, and workspace loss are penalized.
-
-Success is an instance-owned manager term. It requires a prior bilateral grasp and 5 cm lift, rack-local placement,
-vertical alignment above 0.8, release, speed below 0.1 m/s, and 15 consecutive control steps. Partial environment
-resets clear only the selected history rows. Success, timeout, vial loss, and unstable joint velocity terminate an
-episode. The environment logs grasp, lift, valid-placement, confirmed-success, reward-component, and
-time-to-success metrics.
-
-The pure tensor tests cover transforms, bounds, gating, consecutive confirmation, failure interruption, and partial
-resets:
+Inspect the stored states independently of training:
 
 ```bash
-uv run pytest tests/test_geometry.py tests/test_progress.py
+uv run isaaclab view_resets --visualizer newton
 ```
 
-## 5. Train and evaluate the state policy
+## Physics, assets, and control
 
-The state PPO actor and critic use `[256, 256, 128]` MLPs. Training collects 32 steps per environment, performs five
-epochs over four minibatches, and uses `gamma=0.99`, `lambda=0.95`, and an adaptive learning rate starting at
-`1e-3`.
+The environment loads the SO-101, vial, rack, and mat from tracked local USD assets. The visual rack retains its four
+holes. Newton preserves the detailed rack mesh and builds a narrow-band SDF collider in roughly 0.03 seconds; it does
+not run Co-ACD on the rack.
+
+The robot has one `ImplicitActuatorCfg` so Isaac Lab can route joint targets, but every dynamics field is `None`.
+Stiffness, damping, armature, friction, effort limits, and velocity limits therefore load directly from the Sys-ID
+USD. A configuration guard rejects Python actuator overrides.
+
+The policy produces six actions at 30 Hz:
+
+- five measured-relative arm-joint position increments, limited to 0.03 rad per command;
+- one measured-relative jaw increment, limited to 0.02 rad per command.
+
+All dynamics and soft-limit behavior are resolved by the authored robot model. The policy never commands torques or
+object motion.
+
+Newton runs at 120 Hz with two solver substeps. The solver configuration follows the Isaac Lab manipulation examples
+while retaining an elliptic friction cone for the two-pad grasp. Light rack guidance is expected during insertion;
+only forces above the explicit hard-impact threshold are classified as unsafe diagnostics.
+
+Held insertion and final seating are intentionally different. The gripper lowers the held vial until its tip is
+inside the selected opening, opens above the rack, and lets gravity seat the vial more deeply. Success requires a
+stable released vial in the deep rack-local bounds for ten consecutive samples.
+
+## A small MDP
+
+The actor observes joint state and target, previous action, end-effector state, vial state, rack-relative target,
+placement features, and physical milestone flags. The asymmetric critic additionally observes contacts.
+
+The active sparse baseline reward has six terms:
+
+- a small pre-grasp reach reward;
+- one-time physical grasp, lift, and held-insertion milestone rewards;
+- terminal physically confirmed success;
+- actual vial-loss penalty;
+- small action-rate and joint-velocity costs.
+
+There is no staged curriculum, transport teacher, waypoint potential, collision-avoidance reward, or action-specific
+opening/closing penalty. The next planned experiment adds one symmetry-aware vial-to-final-goal pose reward because
+the sparse baseline does not learn the early horizon quickly enough.
+
+## Train and evaluate the state policy
+
+Train one ordinary PPO job on the full reset distribution:
 
 ```bash
-uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 4096 --max_iterations 10 --run_name final_canonical_from_scratch presets=newton_mjwarp
-uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101 presets=newton_mjwarp --checkpoint latest
+env SO101_RESET_CURRICULUM=horizon \
+  uv run isaaclab train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 128 --max_iterations 2000 \
+  --run_name state_horizon \
+  --visualizer none presets=newton_mjwarp
 ```
 
-The exact evaluation callback counts terminal episodes rather than averaging per-step logger values. It stops after
-exactly 1,000 randomized episodes and prints one `SO101_EVAL_RESULT` JSON record:
+The detailed rack makes environment replication more expensive than primitive-object benchmarks. Benchmark the best
+per-job environment count on the target GPU rather than assuming 2,048 or 4,096 environments. On a multi-GPU
+machine, use each GPU for an independent seed or reward ablation; distributed PPO is not required.
+
+Evaluate the 128 canonical reset states exactly once each:
 
 ```bash
-uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101 --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_state/2026-08-19_22-56-19_final_canonical_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp
+env SO101_RESET_CURRICULUM=initial \
+  SO101_EVAL_EPISODES=128 \
+  SO101_EVAL_ONCE_PER_ENV=1 \
+  SO101_EVAL_SEQUENTIAL=1 \
+  uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 128 --checkpoint <checkpoint.pt> --deterministic \
+  --external_callback so101_vial_place.evaluation.install_episode_counter \
+  --visualizer none presets=newton_mjwarp
 ```
 
-The clean seed-42 run reached 997/1,000 confirmed placements (99.7%) from scratch. The local checkpoint is ignored
-by Git; its relative path and SHA-256 are recorded in `checkpoints/manifest.json`. Upload it to the Isaac Lab Nucleus
-checkpoint root and add the resulting URI to the manifest when Nucleus credentials are available.
+The evaluator prints one `SO101_EVAL_RESULT` JSON object with grasp, lift, held insertion, success, timeout, loss,
+unsafe contact, rack force, and reset-phase metrics. Acceptance must use complete episodes, not training-time
+per-step occupancy metrics.
 
-## 6. Add dual cameras and an asymmetric CNN policy
-
-The camera actor receives only two normalized CHW RGB tensors, joint positions and velocities, and the previous
-action. It never receives vial pose, rack pose, or progress flags. The critic keeps the full privileged state group.
-
-Both views are 64×64 at 30 Hz. `ego_camera` reads the calibrated `wowrobo_2MP_camera` prim under the gripper, retaining
-its intrinsics and mount translation with an optical-axis correction for the Newton renderer; the external camera
-uses the workshop D455-style pose. `renderer=newton_renderer` selects the native Newton Warp renderer.
-RSL-RL creates one CNN encoder per image key, concatenates both embeddings with proprioception, and applies the MLP
-head. Camera PPO uses eight minibatches and a fixed `1e-4` learning rate.
+Record a frontal Newton rollout after a policy passes evaluation:
 
 ```bash
-uv run isaaclab zero_agent --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 8 presets=newton_mjwarp,newton_renderer
-uv run isaaclab random_agent --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 8 presets=newton_mjwarp,newton_renderer
-uv run isaaclab train --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 4096 --max_iterations 10 --run_name camera_fixed_view_from_scratch presets=newton_mjwarp,newton_renderer
-uv run env SO101_EVAL_EPISODES=1000 isaaclab play --task so101_vial_lift:Isaac-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint logs/rsl_rl/so101_vial_camera/2026-08-19_23-22-35_camera_fixed_view_from_scratch/model_9.pt --deterministic --external_callback so101_vial_lift.evaluation.install_episode_counter --visualizer none presets=newton_mjwarp,newton_renderer
+env SO101_RESET_CURRICULUM=initial \
+  SO101_EVAL_EPISODES=1 SO101_EVAL_SEQUENTIAL=0 \
+  SO101_VIDEO_OUTPUT_DIR=checkpoints/videos/state \
+  SO101_VIDEO_PREFIX=state_seed42 \
+  uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101 --num_envs 1 \
+  --seed 42 --checkpoint <checkpoint.pt> --deterministic \
+  --video --video_length 600 \
+  --external_callback so101_vial_place.evaluation.install_state_episode_counter \
+  --visualizer newton presets=newton_mjwarp
 ```
 
-The seed-42 camera run reached 996/1,000 confirmed placements (99.6%). The actor receives only the two images and
-proprioception; the full task state remains confined to the critic during training.
+## Wrist-camera policy
 
-## 7. Debugging checklist
+The camera task uses one physical wrist camera at 64x48 RGB and 30 Hz. It has measured OpenCV intrinsics and
+distortion and a fixed, buildable side-bracket transform. The deployed actor receives only:
 
-- Contacts: inspect each filtered sensor independently. If bilateral contact never rises, first verify the vial body
-  path and jaw collision geometry; do not lower the force threshold blindly.
-- Camera framing: run one environment with the Newton visualizer and confirm both images change after a reset and
-  after arm movement. A static image usually means a prim path or render preset mismatch.
-- Rewards: plot each `Episode_Reward/*` component with the progress metrics. Transport or placement reward before
-  `lift_rate` indicates broken gating.
-- Resets: watch for success counters leaking across only some reset environments. `tests/test_progress.py` is the
-  minimal regression test.
-- Training: check observations and rewards for finite values with zero/random agents before starting PPO. Resume a
-  short run and play its saved model before committing to a long experiment.
-- Scaling: reduce `--num_envs` first for out-of-memory failures. Camera tensors and per-view CNN activations make the
-  vision task substantially heavier than the state task.
+- wrist RGB;
+- joint position and velocity;
+- joint target;
+- previous action.
 
-Run the complete local verification suite before training:
+The camera actor receives no vial pose, rack pose, contact, phase, or milestone state. Training may use a privileged
+asymmetric critic. Episode-consistent exposure, contrast, white-balance, brightness, pixel noise, and proprioceptive
+noise are implemented.
+
+Capture samples from the actual policy camera:
 
 ```bash
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-uv run codespell
+uv run isaaclab capture_wrist \
+  --output_dir checkpoints/screenshots/wrist \
+  --visualizer none presets=newton_mjwarp,newton_renderer
 ```
+
+Vision work starts only after a state policy passes the physical acceptance suite. The intended order is:
+
+1. distill the state policy into wrist RGB + proprioception using student-visited states;
+2. evaluate and refine that student with a privileged critic;
+3. train the same vision actor from scratch as a separate comparison.
+
+The full vision-from-scratch policy must not load or query the state teacher. A privileged critic is still allowed
+because it is discarded at deployment.
+
+## Scene screenshots and diagnostics
+
+```bash
+uv run isaaclab capture_scene \
+  --output_dir checkpoints/screenshots/scene \
+  --visualizer newton
+
+uv run isaaclab inspect_robot \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --visualizer none presets=newton_mjwarp
+```
+
+The default rollout camera is raised, frontal, and angled down at the robot, vial, and selected rack opening.
+
+## Repository map
+
+```text
+src/so101_vial_place/
+  agents/                 PPO and distillation configuration
+  assets/                 local SO-101 and workshop USD assets; reset_poses.pt
+  mdp/                    actions, events, geometry, observations/rewards/terminations
+  reset/                  reset dataset loader, generator, and reset distribution
+  camera_env_cfg.py       wrist-camera task
+  control.py              real workshop command conventions and canonical poses
+  env_cfg.py              state environment, physics, MDP configuration
+  evaluation.py           exact episodic evaluator
+  physics.py              Newton contact model and detailed rack SDF setup
+  scene_preview.py        Newton scene screenshot utility
+  wrist_preview.py        calibrated wrist-image capture utility
+tests/                    configuration and behavioral contracts
+MULTI_GPU_HANDOFF.md      current results, findings, and next experiment plan
+```
+
+## Current acceptance criteria
+
+A final state policy must achieve at least 90% success from canonical starts over at least 1,000 episodes and several
+seeds, with no physics cheats and no obvious irregularity in multiple videos. Report every phase, loss/timeout rates,
+and rack forces. Only after that result is accepted should the checkpoint, exports, manifest, and tutorial videos be
+promoted.
