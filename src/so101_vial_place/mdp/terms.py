@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 VIAL_REST_HEIGHT = 0.052
 # The held insertion ends above 30 mm so the jaws remain clear of the rack;
 # after release, gravity seats the vial at approximately 31 mm in the rack
-# frame. This is measured from centered free-drop trials using the actual SDF
+# frame. This is measured from centered free-drop trials using the rack
 # and is substantially below the 68 mm rim-engagement pose. The target is the
 # released pose, never a command for the robot to push through the rack.
 RACK_TARGET = (0.0, 0.0, 0.031)
@@ -45,7 +45,7 @@ RACK_CLEARANCE_HEIGHT = RACK_RIM_HEIGHT + RACK_CLEARANCE_MARGIN
 # below the rack frame origin: 52 mm root height - 40 mm rack height - 17 mm
 # radius. Lift progress is measured from this physical surface, not the root.
 TABLETOP_LOWEST_HEIGHT_IN_RACK = -0.005
-RACK_XY_BOUNDS = (-0.031, 0.090, -0.091, 0.031)
+RACK_XY_BOUNDS = (-0.031, 0.091, -0.031, 0.091)
 VIAL_AXIS_MIN = -0.017
 VIAL_AXIS_MAX = 0.100
 VIAL_RADIUS = 0.017

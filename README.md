@@ -38,6 +38,24 @@ uv run isaaclab zero_agent \
   --num_envs 8 presets=newton_mjwarp,newton_renderer
 ```
 
+Measure end-to-end environment throughput after a CUDA warmup:
+
+```bash
+uv run isaaclab benchmark --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 4096 presets=newton_mjwarp
+
+uv run isaaclab benchmark --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --num_envs 1024 presets=newton_mjwarp,newton_renderer
+```
+
+The benchmark reports aggregate control FPS (complete 30 Hz environment
+steps) and aggregate physics FPS (120 Hz steps). Both include actions,
+physics, sensors, observations, rewards, terminations, and episode resets.
+On the reference RTX Pro 6000, 4,096 state environments measured 166k control
+FPS / 663k physics FPS. With one fresh 64x48 wrist RGB image per control step,
+1,024 camera environments measured 52k image/control FPS / 209k physics FPS.
+Rendering—not collision—is the remaining vision bottleneck.
+
 ## Why reset across the task horizon
 
 Pick-and-place is a long-horizon task for a small arm with compliant, identified drives. Waiting for random PPO
@@ -62,8 +80,7 @@ Generate a replacement dataset only when physics, assets, or reset logic intenti
 
 ```bash
 uv run isaaclab generate_resets \
-  --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 128 --poses_per_phase 128 \
+  --batch_size 128 --poses_per_phase 128 \
   --output src/so101_vial_place/assets/reset_poses.pt \
   --visualizer none presets=newton_mjwarp
 ```
@@ -77,8 +94,8 @@ uv run isaaclab view_resets --visualizer newton
 ## Physics, assets, and control
 
 The environment loads the SO-101, vial, rack, and mat from tracked local USD assets. The visual rack retains its four
-holes. Newton preserves the detailed rack mesh and builds a narrow-band SDF collider in roughly 0.03 seconds; it does
-not run Co-ACD on the rack.
+holes, while eleven box primitives reproduce its base, supports, and four-hole top lattice for collision. Newton does
+not build an SDF or run Co-ACD on the rack. The vial uses two cylinder primitives matching its body and cap shoulder.
 
 The robot has one `ImplicitActuatorCfg` so Isaac Lab can route joint targets, but every dynamics field is `None`.
 Stiffness, damping, armature, friction, effort limits, and velocity limits therefore load directly from the Sys-ID
@@ -125,14 +142,14 @@ Train one ordinary PPO job on the full reset distribution:
 env SO101_RESET_CURRICULUM=horizon \
   uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 128 --max_iterations 2000 \
+  --num_envs 4096 --max_iterations 2000 \
   --run_name state_horizon \
   --visualizer none presets=newton_mjwarp
 ```
 
-The detailed rack makes environment replication more expensive than primitive-object benchmarks. Benchmark the best
-per-job environment count on the target GPU rather than assuming 2,048 or 4,096 environments. On a multi-GPU
-machine, use each GPU for an independent seed or reward ablation; distributed PPO is not required.
+Benchmark the best per-job environment count on the target GPU; the primitive object colliders support the usual
+2,048--4,096 state environments when memory permits. On a multi-GPU machine, use each GPU for an independent seed or
+reward ablation; distributed PPO is not required.
 
 Evaluate the 128 canonical reset states exactly once each:
 
@@ -186,7 +203,7 @@ Capture samples from the actual policy camera:
 ```bash
 uv run isaaclab capture_wrist \
   --output_dir checkpoints/screenshots/wrist \
-  --visualizer none presets=newton_mjwarp,newton_renderer
+  --visualizer none
 ```
 
 Vision work starts only after a state policy passes the physical acceptance suite. The intended order is:
@@ -224,7 +241,8 @@ src/so101_vial_place/
   control.py              real workshop command conventions and canonical poses
   env_cfg.py              state environment, physics, MDP configuration
   evaluation.py           exact episodic evaluator
-  physics.py              Newton contact model and detailed rack SDF setup
+  physics.py              Newton shape-contact material setup
+  benchmark.py            state and wrist-render throughput measurement
   scene_preview.py        Newton scene screenshot utility
   wrist_preview.py        calibrated wrist-image capture utility
 tests/                    configuration and behavioral contracts

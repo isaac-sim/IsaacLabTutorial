@@ -35,7 +35,7 @@ from so101_vial_place.reset.curriculum import (
 def test_state_task_control_and_action_contract():
     cfg = SO101VialEnvCfg()
 
-    assert cfg.scene.num_envs == 256
+    assert cfg.scene.num_envs == 4096
     assert cfg.decimation == 4
     assert cfg.sim.dt == pytest.approx(1.0 / 120.0)
     assert cfg.episode_length_s == 20.0
@@ -55,9 +55,8 @@ def test_state_task_control_and_action_contract():
     assert physics.collision_cfg.__class__.__name__ == "NewtonCollisionPipelineCfg"
     assert physics.collision_cfg.broad_phase == "explicit"
     assert physics.collision_cfg.rigid_contact_max is None
-    # The detailed workshop rack is mesh-heavy.  Isaac Lab's manipulation
-    # default avoids silently dropping broad-phase pairs at 256 environments.
-    assert physics.collision_cfg.max_triangle_pairs == 2_500_000
+    # Primitive rack/vial contacts need no mesh-heavy collision allocation.
+    assert physics.collision_cfg.max_triangle_pairs == 1_000_000
     assert cfg.actions.arm_action.__class__.__name__ == "RelativeJointPositionActionCfg"
     assert cfg.actions.arm_action.joint_names == ARM_JOINTS
     assert cfg.actions.arm_action.scale == pytest.approx(0.03)
@@ -151,7 +150,7 @@ def test_camera_actor_is_unprivileged_and_has_only_wrist_image():
     cfg = SO101VialCameraEnvCfg()
     critic_terms = set(cfg.observations.critic.__dict__)
 
-    assert cfg.scene.num_envs == 128
+    assert cfg.scene.num_envs == 1024
     assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 48)
     assert cfg.scene.wrist_camera.prim_path.endswith("/gripper/wrist_camera")
     assert cfg.scene.wrist_camera.offset.pos == pytest.approx((-0.055, 0.052, -0.035))

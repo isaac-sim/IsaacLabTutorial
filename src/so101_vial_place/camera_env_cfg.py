@@ -118,7 +118,10 @@ class CameraObservationsCfg:
 class SO101VialCameraEnvCfg(SO101VialEnvCfg):
     """Vision actor limited to wrist RGB, joint state, and previous action."""
 
-    scene: SO101CameraSceneCfg = SO101CameraSceneCfg(num_envs=128, env_spacing=0.9, replicate_physics=True)
+    # At 64x48 the Newton renderer sustains more than 200k aggregate physics
+    # FPS at this batch on the reference RTX Pro 6000. Smaller GPUs can
+    # override ``--num_envs`` without changing task semantics.
+    scene: SO101CameraSceneCfg = SO101CameraSceneCfg(num_envs=1024, env_spacing=0.9, replicate_physics=True)
     observations: CameraObservationsCfg = CameraObservationsCfg()
 
     def play_mode(self):

@@ -346,15 +346,10 @@ class PhysicsCfg(PresetCfg):
             use_mujoco_contacts=False,
             ccd_iterations=35,
         ),
-        # The authored pair graph excludes cross-environment and filtered
-        # pairs. Let Newton derive contact capacities from that graph instead
-        # of allocating a global worst-case buffer for every launch.
-        # The detailed four-hole rack exceeds Newton's one-million default at
-        # 256 replicated worlds (measured insertion peak: 1.57 M triangle
-        # pairs). Keep explicit broad phase and contact reduction, but use the
-        # 2.5 M mesh-heavy-task capacity from Isaac Lab's Newton examples so
-        # training never drops pairs.
-        collision_cfg=NewtonCollisionPipelineCfg(max_triangle_pairs=2_500_000),
+        # The rack and vial use primitive colliders. Keep Newton's ordinary
+        # collision capacity instead of allocating for high-resolution rack
+        # mesh pairs that cannot occur in this scene.
+        collision_cfg=NewtonCollisionPipelineCfg(),
         # Isaac Lab's Franka lift/stack and Kuka-Allegro lift tasks all use two
         # substeps at this 120 Hz physics rate. This keeps grasp integration at
         # 240 Hz without paying for an unmeasured 1440 Hz contact loop.
@@ -368,10 +363,9 @@ class PhysicsCfg(PresetCfg):
 class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
     """State task trained from physics-validated reset poses."""
 
-    # The detailed SDF rack makes Newton's host-side collision-filter builder
-    # the limiting resource. 256 worlds fit a 64 GiB workstation without
-    # changing the physical model; callers may choose a smaller batch.
-    scene: SO101SceneCfg = SO101SceneCfg(num_envs=256, env_spacing=0.9, replicate_physics=True)
+    # Primitive object colliders make large state batches practical. Callers
+    # can still choose a smaller batch to suit their GPU and PPO network.
+    scene: SO101SceneCfg = SO101SceneCfg(num_envs=4096, env_spacing=0.9, replicate_physics=True)
     actions: ActionsCfg = ActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
     events: DatasetEventsCfg = DatasetEventsCfg()

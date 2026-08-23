@@ -1,7 +1,14 @@
 import re
 from hashlib import sha256
 
-from so101_vial_place.assets import ASSET_ROOT, RACK_USD, SO101_USD, SO101_VARIANTS, VIAL_USD, validate_assets
+from so101_vial_place.assets import (
+    ASSET_ROOT,
+    RACK_USD,
+    SO101_USD,
+    SO101_VARIANTS,
+    VIAL_USD,
+    validate_assets,
+)
 
 
 def test_all_declared_assets_exist():
@@ -66,14 +73,21 @@ def test_authored_robot_collision_geometry_is_enabled_without_proxies():
     assert "bool physics:collisionEnabled = 0" not in instances
 
 
-def test_rack_uses_the_detailed_four_hole_mesh_for_visuals_and_collision():
+def test_rack_uses_detailed_visuals_and_a_primitive_four_hole_collider():
     wrapper = RACK_USD.read_text()
     source = (RACK_USD.parent / "Vial_rack_simple.usda").read_text()
 
     assert "@./Vial_rack_simple.usda@</World>" in wrapper
     assert "double3 xformOp:translate = (-0.0298317129, -0.0298575352, 0)" in wrapper
     assert 'over "Mesh"' in wrapper
-    assert 'uniform token physics:approximation = "sdf"' in wrapper
-    assert 'def Xform "Collision" (active = false)' in wrapper
+    assert "bool physics:collisionEnabled = false" in wrapper
+    assert 'def Xform "Collision"' in wrapper
+    assert 'def Xform "Collision" (active = false)' not in wrapper
+    assert 'physics:approximation = "sdf"' not in wrapper
+    assert wrapper.count('def Cube "') == 11
+    assert "double3 xformOp:translate = (0.0301682871, 0.0301424648, 0)" in wrapper
+    assert "double3 xformOp:scale = (0.12, 0.12, 0.02)" in wrapper
+    assert "double3 xformOp:scale = (0.012, 0.12, 0.012)" in wrapper
+    assert "double3 xformOp:scale = (0.108, 0.012, 0.012)" in wrapper
     for marker in ("top_01", "top_02", "top_03", "top_04"):
         assert f'def Xform "{marker}"' in source

@@ -11,12 +11,14 @@ def main() -> int:
     if len(sys.argv) >= 2 and sys.argv[1] in {
         "capture_scene",
         "capture_wrist",
+        "benchmark",
         "generate_resets",
         "inspect_robot",
         "view_resets",
         "promote_distillation",
         "set_exploration_std",
     }:
+        from .benchmark import benchmark_main
         from .checkpoint_tools import exploration_std_main, promote_main
         from .reset.generator import generate_main, view_main
         from .robot_diagnostics import inspect_robot_main
@@ -27,6 +29,7 @@ def main() -> int:
         return {
             "capture_scene": capture_main,
             "capture_wrist": capture_wrist_main,
+            "benchmark": benchmark_main,
             "generate_resets": generate_main,
             "inspect_robot": inspect_robot_main,
             "view_resets": view_main,
