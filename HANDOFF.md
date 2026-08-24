@@ -4,6 +4,98 @@ Date: 2026-08-22
 Repository: `/home/mhaiderbhai/code/IsaacLabTutorial`  
 Task ID: `IsaacTutorial-Place-Vial-SO101`
 
+## 2026-08-24 authoritative continuation
+
+This section supersedes the older status narrative below. The older material is retained only as historical context.
+The final pause-point evidence, retained artifacts, rejected last batch, exact commands, and restart plan are in
+`VISION_SCRATCH_HANDOFF.md`; that file supersedes the active-job details in this document.
+
+### Accepted results
+
+- State is solved from the farther canonical home start: 100% exact canonical and 97% independent-reset success.
+- Spatial-softmax state-to-vision distillation is solved with wrist RGB plus proprioception: seeds 42 and 45 each
+  reached 91.5% exact canonical success. State and distillation rollout-video candidates exist under
+  `checkpoints/videos`.
+- Full canonical vision-from-scratch is not solved. Do not promote a scratch checkpoint until it passes the fixed
+  1,024-episode exact evaluator and independent seeds.
+
+### Vision-from-scratch evidence
+
+- Resolution is fixed at 64x64. The actor consumes the fabricated wrist-camera view plus 24 proprioceptive values;
+  the privileged state is critic-only.
+- Canonical scratch acquisition/lift specialist:
+  `checkpoints/candidates/vision_transport_alignment_m1850_std003.pt`, approximately 98% grasp and 97% lift.
+- Phase-five insertion/release specialist:
+  `checkpoints/candidates/vision_scratch_release_direct_seed413_model260.pt`, 90.3% exact phase-five success and
+  99.9% held insertion.
+- Joint BC, geometry-augmented BC, one DAgger relabel pass, full-network PPO, split-gripper PPO, and post-lift
+  residual PPO have not connected those specialists. The best residuals preserve grasp/lift but trade upright
+  alignment for modest radial progress. Exact success remains 0%.
+- A post-lift residual boundary using measured jaw/shoulder proprioception preserves acquisition, but exact audits
+  showed the correction still drifts over long rollouts. Do not claim mixed-reset training metrics as canonical
+  evidence.
+- Uniform scratch PPO checkpoint seed 701 at iterations 100 and 300 had 0% grasp and 100% vial loss on 1,024 exact
+  canonical starts, despite strong downstream reset metrics. A 90%-canonical run at iteration 100 also had 0%
+  canonical grasp. This proves reset-phase aggregate metrics can be badly misleading.
+- Longer uniform controls remained canonical-zero: seed 701 at iteration 700 had 0% grasp and 99.8% loss, and stable
+  seed 704 at iteration 800 had 0% grasp and 99.9% loss, each over 1,024 exact canonical episodes.
+- The historical scratch curriculum is physically valid. Exact canonical audits measured 60.8% grasp at the
+  canonical-close model 500, 100% grasp at the acquisition model 700, and 96.8% grasp/lift at the lift-progress
+  model 1699. The unresolved boundary is therefore specifically post-lift transport.
+- Raising arm exploration to 0.10 destroyed the lift skill within 25 PPO updates. Keeping exploration at 0.03
+  preserved 97.0% grasp and 96.0% lift after 25 balanced-horizon updates, but improved upright alignment at the cost
+  of worse radial distance. Low-noise transport consolidation is the active direction.
+- Exact exploration/rate ablations selected `0.03` action noise and a fixed `1e-4` PPO rate. Arm noise `0.05`
+  worsened radial distance and introduced vial loss; rates `3e-5` and `1e-5` preserved lift but made no transport
+  progress. Canonical dense `1e-4` reduced exact radial distance to about 18.0 cm in two PPO seeds while retaining
+  at least 95.5% grasp/lift. This is real but still far from insertion and is not a solved scratch policy.
+
+### Active single-GPU jobs
+
+There are no active jobs at the pause point. The final four-run fixed-mixture batch completed and was rejected; see
+`VISION_SCRATCH_HANDOFF.md` for its exact canonical and bridge results.
+
+The proven historical scratch acquisition chain began with
+`2026-08-23_14-42-46_vision_tuned_stable_canonical_close_s114` from random initialization. Its grasp signal emerged
+around iterations 400--500, followed by `Discovery-CloseLift` and `Discovery-CanonicalLiftProgress`. Exact-audit the
+new canonical-close runs near that window before continuing the same compact stage sequence.
+
+### Important fixes in the current worktree
+
+- Transport shaping now uses irreversible physical grasp/lift history instead of instantaneous bilateral contact;
+  success and termination remain contact validated.
+- Release progress/action credit is physically gated by irreversible held-insertion history.
+- Non-finite terminal physics values are neutralized in reward terms so 4,096-environment runs do not fail with NaN
+  rewards. Invalid geometric errors map to a safely distant value rather than an accidental perfect score.
+- Added hardcoded slow/midrate residual PPO configs and fixed reset-distribution ablations; no reward values depend on
+  shell environment variables.
+- Added one plain spatial-softmax fine-tuning configuration with 64-step rollouts, fixed `1e-4` learning rate, and
+  `gamma=0.995` for the longer post-lift credit horizon. It uses ordinary PPO and adds no policy logic.
+- Added matching `3e-5` and `1e-5` rate ablations; exact audits rejected both for lack of radial progress. Added one
+  strong-dense task that uniformly scales the same three post-lift geometry rewards by 5x; its first audit is pending.
+- Added full-horizon canonical rollout recording and residual consolidation/relabel tooling. These are diagnostic,
+  not accepted policy machinery.
+- Newton allocator startup faults (`exit 134/139`, `malloc(): unaligned tcache chunk`) are transient; retry the exact
+  command. After interrupting a run, check `nvidia-smi` because a wrapper interruption once left a Python child
+  orphaned on GPU 3.
+- `uv run ruff check src` passes and the full suite has 69 passing tests. `ruff check src tests` currently reports one
+  pre-existing import-order issue in `tests/test_config.py`.
+
+### Current acceptance workflow
+
+Use the fixed evaluator, with no environment variables:
+
+```bash
+CUDA_VISIBLE_DEVICES=<gpu> uv run so101-vial play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera-Scratch-Discovery-HorizonReleaseDirect \
+  --agent <matching-agent-entry-point> --num_envs 1024 --checkpoint <checkpoint.pt> \
+  --deterministic --external_callback so101_vial_place.evaluation.install_episode_counter \
+  --device cuda:0 --visualizer none presets=newton_mjwarp
+```
+
+The final scratch acceptance remains at least 90% canonical success over at least 1,024 episodes and multiple seeds,
+followed by camera/rollout videos and a clean from-zero reproduction audit.
+
 ## Executive status
 
 The environment, physical assets, canonical robot start, wrist camera, reset generator, reset viewer, exact evaluator,

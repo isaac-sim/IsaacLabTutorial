@@ -27,8 +27,9 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Check the moving SO-101 wrist camera.")
     parser.add_argument("--output_dir", type=Path, default=Path("checkpoints/screenshots"))
+    parser.add_argument("--dataset", type=Path, default=RESET_DATASET)
     parser.add_argument("--width", type=int, default=640)
-    parser.add_argument("--height", type=int, default=480)
+    parser.add_argument("--height", type=int, default=640)
     add_launcher_args(parser)
     args = parser.parse_args(argv)
 
@@ -43,12 +44,12 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
     env_cfg.scene.wrist_camera.height = args.height
     env_cfg.observations.wrist_rgb.enable_corruption = False
     # Keep the policy camera's calibrated field of view when requesting a
-    # larger screenshot than the 64x48 training tensor.
+    # larger screenshot than the 64x64 training tensor.
     distortion = env_cfg.scene.wrist_camera.spawn.distortion
     distortion.fx *= args.width / 64
-    distortion.fy *= args.height / 48
+    distortion.fy *= args.height / 64
     distortion.cx *= args.width / 64
-    distortion.cy *= args.height / 48
+    distortion.cy *= args.height / 64
     distortion.image_size = (args.width, args.height)
     env_cfg.events = InitialEventsCfg()
     env_cfg.actions = ResetJointActionsCfg()
@@ -74,7 +75,7 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
             vial = env.scene["vial"]
             rack = env.scene["rack"]
             action_term = env.action_manager.get_term("joint_delta")
-            dataset = load_reset_dataset(RESET_DATASET, device=env.device)["states"]
+            dataset = load_reset_dataset(args.dataset.resolve(), device=env.device)["states"]
             zero_action = torch.zeros((1, 6), device=env.device)
             zero_velocity = torch.zeros((1, 6), device=env.device)
             frames: list[tuple[str, torch.Tensor]] = []

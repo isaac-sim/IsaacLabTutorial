@@ -1,7 +1,5 @@
 """Manager-based SO-101 vial placement task with physical reset replay."""
 
-import os
-
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
@@ -26,6 +24,7 @@ from .control import (
     GRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
     TABLETOP_VIAL_HEADING_RANGE,
+    TABLETOP_VIAL_POSITION,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
 from .mdp.actions import SoftLimitRelativeGripperActionCfg, SoftLimitRelativeJointPositionActionCfg
@@ -70,7 +69,8 @@ class SO101SceneCfg(InteractiveSceneCfg):
                 # Canonical operational start used when the workshop's real
                 # SO-101 connects. It leaves a visible, transferable approach
                 # to the vial instead of beginning next to the grasp.
-                name: position for name, position in zip(JOINTS, WORKSHOP_INITIAL_JOINT_POSITION, strict=True)
+                name: position
+                for name, position in zip(JOINTS, WORKSHOP_INITIAL_JOINT_POSITION, strict=True)
             },
         ),
         actuators={
@@ -98,7 +98,7 @@ class SO101SceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Vial",
         spawn=sim_utils.UsdFileCfg(usd_path=str(VIAL_USD)),
         init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.23, 0.0, 0.06),
+            pos=TABLETOP_VIAL_POSITION,
             # Horizontal vial: +90 degrees about world Y (XYZW).
             rot=(0.0, 0.7071068, 0.0, 0.7071068),
         ),
@@ -168,10 +168,11 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ARM_JOINTS,
         preserve_order=True,
-        # 0.03 rad at 30 Hz is a conservative measured-relative command. The
-        # authored Sys-ID drives and soft limits remain the sole low-level
-        # dynamics; no task-space controller has to be reproduced on hardware.
-        scale=0.03,
+        # 0.033 rad at 30 Hz is a modest speed increase over the original
+        # 0.03-rad command. A 1,024-episode ablation reduced mean completion
+        # time by 16% without compromising the controlled trajectory; larger
+        # 0.035/0.04-rad steps increased failures and rack forces.
+        scale=0.033,
         use_zero_offset=True,
     )
     gripper_action: SoftLimitRelativeGripperActionCfg = SoftLimitRelativeGripperActionCfg(
@@ -312,14 +313,38 @@ class InitialEventsCfg:
 
 @configclass
 class RewardsCfg:
-    """Sparse physical milestones plus a small approach and smoothness signal."""
+    """Physical task rewards plus one compact object-centric shaping term."""
 
-    reaching = RewTerm(func=mdp.reaching_reward, weight=0.1)
+    object_goal = RewTerm(func=mdp.object_goal_reward, weight=0.1)
+    grasp_proof = RewTerm(func=mdp.grasp_proof_reward, weight=0.0)
+    lift_clearance = RewTerm(func=mdp.lift_clearance_reward, weight=0.0)
+    lift_progress = RewTerm(func=mdp.LoadBearingLiftProgressReward, weight=0.0)
     milestones = RewTerm(func=mdp.PhysicalMilestoneReward, weight=10.0)
     success = RewTerm(func=mdp.success_bonus, weight=200.0)
+    release_opening = RewTerm(func=mdp.release_opening_reward, weight=0.0)
+    release_opening_progress = RewTerm(func=mdp.ReleaseOpeningProgressReward, weight=0.0)
+    release_action = RewTerm(func=mdp.release_action_reward, weight=0.0)
     vial_lost = RewTerm(func=mdp.vial_lost, weight=-50.0)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.002)
+    action_magnitude = RewTerm(func=mdp.action_magnitude_l2, weight=0.0)
+    arm_action_magnitude = RewTerm(func=mdp.arm_action_magnitude_l2, weight=0.0)
     joint_velocity = RewTerm(func=mdp.joint_velocity_l2, weight=-0.0002)
+    joint_limit_margin = RewTerm(func=mdp.joint_limit_margin_l2, weight=0.0)
+    rack_clearance = RewTerm(func=mdp.rack_clearance_violation, weight=0.0)
+    held_goal_progress = RewTerm(func=mdp.HeldObjectGoalProgressReward, weight=0.0)
+    held_goal_error = RewTerm(func=mdp.held_object_goal_error_cost, weight=0.0)
+    held_goal_basin = RewTerm(func=mdp.held_object_goal_basin_reward, weight=0.0)
+    held_upright_progress = RewTerm(func=mdp.HeldUprightProgressReward, weight=0.0)
+    held_upright_alignment = RewTerm(func=mdp.held_upright_alignment_reward, weight=0.0)
+    held_upright_clearance = RewTerm(func=mdp.held_upright_clearance_reward, weight=0.0)
+    held_upright_lift = RewTerm(func=mdp.held_upright_lift_reward, weight=0.0)
+    held_lift_clearance = RewTerm(func=mdp.held_lift_clearance_reward, weight=0.0)
+    held_radial_progress = RewTerm(func=mdp.HeldRadialCenterProgressReward, weight=0.0)
+    held_radial_center = RewTerm(func=mdp.held_radial_center_reward, weight=0.0)
+    held_radial_error = RewTerm(func=mdp.held_radial_error_cost, weight=0.0)
+    held_clearance_error = RewTerm(func=mdp.held_clearance_error_cost, weight=0.0)
+    held_tip_inside = RewTerm(func=mdp.held_tip_inside_reward, weight=0.0)
+    held_insertion_gate = RewTerm(func=mdp.held_insertion_gate_reward, weight=0.0)
 
 
 @configclass
@@ -346,13 +371,7 @@ class PhysicsCfg(PresetCfg):
             use_mujoco_contacts=False,
             ccd_iterations=35,
         ),
-        # The rack and vial use primitive colliders. Keep Newton's ordinary
-        # collision capacity instead of allocating for high-resolution rack
-        # mesh pairs that cannot occur in this scene.
         collision_cfg=NewtonCollisionPipelineCfg(),
-        # Isaac Lab's Franka lift/stack and Kuka-Allegro lift tasks all use two
-        # substeps at this 120 Hz physics rate. This keeps grasp integration at
-        # 240 Hz without paying for an unmeasured 1440 Hz contact loop.
         num_substeps=2,
         debug_mode=False,
     )
@@ -400,28 +419,44 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
 
     def play_mode(self):
         """Evaluate complete episodes from validated phase-zero starts."""
+        from . import evaluation
+
         requested_num_envs = self.scene.num_envs
         super().play_mode()
-        # Keep interactive playback light, but honor a larger explicit batch
-        # for the exact headless episode counter.
-        if os.environ.get("SO101_EVAL_EPISODES"):
-            self.scene.num_envs = min(requested_num_envs, 128)
+        # The exact callback is installed before the environment is built. It
+        # selects the callback's exact audit batch; normal interactive play
+        # remains deliberately small.
+        if evaluation.EXACT_EVALUATION_ACTIVE:
+            self.scene.num_envs = min(requested_num_envs, evaluation.PLAY_EVALUATION_EPISODES)
         else:
             self.scene.num_envs = min(self.scene.num_envs, 16)
-        if os.environ.get("SO101_EVAL_RAW_TABLETOP") == "1":
-            self.events = InitialEventsCfg()
-            return
 
-        # Phase zero varies the settled vial pose, heading, joint state, and
-        # approach progress. After reset the policy performs every contact-
-        # dependent step; no object state is written during the episode.
-        curriculum = os.environ.get("SO101_RESET_CURRICULUM", "initial")
-        if curriculum not in reset_cfg.RESET_CURRICULA:
-            raise ValueError(f"Unknown SO101_RESET_CURRICULUM={curriculum!r}")
-        self.events.reset_from_dataset.params["sequential"] = os.environ.get("SO101_EVAL_SEQUENTIAL", "1") == "1"
-        self.events.reset_from_dataset.params["phase_weights"] = reset_cfg.RESET_CURRICULA[curriculum]
-        self.events.reset_from_dataset.params["minimum_difficulty"] = reset_cfg.RESET_MINIMUM_DIFFICULTY.get(curriculum)
-        self.events.reset_from_dataset.params["maximum_difficulty"] = reset_cfg.RESET_MAXIMUM_DIFFICULTY.get(curriculum)
+        # Play is always the real canonical task: the exact workshop home pose
+        # with the vial sampled across the validated phase-zero tabletop rows.
+        # Training alone samples the full generated task horizon.
+        self.events.reset_from_dataset.params["sequential"] = evaluation.PLAY_RESETS_SEQUENTIAL
+        if evaluation.PLAY_RESET_DATASET is not None:
+            self.events.reset_from_dataset.params["dataset_path"] = evaluation.PLAY_RESET_DATASET
+        reset_phase = evaluation.PLAY_RESET_PHASE
+        if reset_phase is None:
+            phase_weights = reset_cfg.RESET_CURRICULA["initial"]
+        else:
+            phase_weights = tuple(float(index == reset_phase) for index in range(8))
+        self.events.reset_from_dataset.params["phase_weights"] = phase_weights
+        self.events.reset_from_dataset.params["minimum_difficulty"] = None
+        self.events.reset_from_dataset.params["maximum_difficulty"] = None
+
+
+@configclass
+class SO101VialCanonicalEnvCfg(SO101VialEnvCfg):
+    """State-policy refinement from the complete canonical home task."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.events.reset_from_dataset.params["sequential"] = False
+        self.events.reset_from_dataset.params["phase_weights"] = reset_cfg.RESET_CURRICULA["initial"]
+        self.events.reset_from_dataset.params["minimum_difficulty"] = None
+        self.events.reset_from_dataset.params["maximum_difficulty"] = None
 
 
 @configclass

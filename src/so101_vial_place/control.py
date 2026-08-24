@@ -10,6 +10,10 @@ import math
 # accidental train/evaluation distribution shift while remaining more varied
 # than the demonstrated real setup.
 TABLETOP_VIAL_HEADING_RANGE = (-0.15, 0.15)
+# Keep the acquisition pose visibly separated from the rack for the fabricated
+# wrist-camera mount. This 20 mm translation follows the existing vial-to-rack
+# separation line and remains comfortably inside the demonstrated workspace.
+TABLETOP_VIAL_POSITION = (0.241, -0.017, 0.06)
 # A narrow deadband prevents numerical chatter around zero while retaining
 # Isaac Lab's standard signed binary-gripper convention. The deployed policy
 # is deterministic, so a larger threshold only creates an unnecessary flat

@@ -6,7 +6,86 @@ import pytest
 import torch
 from isaaclab_rl import rsl_rl
 
-from so101_vial_place.evaluation import install_episode_counter
+from so101_vial_place import evaluation
+from so101_vial_place.agents.models import replacement_post_lift_gate, residual_post_lift_gate
+from so101_vial_place.evaluation import _install_episode_counter
+
+
+def test_insertion_counter_selects_phase_six(monkeypatch):
+    monkeypatch.setattr(evaluation, "_install_episode_counter", lambda **kwargs: kwargs)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_PHASE", None)
+
+    result = evaluation.install_insertion_episode_counter()
+
+    assert evaluation.PLAY_RESET_PHASE == 6
+    assert result == {"target": 1024, "once_per_env": True, "sequential_resets": True}
+
+
+def test_post_lift_gate_predicates_share_the_deployed_thresholds():
+    joint_position = torch.tensor(
+        [
+            [0.0, 0.76, 0.0, -1.61, 0.0, 0.24],
+            [0.0, 0.76, 0.0, -1.59, 0.0, 0.24],
+            [0.0, 0.74, 0.0, -1.61, 0.0, 0.24],
+        ]
+    )
+
+    assert residual_post_lift_gate(joint_position).squeeze(-1).tolist() == [True, True, False]
+    assert replacement_post_lift_gate(joint_position).squeeze(-1).tolist() == [True, False, False]
+
+
+def test_bridge_counter_uses_every_canonical_bridge_row_once(monkeypatch):
+    monkeypatch.setattr(evaluation, "_install_episode_counter", lambda **kwargs: kwargs)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_PHASE", None)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_DATASET", None)
+
+    result = evaluation.install_bridge_episode_counter()
+
+    assert evaluation.PLAY_RESET_PHASE == 4
+    assert evaluation.PLAY_RESET_DATASET.endswith("canonical_bridge_reset_poses.pt")
+    assert result == {"target": 885, "once_per_env": True, "sequential_resets": True}
+
+
+def test_bridge_zero_counter_uses_the_same_exact_rows(monkeypatch):
+    monkeypatch.setattr(evaluation, "_install_episode_counter", lambda **kwargs: kwargs)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_PHASE", None)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_DATASET", None)
+
+    result = evaluation.install_bridge_zero_episode_counter()
+
+    assert evaluation.PLAY_RESET_PHASE == 4
+    assert evaluation.PLAY_RESET_DATASET.endswith("canonical_bridge_reset_poses.pt")
+    assert result == {
+        "target": 885,
+        "once_per_env": True,
+        "action_probe": "zero",
+        "sequential_resets": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("callback", "probe"),
+    (
+        (evaluation.install_bridge_no_wrist_flex_episode_counter, "zero_wrist_flex"),
+        (evaluation.install_bridge_no_wrist_roll_episode_counter, "zero_wrist_roll"),
+        (evaluation.install_bridge_no_wrist_episode_counter, "zero_wrist"),
+    ),
+)
+def test_bridge_wrist_probes_use_every_connected_row(monkeypatch, callback, probe):
+    monkeypatch.setattr(evaluation, "_install_episode_counter", lambda **kwargs: kwargs)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_PHASE", None)
+    monkeypatch.setattr(evaluation, "PLAY_RESET_DATASET", None)
+
+    result = callback()
+
+    assert evaluation.PLAY_RESET_PHASE == 4
+    assert evaluation.PLAY_RESET_DATASET.endswith("canonical_bridge_reset_poses.pt")
+    assert result == {
+        "target": 885,
+        "once_per_env": True,
+        "action_probe": probe,
+        "sequential_resets": True,
+    }
 
 
 def test_episode_counter_collects_multiple_resets_per_world(monkeypatch, capsys):
@@ -32,14 +111,19 @@ def test_episode_counter_collects_multiple_resets_per_world(monkeypatch, capsys)
             self._so101_terminal_progress = torch.tensor([[True, True, True, False], [True, False, False, True]])
             self._so101_terminal_max_rack_force = torch.tensor([2.0, 30.0])
             self._so101_terminal_reset_phase = torch.tensor([0, 1])
+            self._so101_terminal_insertion_state = torch.tensor(
+                [
+                    [0.0, 0.0, 0.060, 0.99, 0.01, 0.081],
+                    [0.1, 0.0, 0.060, 0.50, 0.01, 0.080],
+                ]
+            )
 
         def step(self, actions):
             self.calls += 1
             return None, None, torch.tensor([True, True]), {}
 
     monkeypatch.setattr(rsl_rl, "RslRlVecEnvWrapper", FakeWrapper)
-    monkeypatch.setenv("SO101_EVAL_EPISODES", "5")
-    install_episode_counter()
+    _install_episode_counter(target=5, once_per_env=False)
     wrapper = FakeWrapper()
     actions = torch.zeros((2, 6))
 
@@ -57,8 +141,24 @@ def test_episode_counter_collects_multiple_resets_per_world(monkeypatch, capsys)
     assert result["unsafe_rack_contact_rate"] == pytest.approx(0.4)
     assert result["mean_peak_rack_contact_force_n"] == pytest.approx(13.2)
     assert result["max_rack_contact_force_n"] == pytest.approx(30.0)
+    assert result["terminal_insertion_state"]["transport_clearance_rate"] == pytest.approx(0.6)
     assert result["per_reset_phase"]["0"]["episodes"] == 3
     assert result["per_reset_phase"]["1"]["episodes"] == 2
+
+
+def test_once_per_world_audit_rejects_a_mismatched_batch(monkeypatch):
+    class FakeWrapper:
+        def __init__(self):
+            self.num_envs = 2
+
+        def step(self, actions):
+            raise AssertionError("The mismatched audit must fail before stepping.")
+
+    monkeypatch.setattr(rsl_rl, "RslRlVecEnvWrapper", FakeWrapper)
+    _install_episode_counter(target=1, once_per_env=True)
+
+    with pytest.raises(RuntimeError, match="requires --num_envs 1; received 2"):
+        FakeWrapper().step(torch.zeros((2, 6)))
 
 
 def test_episode_counter_can_count_each_world_only_once(monkeypatch, capsys):
@@ -97,9 +197,7 @@ def test_episode_counter_can_count_each_world_only_once(monkeypatch, capsys):
             return None, None, next(self.steps), {}
 
     monkeypatch.setattr(rsl_rl, "RslRlVecEnvWrapper", FakeWrapper)
-    monkeypatch.setenv("SO101_EVAL_EPISODES", "2")
-    monkeypatch.setenv("SO101_EVAL_ONCE_PER_ENV", "1")
-    install_episode_counter()
+    _install_episode_counter(target=2, once_per_env=True)
     wrapper = FakeWrapper()
 
     wrapper.step(torch.zeros((2, 6)))

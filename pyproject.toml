@@ -58,6 +58,7 @@ dependencies = [
 
 [project.scripts]
 isaaclab = "so101_vial_place.cli:main"
+so101-vial = "so101_vial_place.cli:main"
 
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]

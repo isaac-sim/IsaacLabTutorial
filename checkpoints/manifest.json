@@ -9,10 +9,86 @@
     "rows": 1024,
     "rows_per_phase": 128,
     "schema_version": 2,
-    "content_sha256": "3704912036a4ac3de628ba1c71c3545a0e579534c8b1ec8f5e1cc56d62b3a282",
-    "file_sha256": "8a6c1fbdce85210ba81218e7689fdc5b8ce557e6e1ef742d178b784a47d7ab9b"
+    "content_sha256": "5ad5f83861c2987ffe0c82cf39a4bef884943a8803860ed7270ed79b256c4584",
+    "file_sha256": "1533ec23b4b93532e5a4298ccb92a361a75edd8900000d0d34d44fa96a27c62e"
   },
-  "accepted_checkpoints": [],
+  "accepted_checkpoints": [
+    {
+      "name": "state_canonical_home_seed42_model_399",
+      "path": "checkpoints/candidates/state_canonical_home_seed42_model_399.pt",
+      "sha256": "b77ebdb648b75350354267e5ce3ad1d787e127f2bab182240d4eb51a55d4467a",
+      "actor_observations": "state",
+      "actions": 6,
+      "arm_action_scale_rad": 0.033,
+      "training_environments": 4096,
+      "training_iterations": 400,
+      "training_transitions": 104857600,
+      "reward": "0.1 x mutually exclusive exponential approach or symmetry-aware held object-to-goal shaping, plus physical milestones and terminal terms",
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 0.978515625,
+        "grasp_rate": 1.0,
+        "lift_rate": 1.0,
+        "held_insertion_rate": 0.9814453125,
+        "vial_lost_rate": 0.001953125,
+        "timeout_rate": 0.01953125,
+        "unsafe_rack_contact_rate": 0.0,
+        "mean_peak_rack_contact_force_n": 2.4537702263332903,
+        "max_rack_contact_force_n": 10.48762321472168,
+        "mean_time_to_success_s": 10.766001949767153,
+        "home_grasp_distance_m": 0.24702401459217072
+      },
+      "full_horizon_audit": {
+        "episodes": 1024,
+        "success_rate": 0.9697265625,
+        "minimum_phase_success_rate": 0.8359375,
+        "vial_lost_rate": 0.0048828125,
+        "timeout_rate": 0.025390625,
+        "unsafe_rack_contact_rate": 0.0,
+        "mean_peak_rack_contact_force_n": 3.1092780119070085,
+        "max_rack_contact_force_n": 13.905704498291016,
+        "mean_time_to_success_s": 4.105337582506082
+      },
+      "canonical_seed_success_rates": {
+        "42": 0.978515625,
+        "43": 0.978515625,
+        "44": 0.9658203125,
+        "45": 0.96875
+      },
+      "accepted": true,
+      "note": "Accepted corrected-home state teacher at the hardcoded 0.033-rad arm action scale. Phase zero is exact workshop home with zero serialized approach progress; all four seeds exceed 96% canonical success."
+    },
+    {
+      "name": "distilled_geometry_spatial_seed42_model_1109",
+      "path": "checkpoints/candidates/distilled_geometry_spatial_seed42_model_1109.pt",
+      "sha256": "2f2107fe5850d4d393a5a85137347cdbe4f643f1b3ef09349b7c84df887962aa",
+      "actor_observations": "64x64 wrist RGB plus 24-dimensional proprioception",
+      "actions": 6,
+      "teacher": "state_canonical_home_seed42_model_399",
+      "architecture": "two-layer ELU CNN, spatial softmax, 256/256/128 ELU MLP",
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 0.9150390625
+      },
+      "accepted": true,
+      "note": "Accepted state-to-vision distillation seed 42. Privileged state is used only by the training teacher; the deployed actor is vision plus proprioception."
+    },
+    {
+      "name": "distilled_geometry_spatial_seed45_model_1109",
+      "path": "checkpoints/candidates/distilled_geometry_spatial_seed45_model_1109.pt",
+      "sha256": "fd5dab982f7966a53e121e60633c4fae8bd59e17d425287abd39763800ac1773",
+      "actor_observations": "64x64 wrist RGB plus 24-dimensional proprioception",
+      "actions": 6,
+      "teacher": "state_canonical_home_seed42_model_399",
+      "architecture": "two-layer ELU CNN, spatial softmax, 256/256/128 ELU MLP",
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 0.9150390625
+      },
+      "accepted": true,
+      "note": "Accepted independent state-to-vision distillation seed 45. The deployed actor contains no privileged state."
+    }
+  ],
   "diagnostic_checkpoints": [
     {
       "name": "sparse_joint_horizon_model_499",
@@ -41,6 +117,37 @@
       },
       "accepted": false,
       "note": "Clean sparse-reward joint-action ablation; useful for diagnosis only."
+    },
+    {
+      "name": "vision_transport_alignment_m1850_std003",
+      "path": "checkpoints/candidates/vision_transport_alignment_m1850_std003.pt",
+      "sha256": "bda3b4522ec6c197962590df5df7ddb225271ea853e43910ed9300b1fc0d3016",
+      "actor_observations": "64x64 wrist RGB plus 24-dimensional proprioception",
+      "actions": 6,
+      "architecture": "two-layer ELU CNN, spatial softmax, 256/256/128 ELU MLP",
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 0.0,
+        "grasp_rate": 0.9755859375,
+        "lift_rate": 0.96484375,
+        "held_insertion_rate": 0.0,
+        "transport_clearance_rate": 0.9609375,
+        "vertical_alignment_mean": 0.5431185960769653,
+        "radial_mean_m": 0.1823565512895584,
+        "vial_lost_rate": 0.03515625,
+        "unsafe_rack_contact_rate": 0.0
+      },
+      "connected_bridge_audit": {
+        "episodes": 885,
+        "grasp_rate": 1.0,
+        "lift_rate": 1.0,
+        "transport_clearance_rate": 1.0,
+        "vertical_alignment_mean": 0.5449544191360474,
+        "radial_mean_m": 0.17018413543701172,
+        "success_rate": 0.0
+      },
+      "accepted": false,
+      "note": "Final retained vision-from-scratch diagnostic. It reliably acquires and lifts from canonical home but does not reorient, transport, insert, or release."
     }
   ]
 }

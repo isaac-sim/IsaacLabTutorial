@@ -6,6 +6,7 @@ from so101_vial_place.mdp.geometry import (
     cylinder_lowest_offset,
     inside_bounds,
     rack_local_position,
+    symmetric_axial_keypoint_error,
     vertical_alignment,
 )
 
@@ -34,3 +35,39 @@ def test_cylinder_clearance_uses_its_actual_lowest_point():
     axis_z = torch.tensor([1.0, 0.0, -1.0])
     lowest = cylinder_lowest_offset(axis_z, axial_min=-0.017, axial_max=0.100, radius=0.017)
     torch.testing.assert_close(lowest, torch.tensor([-0.017, -0.017, -0.100]), atol=1e-6, rtol=1e-6)
+
+
+def test_axial_keypoint_error_uses_the_authored_root_offset_and_unsigned_axis():
+    target = torch.tensor([[0.0, 0.0, 0.060]])
+    up = torch.tensor([[0.0, 0.0, 1.0]])
+    # Flipping an asymmetric root about the physical center requires shifting
+    # the root by twice its 41.5 mm center offset.
+    flipped_root = target + torch.tensor([[0.0, 0.0, 0.083]])
+    down = -up
+    error = symmetric_axial_keypoint_error(
+        torch.cat((target, flipped_root)),
+        torch.cat((up, down)),
+        target.expand(2, -1),
+        up.expand(2, -1),
+        axial_min=-0.017,
+        axial_max=0.100,
+    )
+    torch.testing.assert_close(error, torch.zeros(2), atol=1e-6, rtol=1e-6)
+
+
+def test_axial_keypoint_error_penalizes_translation_and_tilt_but_not_yaw():
+    target = torch.tensor([[0.0, 0.0, 0.060]])
+    target_axis = torch.tensor([[0.0, 0.0, 1.0]])
+    positions = torch.tensor([[0.0, 0.0, 0.060], [0.020, 0.0, 0.060], [0.0, 0.0, 0.060]])
+    axes = torch.tensor([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    error = symmetric_axial_keypoint_error(
+        positions,
+        axes,
+        target.expand(3, -1),
+        target_axis.expand(3, -1),
+        axial_min=-0.017,
+        axial_max=0.100,
+    )
+    assert error[0] == 0.0
+    assert error[1] > 0.0
+    assert error[2] > error[1]

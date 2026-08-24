@@ -2,7 +2,61 @@
 
 import torch
 
-from so101_vial_place.checkpoint_tools import promote_distilled_student, set_ppo_exploration_std
+from so101_vial_place.checkpoint_tools import (
+    promote_distilled_student,
+    scale_geometry_policy_inputs,
+    scale_ppo_output_rows,
+    set_ppo_exploration_std,
+)
+
+
+def test_scale_ppo_output_rows_changes_only_selected_actions(tmp_path):
+    source_path = tmp_path / "source.pt"
+    output_path = tmp_path / "scaled_rows.pt"
+    weight = torch.arange(12, dtype=torch.float32).reshape(3, 4)
+    bias = torch.arange(3, dtype=torch.float32)
+    torch.save(
+        {
+            "actor_state_dict": {"mlp.6.weight": weight, "mlp.6.bias": bias},
+            "optimizer_state_dict": {"state": {0: {"step": 2}}},
+            "infos": {"source": True},
+        },
+        source_path,
+    )
+
+    scale_ppo_output_rows(source_path, output_path, rows=(1,), scale=0.25)
+    converted = torch.load(output_path, map_location="cpu", weights_only=True)
+
+    assert torch.equal(converted["actor_state_dict"]["mlp.6.weight"][0], weight[0])
+    assert torch.equal(converted["actor_state_dict"]["mlp.6.weight"][1], weight[1] * 0.25)
+    assert torch.equal(converted["actor_state_dict"]["mlp.6.weight"][2], weight[2])
+    assert converted["actor_state_dict"]["mlp.6.bias"][1] == bias[1] * 0.25
+    assert converted["optimizer_state_dict"]["state"] == {}
+    assert converted["infos"]["source"] is True
+    assert converted["infos"]["scaled_output_row_indices"] == [1]
+    assert converted["infos"]["scaled_output_row_factor"] == 0.25
+
+
+def test_scale_geometry_policy_inputs_changes_only_final_columns(tmp_path):
+    source_path = tmp_path / "source.pt"
+    output_path = tmp_path / "scaled.pt"
+    weight = torch.arange(24, dtype=torch.float32).reshape(3, 8)
+    torch.save(
+        {
+            "actor_state_dict": {"mlp.0.weight": weight},
+            "optimizer_state_dict": {"state": {0: {"step": 2}}},
+        },
+        source_path,
+    )
+
+    scale_geometry_policy_inputs(source_path, output_path, 5.0, geometry_dim=2)
+    converted = torch.load(output_path, map_location="cpu", weights_only=True)
+
+    scaled = converted["actor_state_dict"]["mlp.0.weight"]
+    assert torch.equal(scaled[:, :-2], weight[:, :-2])
+    assert torch.equal(scaled[:, -2:], weight[:, -2:] * 5.0)
+    assert converted["optimizer_state_dict"]["state"] == {}
+    assert converted["infos"]["geometry_input_scale"] == 5.0
 
 
 def test_promote_distilled_student_resets_optimizer(tmp_path):
@@ -103,3 +157,25 @@ def test_set_ppo_exploration_std_accepts_one_value_per_action(tmp_path):
         torch.tensor([0.15, 0.15, 0.02]),
     )
     assert converted["infos"]["exploration_std"] == [0.15, 0.15, 0.02]
+
+
+def test_set_ppo_exploration_std_supports_scalar_distribution_parameter(tmp_path):
+    source_path = tmp_path / "source.pt"
+    output_path = tmp_path / "configured.pt"
+    torch.save(
+        {
+            "actor_state_dict": {"distribution.std_param": torch.full((3,), 0.2)},
+            "critic_state_dict": {},
+            "optimizer_state_dict": {"state": {0: {"step": 2}}},
+            "iter": 1,
+        },
+        source_path,
+    )
+
+    set_ppo_exploration_std(source_path, output_path, 0.03)
+    converted = torch.load(output_path, map_location="cpu", weights_only=True)
+
+    assert torch.allclose(
+        converted["actor_state_dict"]["distribution.std_param"], torch.full((3,), 0.03)
+    )
+    assert converted["optimizer_state_dict"]["state"] == {}

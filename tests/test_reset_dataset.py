@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from so101_vial_place.assets import RESET_DATASET
+from so101_vial_place.control import WORKSHOP_INITIAL_JOINT_POSITION
 from so101_vial_place.mdp.events import _phase_balanced_row_weights
 from so101_vial_place.reset.curriculum import RESET_CURRICULA, RESET_MAXIMUM_DIFFICULTY, RESET_MINIMUM_DIFFICULTY
 from so101_vial_place.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
@@ -98,3 +99,15 @@ def test_every_named_curriculum_has_eligible_rows_in_bundled_artifact():
         )
         assert torch.isfinite(row_weights).all()
         assert row_weights.sum() > 0.0
+
+
+def test_bundled_canonical_rows_are_exact_unstarted_home_resets():
+    states = load_reset_dataset(RESET_DATASET)["states"]
+    canonical = states["phase"] == 0
+    home = torch.tensor(WORKSHOP_INITIAL_JOINT_POSITION, dtype=states["joint_target"].dtype)
+
+    assert canonical.sum().item() == 128
+    assert torch.equal(states["joint_target"][canonical], home.expand(canonical.sum(), -1))
+    assert torch.equal(states["difficulty"][canonical], torch.zeros(canonical.sum()))
+    assert not states["grasped"][canonical].any()
+    assert not states["lifted"][canonical].any()

@@ -8,6 +8,7 @@ VIAL_USD = ASSET_ROOT / "workshop" / "vial.usda"
 RACK_USD = ASSET_ROOT / "workshop" / "rack.usda"
 MAT_USD = ASSET_ROOT / "workshop" / "mat.usda"
 RESET_DATASET = ASSET_ROOT / "reset_poses.pt"
+CANONICAL_BRIDGE_RESET_DATASET = ASSET_ROOT / "canonical_bridge_reset_poses.pt"
 
 SO101_VARIANTS = {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
 

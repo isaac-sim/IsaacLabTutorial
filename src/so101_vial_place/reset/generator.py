@@ -15,6 +15,7 @@ from ..control import (
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
     TABLETOP_VIAL_HEADING_RANGE,
+    TABLETOP_VIAL_POSITION,
     WORKSHOP_INITIAL_JOINT_POSITION,
     WORKSHOP_PREGRASP_JOINT_POSITION,
     WORKSHOP_TASK_WAYPOINTS,
@@ -1283,25 +1284,18 @@ class _Generator:
         self.rack.write_root_pose_to_sim_index(root_pose=pose)
         self.rack.write_root_velocity_to_sim_index(root_velocity=self._zeros)
 
-    def _sample_joint_positions(self, phase: int) -> torch.Tensor:
-        # Do not let a scene-preview pose silently redefine the task horizon.
-        # Reset generation starts from the same calibrated operational pose as
-        # the real workshop controller and the public environment.
+    def _canonical_home_joint_positions(self) -> torch.Tensor:
+        """Return the exact operational pose used to begin every full task."""
+        # Phase zero is the public start distribution, not an approach
+        # curriculum. Keeping this pose exact prevents canonical evaluation
+        # from beginning with the vial already at or between the jaws.
         base = self._zeros.new_tensor(WORKSHOP_INITIAL_JOINT_POSITION).repeat(self.num_envs, 1)
-        noise_scale = self.cfg.joint_noise if phase <= 2 else self.cfg.joint_noise / 3.0
-        noise = torch.empty(base.shape, device=self.device).uniform_(
-            -noise_scale,
-            noise_scale,
-            generator=self.random,
-        )
-        noise[:, -1] = 0.0
-        base += noise
         limits = _tensor(self.robot.data.soft_joint_pos_limits)
         return base.clamp(limits[..., 0], limits[..., 1])
 
     def _tabletop_pose(self, phase: int) -> torch.Tensor:
         pose = torch.zeros((self.num_envs, 7), device=self.device)
-        pose[:, :3] = pose.new_tensor((0.23, 0.0, 0.06))
+        pose[:, :3] = pose.new_tensor(TABLETOP_VIAL_POSITION)
         radial = self.cfg.vial_position_noise * (1.5 if phase == 0 else 0.75)
         pose[:, :2] += torch.empty((self.num_envs, 2), device=self.device).uniform_(
             -radial,
@@ -1326,13 +1320,13 @@ class _Generator:
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Move the open gripper toward a stationary tabletop vial.
 
-        Phase 0 spans the operational start through overhead to pregrasp,
-        phase 1 spans physical jaw closure, and ``None`` reaches the open
+        Phase 0 is the exact operational home pose, phase 1 spans physical jaw
+        closure, and ``None`` reaches the open
         pregrasp endpoint before seeding a load-bearing grasp. All rows
         belong to one connected task trajectory beginning at the same
         distribution used for evaluation.
         """
-        start = self._sample_joint_positions(0)
+        start = self._canonical_home_joint_positions()
         start[:, -1] = PREGRASP_GRIPPER_POSITION
         self._park_vial()
         self._write_robot(start)
@@ -1410,11 +1404,9 @@ class _Generator:
         # Measure all later drift from this physically settled start state.
         initial_world_position = _tensor(self.vial.data.root_pos_w).clone()
         if phase == 0:
-            # Cover the complete approach from the real robot's operational
-            # start, through a collision-free overhead pose, to pregrasp.
-            # This is the first part of the manipulation horizon, not reset
-            # initialization hidden from the policy.
-            fraction = torch.rand(self.num_envs, device=self.device, generator=self.random)
+            # Canonical episodes always begin at home. The policy must execute
+            # the complete home-to-overhead-to-pregrasp approach itself.
+            fraction = torch.zeros(self.num_envs, device=self.device)
             first_progress = (2.0 * fraction).clamp_max(1.0)
             second_progress = (2.0 * fraction - 1.0).clamp(0.0, 1.0)
             first_target = torch.lerp(start, overhead_command, first_progress.unsqueeze(-1))
@@ -1463,9 +1455,9 @@ class _Generator:
                     self.candidate_diagnostics[f"pregrasp_live_tcp_error_{axis}_mean_m"] = float(value)
         elif phase in (0, 1):
             if phase == 0:
-                # Restore the connected start with the vial on the table. Run
-                # both legs physically; rows on the first leg stop before the
-                # overhead-to-pregrasp descent begins.
+                # Restore and settle the exact home start with the vial on the
+                # table. A zero fraction intentionally executes no hidden
+                # portion of either approach leg.
                 self._write_robot(start)
                 self._write_vial(local_pose)
                 self._commit_reset_state()

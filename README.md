@@ -12,9 +12,24 @@ increments and the actuator dynamics authored in the supplied Sys-ID USD. The vi
 are no grasp constraints, object writes during an episode, collision proxies, orientation scripts, or hidden motion
 controllers.
 
-The state policy is still under development. The latest clean sparse baseline solves transport, insertion, and
-release resets, but not the canonical start. See [MULTI_GPU_HANDOFF.md](MULTI_GPU_HANDOFF.md) for exact results and the
-next experiment plan. Do not treat older files under `checkpoints/` as accepted results.
+The state task is solved with one compact object-centric shaping term and otherwise ordinary PPO. Canonical evaluation
+now begins at the exact workshop home pose, 0.247 m from the vial grasp point; no approach progress is serialized in a
+phase-zero reset. Two independent fresh 400-update seeds achieved 97.66% and 96.97% success over 1,024 corrected
+canonical episodes. Their phase-balanced full-horizon rates were 97.36% and 97.56%, with no unsafe rack impacts.
+Exact metadata is recorded in `checkpoints/manifest.json`.
+
+The arm increment is hardcoded at 0.033 rad per 30 Hz command. Relative to 0.030 rad, the accepted-policy ablation
+reduced canonical mean completion time from 12.85 s to 10.77 s (16.2%) while retaining 97.85% success and zero unsafe
+rack contacts. Larger 0.035 and 0.040 rad steps were rejected because success and contact-force margins degraded.
+
+Example policy rollouts are stored under `checkpoints/videos/state/`, including
+`state_canonical_home_seed42_0000.mp4`. Earlier state and camera checkpoints trained against randomized phase-zero
+approach progress are invalidated; vision work will resume only from a teacher trained on the corrected home reset.
+
+State-to-vision distillation is also solved. Two independent spatial-softmax students, using only 64x64 wrist RGB
+plus proprioception at deployment, each achieved 91.5% exact canonical success over 1,024 episodes. Vision from
+scratch remains open: the retained diagnostic policy achieves 97.56% grasp and 96.48% lift from canonical home but
+0% final placement. See `VISION_SCRATCH_HANDOFF.md` for the complete evidence and restart plan.
 
 ## Install and test
 
@@ -29,11 +44,11 @@ uv run ruff check .
 Smoke-test the state and wrist-camera environments:
 
 ```bash
-uv run isaaclab zero_agent \
+uv run so101-vial zero_agent \
   --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 8 presets=newton_mjwarp
 
-uv run isaaclab zero_agent \
+uv run so101-vial zero_agent \
   --task IsaacTutorial-Place-Vial-SO101-Camera \
   --num_envs 8 presets=newton_mjwarp,newton_renderer
 ```
@@ -41,10 +56,10 @@ uv run isaaclab zero_agent \
 Measure end-to-end environment throughput after a CUDA warmup:
 
 ```bash
-uv run isaaclab benchmark --task IsaacTutorial-Place-Vial-SO101 \
+uv run so101-vial benchmark --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 4096 presets=newton_mjwarp
 
-uv run isaaclab benchmark --task IsaacTutorial-Place-Vial-SO101-Camera \
+uv run so101-vial benchmark --task IsaacTutorial-Place-Vial-SO101-Camera \
   --num_envs 1024 presets=newton_mjwarp,newton_renderer
 ```
 
@@ -70,16 +85,17 @@ physically valid.
 The tracked reset dataset contains 1,024 states, 128 for each phase:
 
 ```text
-approach -> pregrasp -> grasp -> lift -> reorient -> transport -> insert -> release
+canonical home -> pregrasp/closure -> grasp -> lift -> reorient -> transport -> insert -> release
 ```
 
-Training samples these phases uniformly. Canonical evaluation samples only `approach`, from the real workshop
-controller's farther operational start.
+Training samples these phases uniformly. Canonical evaluation samples only `canonical home`: every row uses the exact
+real workshop operational joint pose, with the vial visibly outside the open jaws. The policy performs the complete
+home-to-overhead-to-pregrasp approach; no approach progress is hidden in the reset.
 
 Generate a replacement dataset only when physics, assets, or reset logic intentionally change:
 
 ```bash
-uv run isaaclab generate_resets \
+uv run so101-vial generate_resets \
   --batch_size 128 --poses_per_phase 128 \
   --output src/so101_vial_place/assets/reset_poses.pt \
   --visualizer none presets=newton_mjwarp
@@ -88,7 +104,7 @@ uv run isaaclab generate_resets \
 Inspect the stored states independently of training:
 
 ```bash
-uv run isaaclab view_resets --visualizer newton
+uv run so101-vial view_resets --visualizer newton
 ```
 
 ## Physics, assets, and control
@@ -103,7 +119,7 @@ USD. A configuration guard rejects Python actuator overrides.
 
 The policy produces six actions at 30 Hz:
 
-- five measured-relative arm-joint position increments, limited to 0.03 rad per command;
+- five measured-relative arm-joint position increments, limited to 0.033 rad per command;
 - one measured-relative jaw increment, limited to 0.02 rad per command.
 
 All dynamics and soft-limit behavior are resolved by the authored robot model. The policy never commands torques or
@@ -122,27 +138,26 @@ stable released vial in the deep rack-local bounds for ten consecutive samples.
 The actor observes joint state and target, previous action, end-effector state, vial state, rack-relative target,
 placement features, and physical milestone flags. The asymmetric critic additionally observes contacts.
 
-The active sparse baseline reward has six terms:
+The active state reward has six terms:
 
-- a small pre-grasp reach reward;
+- one compact object-centric term: pre-grasp reach, then symmetry-aware vial center/endpoints error to the final
+  held insertion pose while a live bilateral hold remains;
 - one-time physical grasp, lift, and held-insertion milestone rewards;
 - terminal physically confirmed success;
 - actual vial-loss penalty;
 - small action-rate and joint-velocity costs.
 
 There is no staged curriculum, transport teacher, waypoint potential, collision-avoidance reward, or action-specific
-opening/closing penalty. The next planned experiment adds one symmetry-aware vial-to-final-goal pose reward because
-the sparse baseline does not learn the early horizon quickly enough.
+opening/closing penalty.
 
 ## Train and evaluate the state policy
 
-Train one ordinary PPO job on the full reset distribution:
+Train one ordinary PPO job on the hardcoded full-horizon reset distribution:
 
 ```bash
-env SO101_RESET_CURRICULUM=horizon \
-  uv run isaaclab train --rl_library rsl_rl \
+uv run so101-vial train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 4096 --max_iterations 2000 \
+  --num_envs 4096 --max_iterations 400 \
   --run_name state_horizon \
   --visualizer none presets=newton_mjwarp
 ```
@@ -151,16 +166,14 @@ Benchmark the best per-job environment count on the target GPU; the primitive ob
 2,048--4,096 state environments when memory permits. On a multi-GPU machine, use each GPU for an independent seed or
 reward ablation; distributed PPO is not required.
 
-Evaluate the 128 canonical reset states exactly once each:
+Evaluate all 1,024 canonical-start episodes exactly once each. The callback
+hardcodes the episode count, phase-zero reset filter, sequential sampling, and
+policy action mode:
 
 ```bash
-env SO101_RESET_CURRICULUM=initial \
-  SO101_EVAL_EPISODES=128 \
-  SO101_EVAL_ONCE_PER_ENV=1 \
-  SO101_EVAL_SEQUENTIAL=1 \
-  uv run isaaclab play --rl_library rsl_rl \
+uv run so101-vial play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 128 --checkpoint <checkpoint.pt> --deterministic \
+  --num_envs 1024 --checkpoint <checkpoint.pt> --deterministic \
   --external_callback so101_vial_place.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp
 ```
@@ -172,11 +185,7 @@ per-step occupancy metrics.
 Record a frontal Newton rollout after a policy passes evaluation:
 
 ```bash
-env SO101_RESET_CURRICULUM=initial \
-  SO101_EVAL_EPISODES=1 SO101_EVAL_SEQUENTIAL=0 \
-  SO101_VIDEO_OUTPUT_DIR=checkpoints/videos/state \
-  SO101_VIDEO_PREFIX=state_seed42 \
-  uv run isaaclab play --rl_library rsl_rl \
+uv run so101-vial play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 --num_envs 1 \
   --seed 42 --checkpoint <checkpoint.pt> --deterministic \
   --video --video_length 600 \
@@ -186,7 +195,7 @@ env SO101_RESET_CURRICULUM=initial \
 
 ## Wrist-camera policy
 
-The camera task uses one physical wrist camera at 64x48 RGB and 30 Hz. It has measured OpenCV intrinsics and
+The camera task uses one physical wrist camera at 64x64 RGB and 30 Hz. It has measured OpenCV intrinsics and
 distortion and a fixed, buildable side-bracket transform. The deployed actor receives only:
 
 - wrist RGB;
@@ -201,7 +210,7 @@ noise are implemented.
 Capture samples from the actual policy camera:
 
 ```bash
-uv run isaaclab capture_wrist \
+uv run so101-vial capture_wrist \
   --output_dir checkpoints/screenshots/wrist \
   --visualizer none
 ```
@@ -218,11 +227,11 @@ because it is discarded at deployment.
 ## Scene screenshots and diagnostics
 
 ```bash
-uv run isaaclab capture_scene \
+uv run so101-vial capture_scene \
   --output_dir checkpoints/screenshots/scene \
   --visualizer newton
 
-uv run isaaclab inspect_robot \
+uv run so101-vial inspect_robot \
   --task IsaacTutorial-Place-Vial-SO101 \
   --visualizer none presets=newton_mjwarp
 ```
