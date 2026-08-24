@@ -2,18 +2,24 @@
 
 Date: 2026-08-24
 
-This is the authoritative pause point for the SO-101 vial-placement work. State and state-to-vision distillation are
-solved. Vision from scratch is not solved. The best retained scratch checkpoint reliably acquires and lifts the vial
+This is the authoritative pause point for the SO-101 vial-placement work. State training is reproducibly solved.
+Retained state-to-vision distillation inference is solved, but fresh distillation training is not reproducible after
+cleanup. Vision from scratch is not solved. The best retained scratch checkpoint reliably acquires and lifts the vial
 from the real canonical home pose, but never inserts or releases it.
 
 ## Retained results
 
 | Policy | Checkpoint | Exact canonical result |
 |---|---|---|
-| State | `checkpoints/candidates/state_canonical_home_seed42_model_399.pt` | 97.85% success over 1,024 episodes; four audited seeds were 96.58--97.85% |
-| Distilled vision, seed 42 | `checkpoints/candidates/distilled_geometry_spatial_seed42_model_1109.pt` | 91.5% success over 1,024 episodes |
-| Distilled vision, seed 45 | `checkpoints/candidates/distilled_geometry_spatial_seed45_model_1109.pt` | 91.5% success over 1,024 episodes |
+| State | `checkpoints/candidates/state_vial_farther_repro_seed45_model697.pt` | 99.41% success over 1,024 episodes; independent seed 42 reached 97.17% |
+| Distilled vision, seed 42 | `checkpoints/candidates/distilled_geometry_spatial_seed42_model_1109.pt` | 92.87% success over 1,024 episodes |
+| Distilled vision, seed 45 | `checkpoints/candidates/distilled_geometry_spatial_seed45_model_1109.pt` | 90.82% success over 1,024 episodes |
 | Scratch vision (diagnostic) | `checkpoints/candidates/vision_transport_alignment_m1850_std003.pt` | 0% success, 97.56% grasp, 96.48% lift over 1,024 episodes |
+
+The retained distilled checkpoints are both five-update `3e-5` branches of the same historical seed-45 parent, not
+independent from-zero seeds. A fresh one-stage audit reached 5.27% and 43.65%. A reconstruction of the historical
+five-stage, 1,024-environment recipe reached 45.41% and 42.68%; none of 22 densely audited refinement checkpoints
+exceeded 45.90%. See `README.md` and `checkpoints/manifest.json` for exact commands and provenance.
 
 The vision actor uses one fixed 64x64 wrist RGB image plus 24 proprioceptive values (joint position, joint velocity,
 joint target, and previous action). Object state, rack state, contacts, reset phase, and milestone state are not actor
@@ -40,9 +46,11 @@ solved placement policy. Example frontal and wrist-camera rollouts are in `check
   mount itself was not moved.
 - Canonical resets use the real home pose with the vial outside the open jaws; no near-vial or between-jaws start is
   accepted.
-- State PPO is solved with a small physical MDP and a hardcoded 0.033-rad arm increment. This is 16.2% faster than
-  the earlier 0.030-rad controller without sacrificing the accepted success/contact margin.
-- Spatial-softmax distillation from state to wrist RGB plus proprioception is solved independently in two seeds.
+- State PPO is solved with a small physical MDP and a hardcoded 0.033-rad arm increment. The reproducible recipe is
+  600 full-horizon updates followed by 100 canonical-home polishing updates; two fresh seeds independently passed
+  the 1,024-episode acceptance gate.
+- Two retained spatial-softmax distillation actors solve deployment inference with wrist RGB plus proprioception;
+  their shared-parent training provenance and failed fresh reproduction are now documented explicitly.
 - State, distilled, and current scratch rollout videos exist.
 - Exact evaluators distinguish grasp, lift, true rack clearance, held insertion, release, and final seating. A former
   `above_seated_rate` diagnostic measured root height, not transport clearance; conclusions based on it were

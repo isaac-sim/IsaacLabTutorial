@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "isaaclab": {
     "source_branch": "develop",
     "resolved_commit": "fa4de7d35b64db94e3ce004e1d4640cf0de0507e"
@@ -14,49 +14,94 @@
   },
   "accepted_checkpoints": [
     {
-      "name": "state_canonical_home_seed42_model_399",
-      "path": "checkpoints/candidates/state_canonical_home_seed42_model_399.pt",
-      "sha256": "b77ebdb648b75350354267e5ce3ad1d787e127f2bab182240d4eb51a55d4467a",
+      "name": "state_vial_farther_repro_seed45_model697",
+      "path": "checkpoints/candidates/state_vial_farther_repro_seed45_model697.pt",
+      "sha256": "9d31438acf73ba11d22024b15e6528ae051f16d09a12bef425d3561f109b6f93",
       "actor_observations": "state",
       "actions": 6,
       "arm_action_scale_rad": 0.033,
       "training_environments": 4096,
-      "training_iterations": 400,
-      "training_transitions": 104857600,
+      "training_recipe": [
+        "400 full-horizon PPO updates from random initialization",
+        "200 additional full-horizon PPO updates with optimizer state retained",
+        "100 canonical-home PPO polishing updates with optimizer state retained"
+      ],
+      "training_iterations": 700,
+      "training_transitions": 183500800,
       "reward": "0.1 x mutually exclusive exponential approach or symmetry-aware held object-to-goal shaping, plus physical milestones and terminal terms",
       "canonical_initial_audit": {
         "episodes": 1024,
-        "success_rate": 0.978515625,
+        "success_rate": 0.994140625,
+        "grasp_rate": 0.99609375,
+        "lift_rate": 0.99609375,
+        "held_insertion_rate": 0.994140625,
+        "vial_lost_rate": 0.001953125,
+        "timeout_rate": 0.00390625,
+        "unsafe_rack_contact_rate": 0.0,
+        "mean_peak_rack_contact_force_n": 4.749287836486474,
+        "max_rack_contact_force_n": 11.636228561401367,
+        "mean_time_to_success_s": 9.634447194269926
+      },
+      "independent_reproduction": {
+        "seed": 42,
+        "path": "checkpoints/candidates/state_vial_farther_repro_seed42_model697.pt",
+        "sha256": "bbc0c8f01357cc4f2a6a97ff54405e6631b883665851d36f375acbc102aeea1a",
+        "episodes": 1024,
+        "success_rate": 0.9716796875,
         "grasp_rate": 1.0,
         "lift_rate": 1.0,
-        "held_insertion_rate": 0.9814453125,
-        "vial_lost_rate": 0.001953125,
-        "timeout_rate": 0.01953125,
-        "unsafe_rack_contact_rate": 0.0,
-        "mean_peak_rack_contact_force_n": 2.4537702263332903,
-        "max_rack_contact_force_n": 10.48762321472168,
-        "mean_time_to_success_s": 10.766001949767153,
-        "home_grasp_distance_m": 0.24702401459217072
-      },
-      "full_horizon_audit": {
-        "episodes": 1024,
-        "success_rate": 0.9697265625,
-        "minimum_phase_success_rate": 0.8359375,
-        "vial_lost_rate": 0.0048828125,
-        "timeout_rate": 0.025390625,
-        "unsafe_rack_contact_rate": 0.0,
-        "mean_peak_rack_contact_force_n": 3.1092780119070085,
-        "max_rack_contact_force_n": 13.905704498291016,
-        "mean_time_to_success_s": 4.105337582506082
-      },
-      "canonical_seed_success_rates": {
-        "42": 0.978515625,
-        "43": 0.978515625,
-        "44": 0.9658203125,
-        "45": 0.96875
+        "unsafe_rack_contact_rate": 0.0
       },
       "accepted": true,
-      "note": "Accepted corrected-home state teacher at the hardcoded 0.033-rad arm action scale. Phase zero is exact workshop home with zero serialized approach progress; all four seeds exceed 96% canonical success."
+      "note": "Fresh end-to-end state reproduction. A second seed independently passed the 1,024-episode acceptance gate using the same three-stage recipe."
+    },
+    {
+      "name": "recovered_state_vial_farther_teacher",
+      "path": "checkpoints/candidates/recovered_state_vial_farther_teacher.pt",
+      "sha256": "e34fafcde628c1e6562429ccca7625c9b68a9a004920ad17a31556b4b8ad5618",
+      "actor_observations": "state",
+      "actions": 6,
+      "arm_action_scale_rad": 0.033,
+      "provenance": {
+        "method": "lossless recovery from the identical teacher_state_dict embedded in both accepted native distillation checkpoints",
+        "fresh_state_reproductions": [
+          {
+            "seed": 42,
+            "path": "checkpoints/candidates/state_vial_farther_repro_seed42_model697.pt",
+            "sha256": "bbc0c8f01357cc4f2a6a97ff54405e6631b883665851d36f375acbc102aeea1a",
+            "episodes": 1024,
+            "success_rate": 0.9716796875,
+            "grasp_rate": 1.0,
+            "lift_rate": 1.0,
+            "unsafe_rack_contact_rate": 0.0
+          },
+          {
+            "seed": 45,
+            "path": "checkpoints/candidates/state_vial_farther_repro_seed45_model697.pt",
+            "sha256": "9d31438acf73ba11d22024b15e6528ae051f16d09a12bef425d3561f109b6f93",
+            "episodes": 1024,
+            "success_rate": 0.994140625,
+            "grasp_rate": 0.99609375,
+            "lift_rate": 0.99609375,
+            "unsafe_rack_contact_rate": 0.0
+          }
+        ]
+      },
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 1.0,
+        "grasp_rate": 1.0,
+        "lift_rate": 1.0,
+        "held_insertion_rate": 1.0,
+        "vial_lost_rate": 0.0,
+        "timeout_rate": 0.0,
+        "unsafe_rack_contact_rate": 0.0,
+        "mean_peak_rack_contact_force_n": 2.6515936703654006,
+        "max_rack_contact_force_n": 8.568873405456543,
+        "mean_time_to_success_s": 10.032324753701687
+      },
+      "accepted": true,
+      "note": "Exact historical teacher used in the distillation reproduction audit. Its original optimizer and training log were not retained, so the separate fresh state checkpoints above are the end-to-end state reproducibility evidence."
     },
     {
       "name": "distilled_geometry_spatial_seed42_model_1109",
@@ -64,14 +109,42 @@
       "sha256": "2f2107fe5850d4d393a5a85137347cdbe4f643f1b3ef09349b7c84df887962aa",
       "actor_observations": "64x64 wrist RGB plus 24-dimensional proprioception",
       "actions": 6,
-      "teacher": "state_canonical_home_seed42_model_399",
+      "teacher": "recovered_state_vial_farther_teacher",
       "architecture": "two-layer ELU CNN, spatial softmax, 256/256/128 ELU MLP",
+      "historical_training_provenance": {
+        "parent": "historical seed-45 low-rate model_1105.pt",
+        "final_stage": "five additional updates at 3e-5 with optimizer reset",
+        "optimizer_steps_in_retained_checkpoint": 320,
+        "independent_from_zero_seed": false
+      },
       "canonical_initial_audit": {
         "episodes": 1024,
-        "success_rate": 0.9150390625
+        "success_rate": 0.9287109375,
+        "grasp_rate": 0.9931640625,
+        "lift_rate": 0.982421875,
+        "held_insertion_rate": 0.9638671875,
+        "vial_lost_rate": 0.0,
+        "timeout_rate": 0.0712890625,
+        "unsafe_rack_contact_rate": 0.0
+      },
+      "training_reproduction_audit": {
+        "one_stage_4096_envs": {
+          "episodes": 1024,
+          "success_rate": 0.052734375,
+          "grasp_rate": 0.8916015625,
+          "lift_rate": 0.1015625
+        },
+        "reconstructed_five_stage_1024_envs": {
+          "episodes": 1024,
+          "success_rate": 0.4541015625,
+          "grasp_rate": 0.9814453125,
+          "lift_rate": 0.490234375,
+          "best_of_dense_refinement_sweep": 0.458984375
+        }
       },
       "accepted": true,
-      "note": "Accepted state-to-vision distillation seed 42. Privileged state is used only by the training teacher; the deployed actor is vision plus proprioception."
+      "training_reproduced": false,
+      "note": "Accepted inference artifact. Privileged state is used only by the training teacher; the deployed actor is vision plus proprioception. Cleanup lost the selected parent checkpoint, and fresh training did not reproduce acceptance."
     },
     {
       "name": "distilled_geometry_spatial_seed45_model_1109",
@@ -79,14 +152,42 @@
       "sha256": "fd5dab982f7966a53e121e60633c4fae8bd59e17d425287abd39763800ac1773",
       "actor_observations": "64x64 wrist RGB plus 24-dimensional proprioception",
       "actions": 6,
-      "teacher": "state_canonical_home_seed42_model_399",
+      "teacher": "recovered_state_vial_farther_teacher",
       "architecture": "two-layer ELU CNN, spatial softmax, 256/256/128 ELU MLP",
+      "historical_training_provenance": {
+        "parent": "historical seed-45 low-rate model_1105.pt",
+        "final_stage": "five additional updates at 3e-5 with optimizer reset",
+        "optimizer_steps_in_retained_checkpoint": 320,
+        "independent_from_zero_seed": false
+      },
       "canonical_initial_audit": {
         "episodes": 1024,
-        "success_rate": 0.9150390625
+        "success_rate": 0.908203125,
+        "grasp_rate": 0.9892578125,
+        "lift_rate": 0.9853515625,
+        "held_insertion_rate": 0.9541015625,
+        "vial_lost_rate": 0.0,
+        "timeout_rate": 0.091796875,
+        "unsafe_rack_contact_rate": 0.0
+      },
+      "training_reproduction_audit": {
+        "one_stage_4096_envs": {
+          "episodes": 1024,
+          "success_rate": 0.4365234375,
+          "grasp_rate": 0.974609375,
+          "lift_rate": 0.744140625
+        },
+        "reconstructed_five_stage_1024_envs": {
+          "episodes": 1024,
+          "success_rate": 0.4267578125,
+          "grasp_rate": 0.978515625,
+          "lift_rate": 0.646484375,
+          "best_of_dense_refinement_sweep": 0.4267578125
+        }
       },
       "accepted": true,
-      "note": "Accepted independent state-to-vision distillation seed 45. The deployed actor contains no privileged state."
+      "training_reproduced": false,
+      "note": "Accepted inference artifact. The deployed actor contains no privileged state. It shares its historical pre-final parent with the seed-42 artifact, and fresh training did not reproduce acceptance."
     }
   ],
   "diagnostic_checkpoints": [
@@ -117,6 +218,25 @@
       },
       "accepted": false,
       "note": "Clean sparse-reward joint-action ablation; useful for diagnosis only."
+    },
+    {
+      "name": "state_canonical_home_seed42_model_399",
+      "path": "checkpoints/candidates/state_canonical_home_seed42_model_399.pt",
+      "sha256": "b77ebdb648b75350354267e5ce3ad1d787e127f2bab182240d4eb51a55d4467a",
+      "actor_observations": "state",
+      "actions": 6,
+      "canonical_initial_audit": {
+        "episodes": 1024,
+        "success_rate": 0.7421875,
+        "grasp_rate": 0.798828125,
+        "lift_rate": 0.78515625,
+        "held_insertion_rate": 0.7451171875,
+        "vial_lost_rate": 0.1416015625,
+        "timeout_rate": 0.1162109375,
+        "unsafe_rack_contact_rate": 0.0
+      },
+      "accepted": false,
+      "note": "Pre-farther-vial checkpoint that was incorrectly promoted during cleanup. It is incompatible with the current accepted reset layout and is retained only to make the regression explicit."
     },
     {
       "name": "vision_transport_alignment_m1850_std003",

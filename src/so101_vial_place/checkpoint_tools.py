@@ -74,6 +74,39 @@ def promote_distilled_student(
     return output
 
 
+def recover_distillation_teacher(
+    distilled_path: str | Path,
+    ppo_template_path: str | Path,
+    output_path: str | Path,
+) -> Path:
+    """Recover the state actor embedded in a native distillation checkpoint.
+
+    RSL-RL stores the complete frozen teacher inside every distillation save.
+    A compatible PPO template supplies only the critic and optimizer layout;
+    the optimizer state is cleared because it does not belong to this actor.
+    """
+    distilled = _load(distilled_path)
+    template = copy.deepcopy(_load(ppo_template_path))
+    try:
+        teacher_actor = distilled["teacher_state_dict"]
+        template_actor = template["actor_state_dict"]
+        optimizer = template["optimizer_state_dict"]
+    except KeyError as error:
+        raise ValueError(f"Checkpoint is missing required field {error.args[0]!r}.") from error
+    _require_compatible(template_actor, teacher_actor, "Distillation teacher")
+    template["actor_state_dict"] = teacher_actor
+    optimizer["state"] = {}
+    template["iter"] = 0
+    template["infos"] = {
+        "recovered_distillation_teacher": str(Path(distilled_path)),
+        "ppo_template": str(Path(ppo_template_path)),
+    }
+    output = Path(output_path).expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(template, output)
+    return output
+
+
 def set_ppo_exploration_std(
     checkpoint_path: str | Path,
     output_path: str | Path,

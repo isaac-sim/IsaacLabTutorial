@@ -13,23 +13,26 @@ are no grasp constraints, object writes during an episode, collision proxies, or
 controllers.
 
 The state task is solved with one compact object-centric shaping term and otherwise ordinary PPO. Canonical evaluation
-now begins at the exact workshop home pose, 0.247 m from the vial grasp point; no approach progress is serialized in a
-phase-zero reset. Two independent fresh 400-update seeds achieved 97.66% and 96.97% success over 1,024 corrected
-canonical episodes. Their phase-balanced full-horizon rates were 97.36% and 97.56%, with no unsafe rack impacts.
-Exact metadata is recorded in `checkpoints/manifest.json`.
+begins at the exact workshop home pose, with no approach progress serialized in a phase-zero reset. The reproducible
+recipe is 600 full-horizon updates followed by 100 canonical-home polishing updates. Fresh seeds 42 and 45 achieved
+97.17% and 99.41% exact canonical success over 1,024 episodes, with no unsafe rack impacts. The historical 100%
+teacher was recovered losslessly from the teacher weights stored in both native distillation checkpoints. Exact
+metadata is recorded in `checkpoints/manifest.json`. Its original optimizer was not retained; the two fresh state
+checkpoints, rather than the recovered actor, are the end-to-end state reproducibility evidence.
 
-The arm increment is hardcoded at 0.033 rad per 30 Hz command. Relative to 0.030 rad, the accepted-policy ablation
-reduced canonical mean completion time from 12.85 s to 10.77 s (16.2%) while retaining 97.85% success and zero unsafe
-rack contacts. Larger 0.035 and 0.040 rad steps were rejected because success and contact-force margins degraded.
+The arm increment is hardcoded at 0.033 rad per 30 Hz command. The reproduced policies complete the task in a mean
+9.63--10.42 s while retaining the accepted success and contact-force margins. Larger 0.035 and 0.040 rad steps were
+rejected because success and contact-force margins degraded.
 
 Example policy rollouts are stored under `checkpoints/videos/state/`, including
-`state_canonical_home_seed42_0000.mp4`. Earlier state and camera checkpoints trained against randomized phase-zero
+`state_vial_farther_seed45_0000.mp4`. Earlier state and camera checkpoints trained against randomized phase-zero
 approach progress are invalidated; vision work will resume only from a teacher trained on the corrected home reset.
 
-State-to-vision distillation is also solved. Two independent spatial-softmax students, using only 64x64 wrist RGB
-plus proprioception at deployment, each achieved 91.5% exact canonical success over 1,024 episodes. Vision from
-scratch remains open: the retained diagnostic policy achieves 97.56% grasp and 96.48% lift from canonical home but
-0% final placement. See `VISION_SCRATCH_HANDOFF.md` for the complete evidence and restart plan.
+The two retained spatial-softmax students still achieve 92.87% and 90.82% exact canonical success using only 64x64
+wrist RGB plus proprioception at deployment. Their training is not yet reproducible, however: cleanup omitted the
+teacher-rollout warm start and mislabeled two five-update branches from one parent as independent seeds. Fresh exact
+audits are recorded below. Vision from scratch also remains open: the retained diagnostic policy achieves 97.56%
+grasp and 96.48% lift from canonical home but 0% final placement. See `VISION_SCRATCH_HANDOFF.md` for the evidence.
 
 ## Install and test
 
@@ -152,13 +155,29 @@ opening/closing penalty.
 
 ## Train and evaluate the state policy
 
-Train one ordinary PPO job on the hardcoded full-horizon reset distribution:
+Train ordinary PPO for 400 updates on the hardcoded full-horizon reset distribution, retain the optimizer for another
+200 full-horizon updates, then polish the complete canonical-home task for 100 updates. `--max_iterations` is the
+number of additional updates when a checkpoint is loaded, so the stage finals are models 399, 598, and 697:
 
 ```bash
-uv run so101-vial train --rl_library rsl_rl \
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 4096 --max_iterations 400 \
-  --run_name state_horizon \
+  --num_envs 4096 --max_iterations 400 --seed 42 \
+  --run_name state_horizon_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 4096 --max_iterations 200 --seed 42 \
+  --checkpoint <stage-1-run>/model_399.pt \
+  --run_name state_horizon_continue_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Canonical \
+  --num_envs 4096 --max_iterations 100 --seed 42 \
+  --checkpoint <stage-2-run>/model_598.pt \
+  --run_name state_canonical_polish_s42 --device cuda:0 \
   --visualizer none presets=newton_mjwarp
 ```
 
@@ -223,6 +242,72 @@ Vision work starts only after a state policy passes the physical acceptance suit
 
 The full vision-from-scratch policy must not load or query the state teacher. A privileged critic is still allowed
 because it is discarded at deployment.
+
+### Distillation reproduction audit
+
+The previously documented one-stage, 4,096-environment command is invalid. Fresh seeds 42 and 45 finished all 1,110
+updates but reached only 5.27% and 43.65% exact canonical success. Reconstructing the historical 1,024-environment
+stages produced 45.41% and 42.68%; a dense sweep of all 22 final refinement checkpoints found no result above 45.90%.
+The retained students remain valid inference artifacts, but they are not evidence of reproducible training.
+
+The recovered historical logs establish the actual five-stage experiment below. It uses teacher-controlled images
+for the initial visual warm start, then student-visited DAgger. All configuration values are hardcoded in the named
+agent configurations; `--max_iterations` counts additional updates after loading a checkpoint. This recipe reproduces
+the failed audit above, not the retained >90% result:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_geometry_spatial_teacher_rollout_cfg_entry_point \
+  --num_envs 1024 --max_iterations 600 --seed 42 \
+  --checkpoint checkpoints/candidates/recovered_state_vial_farther_teacher.pt \
+  --run_name distill_teacher_rollout_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_strong_geometry_spatial_distillation_cfg_entry_point \
+  --num_envs 1024 --max_iterations 302 --seed 42 \
+  --checkpoint <stage-1-run>/model_599.pt \
+  --run_name distill_strong_to900_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_strong_geometry_spatial_dense_distillation_cfg_entry_point \
+  --num_envs 1024 --max_iterations 201 --seed 42 \
+  --checkpoint <stage-2-run>/model_900.pt \
+  --run_name distill_strong_dense_to1100_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_low_rate_geometry_spatial_distillation_cfg_entry_point \
+  --num_envs 1024 --max_iterations 6 --seed 42 \
+  --checkpoint <stage-3-run>/model_1100.pt \
+  --run_name distill_low_rate_to1105_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_ultra_low_rate_geometry_spatial_distillation_cfg_entry_point \
+  --num_envs 1024 --max_iterations 5 --seed 42 \
+  --checkpoint <stage-4-run>/model_1105.pt \
+  --run_name distill_ultra_to1109_s42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+```
+
+Evaluate the native distillation checkpoint without converting it to PPO:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run so101-vial play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera \
+  --agent rsl_rl_ultra_low_rate_geometry_spatial_distillation_cfg_entry_point \
+  --num_envs 1024 --checkpoint <distillation-run>/model_1109.pt \
+  --deterministic \
+  --external_callback so101_vial_place.evaluation.install_episode_counter \
+  --device cuda:0 --visualizer none presets=newton_mjwarp
+```
 
 ## Scene screenshots and diagnostics
 

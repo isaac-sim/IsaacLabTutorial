@@ -12,10 +12,16 @@ The final pause-point evidence, retained artifacts, rejected last batch, exact c
 
 ### Accepted results
 
-- State is solved from the farther canonical home start: 100% exact canonical and 97% independent-reset success.
-- Spatial-softmax state-to-vision distillation is solved with wrist RGB plus proprioception: seeds 42 and 45 each
-  reached 91.5% exact canonical success. State and distillation rollout-video candidates exist under
-  `checkpoints/videos`.
+- State is solved from the farther canonical home start. Fresh corrected three-stage reproductions reached 97.17%
+  and 99.41% exact canonical success in seeds 42 and 45. The actual historical 100% teacher used by distillation is
+  `checkpoints/candidates/recovered_state_vial_farther_teacher.pt`; it was recovered losslessly from the identical
+  teacher weights embedded in both native distillation checkpoints. Its original optimizer was not recovered. The
+  previously retained model-399 checkpoint is a pre-farther-layout diagnostic and reaches only 74.22% now.
+- Retained spatial-softmax state-to-vision distillation inference is solved with wrist RGB plus proprioception:
+  checkpoints labeled seeds 42 and 45 reach 92.87% and 90.82% exact canonical success. They are five-update branches
+  from one parent, not independent full training runs. Fresh one-stage training reached 5.27%/43.65%; reconstructed
+  staged training reached 45.41%/42.68%, so distillation training is not currently reproducible. State and retained
+  distillation rollout-video candidates exist under `checkpoints/videos`.
 - Full canonical vision-from-scratch is not solved. Do not promote a scratch checkpoint until it passes the fixed
   1,024-episode exact evaluator and independent seeds.
 
@@ -78,8 +84,7 @@ new canonical-close runs near that window before continuing the same compact sta
 - Newton allocator startup faults (`exit 134/139`, `malloc(): unaligned tcache chunk`) are transient; retry the exact
   command. After interrupting a run, check `nvidia-smi` because a wrapper interruption once left a Python child
   orphaned on GPU 3.
-- `uv run ruff check src` passes and the full suite has 69 passing tests. `ruff check src tests` currently reports one
-  pre-existing import-order issue in `tests/test_config.py`.
+- `uv run ruff check .` passes and the full suite has 85 passing tests.
 
 ### Current acceptance workflow
 

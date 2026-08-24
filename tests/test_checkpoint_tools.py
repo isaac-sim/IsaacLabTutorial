@@ -4,10 +4,36 @@ import torch
 
 from so101_vial_place.checkpoint_tools import (
     promote_distilled_student,
+    recover_distillation_teacher,
     scale_geometry_policy_inputs,
     scale_ppo_output_rows,
     set_ppo_exploration_std,
 )
+
+
+def test_recover_distillation_teacher_uses_embedded_actor_and_resets_optimizer(tmp_path):
+    teacher = {"layer.weight": torch.ones((2, 2))}
+    distilled_path = tmp_path / "distilled.pt"
+    template_path = tmp_path / "template.pt"
+    output_path = tmp_path / "recovered.pt"
+    torch.save({"teacher_state_dict": teacher}, distilled_path)
+    torch.save(
+        {
+            "actor_state_dict": {"layer.weight": torch.zeros((2, 2))},
+            "critic_state_dict": {"value.weight": torch.full((1, 2), 2.0)},
+            "optimizer_state_dict": {"state": {0: {"step": 1}}, "param_groups": [{"params": [0]}]},
+            "iter": 42,
+        },
+        template_path,
+    )
+
+    recover_distillation_teacher(distilled_path, template_path, output_path)
+    recovered = torch.load(output_path, map_location="cpu", weights_only=True)
+
+    assert torch.equal(recovered["actor_state_dict"]["layer.weight"], teacher["layer.weight"])
+    assert torch.equal(recovered["critic_state_dict"]["value.weight"], torch.full((1, 2), 2.0))
+    assert recovered["optimizer_state_dict"]["state"] == {}
+    assert recovered["iter"] == 0
 
 
 def test_scale_ppo_output_rows_changes_only_selected_actions(tmp_path):
