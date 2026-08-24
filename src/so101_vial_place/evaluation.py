@@ -99,7 +99,7 @@ def install_canonical_bridge_reset_recorder() -> list[str]:
                 states,
                 generator={
                     "source": "deterministic canonical policy rollout",
-                    "source_reset_dataset": str(RESET_DATASET),
+                    "source_reset_dataset": RESET_DATASET.name,
                     "capture_steps": sorted(capture_steps),
                 },
                 validation={

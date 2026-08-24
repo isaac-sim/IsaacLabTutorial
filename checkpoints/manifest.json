@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "isaaclab": {
     "source_branch": "develop",
     "resolved_commit": "fa4de7d35b64db94e3ce004e1d4640cf0de0507e"
@@ -9,9 +9,54 @@
     "rows": 1024,
     "rows_per_phase": 128,
     "schema_version": 2,
-    "content_sha256": "5ad5f83861c2987ffe0c82cf39a4bef884943a8803860ed7270ed79b256c4584",
-    "file_sha256": "1533ec23b4b93532e5a4298ccb92a361a75edd8900000d0d34d44fa96a27c62e"
+    "content_sha256": "b2709b9b4549f788769d183a039b62d0d80e918990b9bb145b2c0ef57c397a00",
+    "file_sha256": "2df2a63d9cfcba6a219b8fc77080fb4e2ec68efcad59d3d253768864eaee2d53"
   },
+  "canonical_bridge_reset_dataset": {
+    "path": "src/so101_vial_place/assets/canonical_bridge_reset_poses.pt",
+    "rows": 1781,
+    "schema_version": 2,
+    "content_sha256": "d5be1c0f2c3d32c85d4ffc6a82589385ac145b2bf0551dfdb2794c61af0eeb7a",
+    "file_sha256": "04a15c2d267a687f1c6db11ba1ba0ac7102639f450f90bc33c00c969883f5664",
+    "role": "diagnostic vision bridge evaluation; not sampled by accepted state or distillation training"
+  },
+  "videos": [
+    {
+      "path": "checkpoints/videos/state/state_vial_farther_seed45_0000.mp4",
+      "sha256": "aa46a43a9ad2113dbe195ad19866a6297f3e36525f3f69180e965dd85439cb4d",
+      "frames": 309,
+      "resolution": "1920x1080",
+      "fps": 30
+    },
+    {
+      "path": "checkpoints/videos/distillation/rollout_0000.mp4",
+      "sha256": "4a6e527e4893c58ba55b82612a019539b903ea7b3bf67b8b4ea0179daece6049",
+      "frames": 200,
+      "resolution": "1920x1080",
+      "fps": 30
+    },
+    {
+      "path": "checkpoints/videos/distillation/wrist_rgb_0000.mp4",
+      "sha256": "d56a8a40d7fa578ae40bea2380c78a526623e885145f5f29743223a946d98e6e",
+      "frames": 200,
+      "resolution": "64x64",
+      "fps": 30
+    },
+    {
+      "path": "checkpoints/videos/vision_scratch/rollout_0000.mp4",
+      "sha256": "7be252a8665bd23c2dd919c92adde6ba75d70fcb5596a5cde7b842215fc7b0f9",
+      "frames": 600,
+      "resolution": "1920x1080",
+      "fps": 30
+    },
+    {
+      "path": "checkpoints/videos/vision_scratch/wrist_rgb_0000.mp4",
+      "sha256": "c95051f8d7d447105e38851ce6f35a6a7cd2c769f66f7253c374584fee297de0",
+      "frames": 600,
+      "resolution": "64x64",
+      "fps": 30
+    }
+  ],
   "accepted_checkpoints": [
     {
       "name": "state_vial_farther_repro_seed45_model697",
@@ -42,18 +87,36 @@
         "max_rack_contact_force_n": 11.636228561401367,
         "mean_time_to_success_s": 9.634447194269926
       },
-      "independent_reproduction": {
-        "seed": 42,
-        "path": "checkpoints/candidates/state_vial_farther_repro_seed42_model697.pt",
-        "sha256": "bbc0c8f01357cc4f2a6a97ff54405e6631b883665851d36f375acbc102aeea1a",
-        "episodes": 1024,
-        "success_rate": 0.9716796875,
-        "grasp_rate": 1.0,
-        "lift_rate": 1.0,
-        "unsafe_rack_contact_rate": 0.0
-      },
+      "independent_reproductions": [
+        {
+          "seed": 42,
+          "path": "checkpoints/candidates/state_vial_farther_repro_seed42_model697.pt",
+          "sha256": "bbc0c8f01357cc4f2a6a97ff54405e6631b883665851d36f375acbc102aeea1a",
+          "episodes": 1024,
+          "success_rate": 0.9716796875,
+          "grasp_rate": 1.0,
+          "lift_rate": 1.0,
+          "unsafe_rack_contact_rate": 0.0
+        },
+        {
+          "seed": 43,
+          "path": "checkpoints/candidates/state_vial_farther_repro_seed43_model697.pt",
+          "sha256": "169fa2aceeffd3958079ed7b5a8c6926ba8d0eba6ce189d28f4fb5c09dc177cf",
+          "episodes": 1024,
+          "success_rate": 0.99609375,
+          "grasp_rate": 1.0,
+          "lift_rate": 1.0,
+          "held_insertion_rate": 0.99609375,
+          "vial_lost_rate": 0.0009765625,
+          "timeout_rate": 0.0029296875,
+          "unsafe_rack_contact_rate": 0.0,
+          "mean_peak_rack_contact_force_n": 5.3349675794597715,
+          "max_rack_contact_force_n": 12.013715744018555,
+          "mean_time_to_success_s": 9.350131232130762
+        }
+      ],
       "accepted": true,
-      "note": "Fresh end-to-end state reproduction. A second seed independently passed the 1,024-episode acceptance gate using the same three-stage recipe."
+      "note": "Fresh end-to-end state reproduction. Two additional seeds independently passed the 1,024-episode acceptance gate using the same three-stage recipe."
     },
     {
       "name": "recovered_state_vial_farther_teacher",

@@ -14,14 +14,15 @@ controllers.
 
 The state task is solved with one compact object-centric shaping term and otherwise ordinary PPO. Canonical evaluation
 begins at the exact workshop home pose, with no approach progress serialized in a phase-zero reset. The reproducible
-recipe is 600 full-horizon updates followed by 100 canonical-home polishing updates. Fresh seeds 42 and 45 achieved
-97.17% and 99.41% exact canonical success over 1,024 episodes, with no unsafe rack impacts. The historical 100%
-teacher was recovered losslessly from the teacher weights stored in both native distillation checkpoints. Exact
-metadata is recorded in `checkpoints/manifest.json`. Its original optimizer was not retained; the two fresh state
+recipe is 600 full-horizon updates followed by 100 canonical-home polishing updates. Fresh seeds 42, 43, and 45
+achieved 97.17%, 99.61%, and 99.41% exact canonical success over 1,024 episodes, with no unsafe rack impacts. The
+historical 100% teacher was recovered losslessly from the teacher weights stored in both native distillation
+checkpoints. Exact
+metadata is recorded in `checkpoints/manifest.json`. Its original optimizer was not retained; the three fresh state
 checkpoints, rather than the recovered actor, are the end-to-end state reproducibility evidence.
 
 The arm increment is hardcoded at 0.033 rad per 30 Hz command. The reproduced policies complete the task in a mean
-9.63--10.42 s while retaining the accepted success and contact-force margins. Larger 0.035 and 0.040 rad steps were
+9.35--10.42 s while retaining the accepted success and contact-force margins. Larger 0.035 and 0.040 rad steps were
 rejected because success and contact-force margins degraded.
 
 Example policy rollouts are stored under `checkpoints/videos/state/`, including
@@ -101,8 +102,13 @@ Generate a replacement dataset only when physics, assets, or reset logic intenti
 uv run so101-vial generate_resets \
   --batch_size 128 --poses_per_phase 128 \
   --output src/so101_vial_place/assets/reset_poses.pt \
-  --visualizer none presets=newton_mjwarp
+  --device cuda:0 --visualizer none
 ```
+
+The tracked artifact is an ordinary Git blob of only about 95 KiB (not a Git LFS object). A full 1,024-state
+regeneration took about three minutes on an RTX 6000 Ada in the reproducibility audit, and contact-validation
+acceptance varied across otherwise identical Newton runs. Keep the tracked, hash-checked artifact for training
+reproduction; generation is a maintainer workflow, not a fresh installation prerequisite.
 
 Inspect the stored states independently of training:
 

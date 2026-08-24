@@ -12,8 +12,9 @@ The final pause-point evidence, retained artifacts, rejected last batch, exact c
 
 ### Accepted results
 
-- State is solved from the farther canonical home start. Fresh corrected three-stage reproductions reached 97.17%
-  and 99.41% exact canonical success in seeds 42 and 45. The actual historical 100% teacher used by distillation is
+- State is solved from the farther canonical home start. Fresh corrected three-stage reproductions reached 97.17%,
+  99.61%, and 99.41% exact canonical success in seeds 42, 43, and 45. The actual historical 100% teacher used by
+  distillation is
   `checkpoints/candidates/recovered_state_vial_farther_teacher.pt`; it was recovered losslessly from the identical
   teacher weights embedded in both native distillation checkpoints. Its original optimizer was not recovered. The
   previously retained model-399 checkpoint is a pre-farther-layout diagnostic and reaches only 74.22% now.
@@ -390,32 +391,8 @@ Only then promote a checkpoint, export it, update the manifest/results, and reco
     success; use asymmetric critics; preserve physical contact; and for vision distillation train on student-visited
     states with an auxiliary object-geometry loss.
 
-## Reproduction commands
+## Historical command warning
 
-Train the current sparse baseline:
-
-```bash
-env SO101_RESET_CURRICULUM=horizon uv run isaaclab train --rl_library rsl_rl \
-  --task IsaacTutorial-Place-Vial-SO101 --num_envs 128 \
-  --max_iterations 500 --run_name sparse_joint_horizon \
-  --visualizer none presets=newton_mjwarp
-```
-
-Canonical exact evaluation:
-
-```bash
-env SO101_RESET_CURRICULUM=initial SO101_EVAL_EPISODES=128 \
-  SO101_EVAL_ONCE_PER_ENV=1 SO101_EVAL_SEQUENTIAL=1 \
-  uv run isaaclab play --rl_library rsl_rl \
-  --task IsaacTutorial-Place-Vial-SO101 --num_envs 128 \
-  --checkpoint <checkpoint.pt> --deterministic \
-  --external_callback so101_vial_place.evaluation.install_episode_counter \
-  --visualizer none presets=newton_mjwarp
-```
-
-Run tests:
-
-```bash
-uv run pytest -q
-uv run ruff check .
-```
+The 2026-08-22 shell-environment recipes that originally followed this section are obsolete. The current task does
+not read `SO101_*` configuration environment variables. Use the hardcoded, single-GPU training and exact-evaluation
+commands in `README.md`; they are the commands exercised by the current reproducibility audit.
