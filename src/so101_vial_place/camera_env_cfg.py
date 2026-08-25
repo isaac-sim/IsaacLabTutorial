@@ -1,6 +1,5 @@
 """Wrist-camera and proprioception variant of the vial task."""
 
-import isaaclab.sim as sim_utils
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
@@ -17,47 +16,18 @@ from .reset.curriculum import RESET_CURRICULA
 
 @configclass
 class SO101CameraSceneCfg(SO101SceneCfg):
-    """Base scene plus the physical SO-101 wrist camera."""
+    """Base scene plus the authored physical SO-101 wrist camera."""
 
     wrist_camera = CameraCfg(
-        # The Sensor=sensors variant supplies the measured projection below,
-        # but its central lens pose is unusable for this cap grasp: the cap is
-        # only about 28 mm in front of, and coaxial with, that lens. It hides
-        # the rack completely after pickup. Model the real camera on a rigid
-        # 55 mm side bracket instead. This is a fixed, buildable wrist mount,
-        # never a moving or world-space camera target.
-        prim_path="{ENV_REGEX_NS}/Robot/gripper/wrist_camera",
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=13.6,
-            horizontal_aperture=25.657,
-            # Preserve the measured pixel scale while exposing a square crop.
-            # The extra 16 rows add vertical field of view; no pixels are
-            # stretched and the fabricated camera mount remains unchanged.
-            vertical_aperture=25.688,
-            clipping_range=(0.01, 10.0),
-            distortion=sim_utils.OpenCvPinholeDistortionCfg(
-                fx=33.926593,
-                fy=33.882010,
-                cx=32.355810,
-                cy=33.027360,
-                image_size=(64, 64),
-                k1=0.07702322,
-                k2=-0.13605453,
-                k3=0.05163219,
-                p1=-0.00024938,
-                p2=-0.00175006,
-            ),
-        ),
-        offset=CameraCfg.OffsetCfg(
-            pos=(-0.055, 0.052, -0.035),
-            # XYZW OpenGL frame. The fixed -Z boresight intersects the task
-            # corridor at (0.010, -0.140, -0.090) m in the gripper frame.
-            rot=(-0.09871531, 0.59943614, 0.78375556, -0.12906908),
-            convention="opengl",
-        ),
+        # Robot spawning selects Sensor=sensors. That variant authors the
+        # complete camera mount, calibrated pose, and OpenCV lens model at
+        # this prim. ``spawn=None`` binds the sensor to that existing camera;
+        # task Python must not create or reposition a second camera.
+        prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera",
+        spawn=None,
         data_types=["rgb"],
-        # A compact square image retains the calibrated horizontal detail and
-        # adds vertical context around the rack and tabletop.
+        # Rendering resolution is independent of the authored physical pose
+        # and projection. Keep the compact vision boundary requested for RL.
         width=64,
         height=64,
         update_period=1.0 / 30.0,
@@ -2021,16 +1991,9 @@ class SO101VialCameraScratchDiscoveryTransportInsertion86EnvCfg(
 
     def __post_init__(self):
         super().__post_init__()
-        scale = 86.0 / 64.0
         camera = self.scene.wrist_camera
         camera.width = 86
         camera.height = 86
-        distortion = camera.spawn.distortion
-        distortion.fx *= scale
-        distortion.fy *= scale
-        distortion.cx *= scale
-        distortion.cy *= scale
-        distortion.image_size = (86, 86)
 
 
 @configclass

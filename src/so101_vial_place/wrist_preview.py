@@ -28,8 +28,8 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check the moving SO-101 wrist camera.")
     parser.add_argument("--output_dir", type=Path, default=Path("checkpoints/screenshots"))
     parser.add_argument("--dataset", type=Path, default=RESET_DATASET)
-    parser.add_argument("--width", type=int, default=640)
-    parser.add_argument("--height", type=int, default=640)
+    parser.add_argument("--width", type=int, default=64)
+    parser.add_argument("--height", type=int, default=64)
     add_launcher_args(parser)
     args = parser.parse_args(argv)
 
@@ -43,14 +43,6 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
     env_cfg.scene.wrist_camera.width = args.width
     env_cfg.scene.wrist_camera.height = args.height
     env_cfg.observations.wrist_rgb.enable_corruption = False
-    # Keep the policy camera's calibrated field of view when requesting a
-    # larger screenshot than the 64x64 training tensor.
-    distortion = env_cfg.scene.wrist_camera.spawn.distortion
-    distortion.fx *= args.width / 64
-    distortion.fy *= args.height / 64
-    distortion.cx *= args.width / 64
-    distortion.cy *= args.height / 64
-    distortion.image_size = (args.width, args.height)
     env_cfg.events = InitialEventsCfg()
     env_cfg.actions = ResetJointActionsCfg()
     env_cfg.rewards = None

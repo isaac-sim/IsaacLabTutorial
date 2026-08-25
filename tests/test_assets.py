@@ -24,7 +24,11 @@ def test_so101_variants_and_camera_are_present():
     sensor_payload = (SO101_USD.parent / "payloads/Sensor/sensors.usda").read_text()
     assert "so101-camera_mount/SO-101_camera_mount.usda" in sensor_payload
     camera_payload = SO101_USD.parent / "payloads/so101-camera_mount/payloads/base.usda"
-    assert 'Camera "wowrobo_2MP_camera"' in camera_payload.read_text()
+    camera = camera_payload.read_text()
+    assert 'Camera "wowrobo_2MP_camera"' in camera
+    assert "double3 xformOp:translate = (-0.0018862803672875517, 0.05226449046420151, -0.05853182757774217)" in camera
+    assert "quatd xformOp:orient = (0.4636673816, -0.5338625638, 0.5338624803, 0.4636745865)" in camera
+    assert "int2 omni:lensdistortion:opencvPinhole:imageSize = (640, 480)" in camera
 
 
 def test_identified_newton_actuator_layer_is_unmodified():

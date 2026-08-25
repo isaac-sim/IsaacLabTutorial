@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import torch
-import torch.nn.functional as torch_functional
 from isaaclab.managers import ManagerTermBase, ObservationTermCfg, RewardTermCfg, SceneEntityCfg, TerminationTermCfg
 from isaaclab.utils.math import quat_apply, quat_apply_inverse, subtract_frame_transforms
 
@@ -604,63 +603,6 @@ def visual_geometry_target(env: ManagerBasedRLEnv, position_scale: float = 0.25)
     return _finite(target).clamp(-2.0, 2.0)
 
 
-def opencv_pinhole_sampling_grid(
-    *,
-    width: int,
-    height: int,
-    fx: float,
-    fy: float,
-    cx: float,
-    cy: float,
-    coefficients: tuple[float, float, float, float, float, float, float, float],
-    device: torch.device | str,
-    iterations: int = 8,
-) -> torch.Tensor:
-    """Map a distorted OpenCV image onto Newton's ideal pinhole render.
-
-    Newton currently renders a centered, square-pixel pinhole whose focal
-    length is ``fy``. For every desired distorted output pixel, this function
-    inverts the OpenCV rational model and returns the corresponding ideal
-    render coordinate for :func:`torch.nn.functional.grid_sample`.
-    """
-    if width < 2 or height < 2:
-        raise ValueError("Camera calibration requires an image at least 2x2 pixels.")
-    if fx <= 0.0 or fy <= 0.0:
-        raise ValueError("Camera focal lengths must be positive.")
-    if iterations <= 0:
-        raise ValueError("Camera distortion inversion needs at least one iteration.")
-
-    k1, k2, k3, k4, k5, k6, p1, p2 = coefficients
-    rows, columns = torch.meshgrid(
-        torch.arange(height, device=device, dtype=torch.float32),
-        torch.arange(width, device=device, dtype=torch.float32),
-        indexing="ij",
-    )
-    distorted_x = (columns - cx) / fx
-    distorted_y = (rows - cy) / fy
-    undistorted_x = distorted_x.clone()
-    undistorted_y = distorted_y.clone()
-    for _ in range(iterations):
-        radius2 = undistorted_x.square() + undistorted_y.square()
-        radius4 = radius2.square()
-        radius6 = radius4 * radius2
-        radial = (1.0 + k1 * radius2 + k2 * radius4 + k3 * radius6) / (
-            1.0 + k4 * radius2 + k5 * radius4 + k6 * radius6
-        ).clamp_min(1.0e-6)
-        tangential_x = 2.0 * p1 * undistorted_x * undistorted_y + p2 * (radius2 + 2.0 * undistorted_x.square())
-        tangential_y = p1 * (radius2 + 2.0 * undistorted_y.square()) + 2.0 * p2 * (undistorted_x * undistorted_y)
-        undistorted_x = (distorted_x - tangential_x) / radial.clamp_min(1.0e-6)
-        undistorted_y = (distorted_y - tangential_y) / radial.clamp_min(1.0e-6)
-
-    # Newton derives one FOV from fy and centers the principal point. Convert
-    # the recovered ideal camera coordinate to that raw render's pixel frame.
-    raw_x = fy * undistorted_x + 0.5 * width
-    raw_y = fy * undistorted_y + 0.5 * height
-    grid_x = 2.0 * raw_x / (width - 1) - 1.0
-    grid_y = 2.0 * raw_y / (height - 1) - 1.0
-    return torch.stack((grid_x, grid_y), dim=-1).unsqueeze(0)
-
-
 class DomainRandomizedCameraImage(ManagerTermBase):
     """Read normalized wrist RGB with episode-consistent sensor variation.
 
@@ -668,7 +610,7 @@ class DomainRandomizedCameraImage(ManagerTermBase):
     environment at reset.  The variation models ordinary camera/illumination
     changes without replacing scene geometry or giving the actor privileged
     state.  Isaac Lab's play mode disables observation corruption, in which
-    case this term returns the calibrated render unchanged.
+    case this term returns the asset-authored render unchanged.
     """
 
     def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
@@ -684,35 +626,6 @@ class DomainRandomizedCameraImage(ManagerTermBase):
         self._contrast = torch.ones(shape, device=self.device)
         self._white_balance = torch.ones((self.num_envs, 3, 1, 1), device=self.device)
         self._brightness = torch.zeros(shape, device=self.device)
-        camera: Camera = env.scene.sensors[cfg.params["sensor_cfg"].name]
-        calibration = camera.cfg.spawn.distortion
-        if calibration is None or calibration.model != "opencvPinhole":
-            raise ValueError("The wrist observation requires an OpenCV pinhole calibration.")
-        width, height = calibration.image_size
-        if (width, height) != (camera.cfg.width, camera.cfg.height):
-            raise ValueError(
-                "Wrist calibration image size must match the rendered image, got "
-                f"{(width, height)} and {(camera.cfg.width, camera.cfg.height)}."
-            )
-        self._calibration_grid = opencv_pinhole_sampling_grid(
-            width=width,
-            height=height,
-            fx=calibration.fx,
-            fy=calibration.fy,
-            cx=calibration.cx,
-            cy=calibration.cy,
-            coefficients=(
-                calibration.k1,
-                calibration.k2,
-                calibration.k3,
-                calibration.k4,
-                calibration.k5,
-                calibration.k6,
-                calibration.p1,
-                calibration.p2,
-            ),
-            device=self.device,
-        )
         self.reset()
 
     @staticmethod
@@ -749,13 +662,6 @@ class DomainRandomizedCameraImage(ManagerTermBase):
         camera: Camera = env.scene.sensors[sensor_cfg.name]
         image = _tensor(camera.data.output["rgb"])[..., :3]
         image = image.permute(0, 3, 1, 2).contiguous().float().div(255.0)
-        image = torch_functional.grid_sample(
-            image,
-            self._calibration_grid.expand(image.shape[0], -1, -1, -1),
-            mode="bilinear",
-            padding_mode="border",
-            align_corners=True,
-        )
         if env.cfg.observations.wrist_rgb.enable_corruption:
             image = (image - 0.5) * self._contrast + 0.5
             image = (image * self._exposure * self._white_balance + self._brightness).clamp(0.0, 1.0)

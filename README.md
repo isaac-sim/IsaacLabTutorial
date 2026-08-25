@@ -220,8 +220,10 @@ uv run so101-vial play --rl_library rsl_rl \
 
 ## Wrist-camera policy
 
-The camera task uses one physical wrist camera at 64x64 RGB and 30 Hz. It has measured OpenCV intrinsics and
-distortion and a fixed, buildable side-bracket transform. The deployed actor receives only:
+The camera task uses the physical wrist camera authored by the robot asset's `Sensor=sensors` variant at 64x64 RGB
+and 30 Hz. Python binds to `/Robot/gripper/wowrobo_2MP_camera` with `spawn=None`; it does not spawn, reposition, or
+post-warp a second camera. The pose, mount, and measured OpenCV calibration therefore come directly from the USD
+asset. The deployed actor receives only:
 
 - wrist RGB;
 - joint position and velocity;

@@ -297,14 +297,10 @@ def test_camera_actor_is_unprivileged_and_has_only_wrist_image():
 
     assert cfg.scene.num_envs == 1024
     assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 64)
-    assert cfg.scene.wrist_camera.prim_path.endswith("/gripper/wrist_camera")
-    assert cfg.scene.wrist_camera.offset.pos == pytest.approx((-0.055, 0.052, -0.035))
-    assert cfg.scene.wrist_camera.offset.rot == pytest.approx((-0.09871531, 0.59943614, 0.78375556, -0.12906908))
-    assert cfg.scene.wrist_camera.offset.convention == "opengl"
-    calibration = cfg.scene.wrist_camera.spawn.distortion
-    assert calibration.image_size == (64, 64)
-    assert calibration.fx == pytest.approx(339.26593 / 10.0)
-    assert calibration.fy == pytest.approx(338.8201 / 10.0)
+    assert cfg.scene.wrist_camera.prim_path.endswith("/gripper/wowrobo_2MP_camera")
+    assert cfg.scene.wrist_camera.spawn is None
+    assert cfg.scene.wrist_camera.offset.pos == (0.0, 0.0, 0.0)
+    assert cfg.scene.wrist_camera.offset.rot == (0.0, 0.0, 0.0, 1.0)
     assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
     assert cfg.scene.wrist_camera.update_latest_camera_pose is True
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}

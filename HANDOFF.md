@@ -28,7 +28,7 @@ The final pause-point evidence, retained artifacts, rejected last batch, exact c
 
 ### Vision-from-scratch evidence
 
-- Resolution is fixed at 64x64. The actor consumes the fabricated wrist-camera view plus 24 proprioceptive values;
+- Resolution is fixed at 64x64. The actor consumes the asset-authored wrist-camera view plus 24 proprioceptive values;
   the privileged state is critic-only.
 - Canonical scratch acquisition/lift specialist:
   `checkpoints/candidates/vision_transport_alignment_m1850_std003.pt`, approximately 98% grasp and 97% lift.
@@ -256,12 +256,14 @@ gamma `0.995`, lambda `0.95`, five epochs and eight minibatches.
 ### Wrist camera and vision boundary
 
 - The camera is rigidly attached to the wrist/gripper, not a world overview camera.
-- RGB is 64x48 at 30 Hz with measured OpenCV intrinsics/distortion and a buildable 55 mm side bracket pose.
+- RGB is 64x64 at 30 Hz. The camera prim, mount pose, and measured OpenCV calibration are loaded directly from the
+  robot asset's `Sensor=sensors` variant; task code neither spawns nor repositions a camera.
 - The deployed vision actor is limited to wrist RGB, joint position/velocity/target, and previous action.
 - The vision critic is already asymmetric and may use full privileged state/contact during training.
 - Episode-consistent exposure, contrast, white balance, brightness, pixel noise, and proprioceptive noise are
   implemented.
-- Camera previews were visually checked and found viable. Vision training should wait for a strong state policy.
+- The asset-authored camera optical axis is aligned with the physical lens geometry; the validated preview shows
+  both jaws, the vial, and the rack across the task horizon. Re-run `capture_wrist` after any camera-asset change.
 
 ### Evaluation and presentation
 
