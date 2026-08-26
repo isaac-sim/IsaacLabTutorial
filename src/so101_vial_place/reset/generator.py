@@ -16,6 +16,7 @@ from ..control import (
     RELEASE_GRIPPER_POSITION,
     TABLETOP_VIAL_HEADING_RANGE,
     TABLETOP_VIAL_POSITION,
+    TABLETOP_VIAL_POSITION_HALF_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
     WORKSHOP_PREGRASP_JOINT_POSITION,
     WORKSHOP_TASK_WAYPOINTS,
@@ -40,7 +41,7 @@ class GeneratorCfg:
     max_attempts_per_phase: int = 32_768
     branch_seed_count: int = 32
     joint_noise: float = 0.025
-    vial_position_noise: float = 0.008
+    vial_position_half_range: tuple[float, float] = TABLETOP_VIAL_POSITION_HALF_RANGE
     contact_distance: float = 0.030
     ik_seeds: int = 64
     ik_iterations: int = 120
@@ -72,6 +73,8 @@ class GeneratorCfg:
             raise ValueError("min_grasp_pad_alignment must be between zero and one.")
         if self.ik_joint_margin < 0.0:
             raise ValueError("ik_joint_margin must be non-negative.")
+        if len(self.vial_position_half_range) != 2 or any(value <= 0.0 for value in self.vial_position_half_range):
+            raise ValueError("vial_position_half_range must contain two positive half-widths.")
 
 
 # Match the workshop task's authored tabletop orientation.  Yaw
@@ -1296,12 +1299,10 @@ class _Generator:
     def _tabletop_pose(self, phase: int) -> torch.Tensor:
         pose = torch.zeros((self.num_envs, 7), device=self.device)
         pose[:, :3] = pose.new_tensor(TABLETOP_VIAL_POSITION)
-        radial = self.cfg.vial_position_noise * (1.5 if phase == 0 else 0.75)
+        half_range = pose.new_tensor(self.cfg.vial_position_half_range)
         pose[:, :2] += torch.empty((self.num_envs, 2), device=self.device).uniform_(
-            -radial,
-            radial,
-            generator=self.random,
-        )
+            -1.0, 1.0, generator=self.random
+        ) * half_range
         # The workshop randomizes roll about the vial axis, not its tabletop
         # heading. A modest yaw band covers setup error without presenting the
         # cap beyond the small arm's reliable continuation workspace.

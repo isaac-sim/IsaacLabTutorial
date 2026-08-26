@@ -110,6 +110,54 @@ class GeometryTeacherRolloutDistillation(TeacherRolloutDistillation, GeometryDis
     """Geometry-regularized behavior cloning on coherent teacher rollouts."""
 
 
+class AnnealedDaggerGeometryDistillation(GeometryDistillation):
+    """DAgger with a smooth transition from teacher to student rollouts.
+
+    The transition is deliberately continuous: relative joint commands from
+    the two policies are blended instead of switching control independently at
+    every step. This keeps trajectories coherent while exposing the student to
+    its own errors before the final, fully student-controlled training window.
+    """
+
+    def __init__(
+        self,
+        *args,
+        teacher_anneal_start: int = 400,
+        teacher_anneal_end: int = 1400,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        if teacher_anneal_start < 0:
+            raise ValueError("teacher_anneal_start must be non-negative.")
+        if teacher_anneal_end <= teacher_anneal_start:
+            raise ValueError("teacher_anneal_end must be greater than teacher_anneal_start.")
+        self.teacher_anneal_start = teacher_anneal_start
+        self.teacher_anneal_end = teacher_anneal_end
+
+    @property
+    def teacher_fraction(self) -> float:
+        """Return the current fraction of teacher control."""
+        progress = (self.num_updates - self.teacher_anneal_start) / (
+            self.teacher_anneal_end - self.teacher_anneal_start
+        )
+        return 1.0 - min(1.0, max(0.0, progress))
+
+    def act(self, obs) -> torch.Tensor:
+        student_actions = self.student(obs, stochastic_output=True).detach()
+        teacher_actions = self.teacher(obs).detach()
+        teacher_fraction = self.teacher_fraction
+        rollout_actions = teacher_fraction * teacher_actions + (1.0 - teacher_fraction) * student_actions
+        self.transition.actions = rollout_actions
+        self.transition.privileged_actions = teacher_actions
+        self.transition.observations = obs
+        return rollout_actions
+
+    def update(self) -> dict[str, float]:
+        losses = super().update()
+        losses["teacher_fraction"] = self.teacher_fraction
+        return losses
+
+
 class FrozenEncoderGeometryDistillation(GeometryDistillation):
     """Keep learned spatial keypoints fixed while fitting the action head."""
 

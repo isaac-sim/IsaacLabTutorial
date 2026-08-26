@@ -95,6 +95,9 @@ gym.register(
         "rsl_rl_geometry_spatial_teacher_rollout_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_distillation_cfg:SO101GeometrySpatialTeacherRolloutRunnerCfg"
         ),
+        "rsl_rl_annealed_geometry_spatial_distillation_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_distillation_cfg:SO101AnnealedDaggerGeometrySpatialRunnerCfg"
+        ),
         "rsl_rl_strong_geometry_spatial_distillation_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_distillation_cfg:SO101StrongGeometrySpatialDistillationRunnerCfg"
         ),
@@ -174,6 +177,9 @@ gym.register(
         ),
         "rsl_rl_geometry_spatial_distillation_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_distillation_cfg:SO101GeometrySpatialDistillationRunnerCfg"
+        ),
+        "rsl_rl_annealed_geometry_spatial_distillation_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_distillation_cfg:SO101AnnealedDaggerGeometrySpatialRunnerCfg"
         ),
         "rsl_rl_strong_geometry_spatial_distillation_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_distillation_cfg:SO101StrongGeometrySpatialDistillationRunnerCfg"

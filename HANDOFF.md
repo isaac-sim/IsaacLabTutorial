@@ -10,6 +10,17 @@ This section supersedes the older status narrative below. The older material is 
 The final pause-point evidence, retained artifacts, rejected last batch, exact commands, and restart plan are in
 `VISION_SCRATCH_HANDOFF.md`; that file supersedes the active-job details in this document.
 
+### 2026-08-25 varied-reset state result
+
+- Phase-zero now keeps the exact workshop home robot pose while sampling the vial in a 60 x 80 mm authored tabletop
+  region with headings sampled over +/-20 degrees. The tracked, physics-validated artifact spans 53.1 x 78.8 mm and
+  -19.6 to +19.9 degrees after settling and acceptance filtering.
+- A single clean 800-update full-horizon PPO run from random initialization solves the new distribution. Exact
+  1,024-episode phase-zero success for seeds 42, 43, 44, and 45 is 99.32%, 99.41%, 97.56%, and 99.90%; every seed has
+  zero unsafe rack contacts. Retained finals are `checkpoints/candidates/state_wider_resets_seed*_model799.pt`.
+- Temporary recurrent, clipped-action, mixed-rollout, weighted-loss, augmented-distillation, and alternate-camera
+  experiment code was removed before this state reproduction.
+
 ### Accepted results
 
 - State is solved from the farther canonical home start. Fresh corrected three-stage reproductions reached 97.17%,

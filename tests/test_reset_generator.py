@@ -5,6 +5,8 @@ from so101_vial_place.control import (
     GRASP_GRIPPER_POSITION,
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
+    TABLETOP_VIAL_HEADING_RANGE,
+    TABLETOP_VIAL_POSITION_HALF_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
     WORKSHOP_PREGRASP_JOINT_POSITION,
     WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION,
@@ -21,6 +23,16 @@ from so101_vial_place.reset.generator import (
 
 def test_pregrasp_resets_reach_the_grasp_transition():
     assert 0.23 < PREGRASP_PROOF_DIFFICULTY < 0.24
+
+
+def test_tabletop_reset_region_is_modest_but_requires_object_relative_reaching():
+    x_half_range, y_half_range = TABLETOP_VIAL_POSITION_HALF_RANGE
+
+    assert x_half_range == pytest.approx(0.030)
+    assert y_half_range == pytest.approx(0.040)
+    assert 0.03 <= 2.0 * x_half_range <= 0.08
+    assert 0.03 <= 2.0 * y_half_range <= 0.08
+    assert pytest.approx((-0.35, 0.35)) == TABLETOP_VIAL_HEADING_RANGE
 
 
 def test_gripper_commands_follow_real_robot_mapping():

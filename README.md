@@ -12,14 +12,13 @@ increments and the actuator dynamics authored in the supplied Sys-ID USD. The vi
 are no grasp constraints, object writes during an episode, collision proxies, orientation scripts, or hidden motion
 controllers.
 
-The state task is solved with one compact object-centric shaping term and otherwise ordinary PPO. Canonical evaluation
-begins at the exact workshop home pose, with no approach progress serialized in a phase-zero reset. The reproducible
-recipe is 600 full-horizon updates followed by 100 canonical-home polishing updates. Fresh seeds 42, 43, and 45
-achieved 97.17%, 99.61%, and 99.41% exact canonical success over 1,024 episodes, with no unsafe rack impacts. The
-historical 100% teacher was recovered losslessly from the teacher weights stored in both native distillation
-checkpoints. Exact
-metadata is recorded in `checkpoints/manifest.json`. Its original optimizer was not retained; the three fresh state
-checkpoints, rather than the recovered actor, are the end-to-end state reproducibility evidence.
+The state task is solved with one compact object-centric shaping term and otherwise ordinary PPO. Evaluation begins at
+the exact workshop home robot pose, with no approach progress serialized in a phase-zero reset, while the vial spans a
+physics-validated 60 x 80 mm authored tabletop region with headings sampled over +/-20 degrees. The reproducible recipe
+is one 800-update full-horizon run from random initialization. Fresh seeds 42, 43, 44, and 45 achieved 99.32%, 99.41%,
+97.56%, and 99.90% exact success over 1,024
+phase-zero episodes, respectively, with no unsafe rack impacts. Exact metadata and retained checkpoints are recorded
+in `checkpoints/manifest.json`.
 
 The arm increment is hardcoded at 0.033 rad per 30 Hz command. The reproduced policies complete the task in a mean
 9.35--10.42 s while retaining the accepted success and contact-force margins. Larger 0.035 and 0.040 rad steps were
@@ -28,6 +27,8 @@ rejected because success and contact-force margins degraded.
 Example policy rollouts are stored under `checkpoints/videos/state/`, including
 `state_vial_farther_seed45_0000.mp4`. Earlier state and camera checkpoints trained against randomized phase-zero
 approach progress are invalidated; vision work will resume only from a teacher trained on the corrected home reset.
+The four-way `checkpoints/videos/state_varied_positions/state_varied_positions_grid.mp4` comparison shows the current
+policy solving four independently sampled vial starts simultaneously.
 
 The two retained spatial-softmax students still achieve 92.87% and 90.82% exact canonical success using only 64x64
 wrist RGB plus proprioception at deployment. Their training is not yet reproducible, however: cleanup omitted the
@@ -92,9 +93,11 @@ The tracked reset dataset contains 1,024 states, 128 for each phase:
 canonical home -> pregrasp/closure -> grasp -> lift -> reorient -> transport -> insert -> release
 ```
 
-Training samples these phases uniformly. Canonical evaluation samples only `canonical home`: every row uses the exact
-real workshop operational joint pose, with the vial visibly outside the open jaws. The policy performs the complete
-home-to-overhead-to-pregrasp approach; no approach progress is hidden in the reset.
+Training samples these phases uniformly. Phase-zero evaluation uses the exact real workshop operational joint pose in
+every row, while the settled vial positions span 53.1 x 78.8 mm after IK and physical-validity filtering. Their
+headings cover -19.6 to +19.9 degrees. The vial is
+always visibly outside the open jaws. The policy performs the complete home-to-overhead-to-pregrasp approach; no
+approach progress is hidden in the reset.
 
 Generate a replacement dataset only when physics, assets, or reset logic intentionally change:
 
@@ -161,29 +164,14 @@ opening/closing penalty.
 
 ## Train and evaluate the state policy
 
-Train ordinary PPO for 400 updates on the hardcoded full-horizon reset distribution, retain the optimizer for another
-200 full-horizon updates, then polish the complete canonical-home task for 100 updates. `--max_iterations` is the
-number of additional updates when a checkpoint is loaded, so the stage finals are models 399, 598, and 697:
+Train ordinary PPO for 800 updates on the hardcoded full-horizon reset distribution. No checkpoint warm start,
+curriculum stage, or canonical-only polish is required; the final checkpoint is `model_799.pt`:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 4096 --max_iterations 400 --seed 42 \
-  --run_name state_horizon_s42 --device cuda:0 \
-  --visualizer none presets=newton_mjwarp
-
-CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
-  --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 4096 --max_iterations 200 --seed 42 \
-  --checkpoint <stage-1-run>/model_399.pt \
-  --run_name state_horizon_continue_s42 --device cuda:0 \
-  --visualizer none presets=newton_mjwarp
-
-CUDA_VISIBLE_DEVICES=0 uv run so101-vial train --rl_library rsl_rl \
-  --task IsaacTutorial-Place-Vial-SO101-Canonical \
-  --num_envs 4096 --max_iterations 100 --seed 42 \
-  --checkpoint <stage-2-run>/model_598.pt \
-  --run_name state_canonical_polish_s42 --device cuda:0 \
+  --num_envs 4096 --max_iterations 800 --seed 42 \
+  --run_name state_wider_resets_s42 --device cuda:0 \
   --visualizer none presets=newton_mjwarp
 ```
 

@@ -20,6 +20,14 @@ class RslRlGeometryDistillationAlgorithmCfg(RslRlDistillationAlgorithmCfg):
 
 
 @configclass
+class RslRlAnnealedDaggerGeometryAlgorithmCfg(RslRlGeometryDistillationAlgorithmCfg):
+    """Configuration fields for the teacher-to-student rollout schedule."""
+
+    teacher_anneal_start: int = 400
+    teacher_anneal_end: int = 1400
+
+
+@configclass
 class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
     """On-policy DAgger-style distillation using privileged state only in the teacher."""
 
@@ -166,7 +174,7 @@ class SO101GeometrySpatialDistillationRunnerCfg(SO101SpatialCameraDistillationRu
     experiment_name = "so101_vial_camera_distillation_geometry_spatial"
     run_name = "geometry_spatial_from_state_teacher"
     student = _geometry_spatial_camera_actor(init_std=0.03)
-    algorithm = RslRlGeometryDistillationAlgorithmCfg(
+    algorithm = RslRlAnnealedDaggerGeometryAlgorithmCfg(
         class_name="so101_vial_place.agents.distillation:GeometryDistillation",
         num_learning_epochs=2,
         learning_rate=3.0e-4,
@@ -193,6 +201,28 @@ class SO101GeometrySpatialTeacherRolloutRunnerCfg(SO101GeometrySpatialDistillati
         loss_type="mse",
         geometry_loss_coef=1.0,
         geometry_group="visual_geometry",
+    )
+
+
+@configclass
+class SO101AnnealedDaggerGeometrySpatialRunnerCfg(SO101GeometrySpatialDistillationRunnerCfg):
+    """Single-stage geometry distillation with annealed DAgger rollouts."""
+
+    max_iterations = 2000
+    save_interval = 100
+    experiment_name = "so101_vial_camera_distillation_geometry_spatial_annealed"
+    run_name = "annealed_geometry_spatial_from_state_teacher"
+    algorithm = RslRlAnnealedDaggerGeometryAlgorithmCfg(
+        class_name="so101_vial_place.agents.distillation:AnnealedDaggerGeometryDistillation",
+        num_learning_epochs=2,
+        learning_rate=3.0e-4,
+        gradient_length=1,
+        max_grad_norm=1.0,
+        loss_type="mse",
+        geometry_loss_coef=1.0,
+        geometry_group="visual_geometry",
+        teacher_anneal_start=400,
+        teacher_anneal_end=1400,
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -225,6 +226,8 @@ def install_state_video_recorder() -> list[str]:
     global PLAY_RESETS_SEQUENTIAL
 
     PLAY_RESETS_SEQUENTIAL = False
+    output_dir = os.environ.get("SO101_STATE_VIDEO_OUTPUT_DIR", STATE_VIDEO_OUTPUT_DIR)
+    output_prefix = os.environ.get("SO101_STATE_VIDEO_PREFIX", STATE_VIDEO_PREFIX)
     from isaaclab.envs.utils.video_recorder_cfg import VideoRecorderCfg
 
     from .env_cfg import SO101VialEnvCfg
@@ -236,8 +239,8 @@ def install_state_video_recorder() -> list[str]:
         self.video_recorders = [
             VideoRecorderCfg(
                 source="visualizer:newton",
-                output_dir=STATE_VIDEO_OUTPUT_DIR,
-                output_filename_prefix=STATE_VIDEO_PREFIX,
+                output_dir=output_dir,
+                output_filename_prefix=output_prefix,
             )
         ]
 

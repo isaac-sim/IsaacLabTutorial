@@ -102,7 +102,8 @@ def test_every_named_curriculum_has_eligible_rows_in_bundled_artifact():
 
 
 def test_bundled_canonical_rows_are_exact_unstarted_home_resets():
-    states = load_reset_dataset(RESET_DATASET)["states"]
+    artifact = load_reset_dataset(RESET_DATASET)
+    states = artifact["states"]
     canonical = states["phase"] == 0
     home = torch.tensor(WORKSHOP_INITIAL_JOINT_POSITION, dtype=states["joint_target"].dtype)
 
@@ -111,3 +112,18 @@ def test_bundled_canonical_rows_are_exact_unstarted_home_resets():
     assert torch.equal(states["difficulty"][canonical], torch.zeros(canonical.sum()))
     assert not states["grasped"][canonical].any()
     assert not states["lifted"][canonical].any()
+
+    # These are distinct full-task starts, not repeated copies of one vial
+    # pose. Bounds are measured after gravity settles the horizontal vial.
+    tabletop_xy = states["vial_pose"][canonical, :2]
+    span = tabletop_xy.amax(dim=0) - tabletop_xy.amin(dim=0)
+    assert span[0] >= 0.050
+    assert span[1] >= 0.075
+    assert artifact["generator"]["vial_position_half_range"] == pytest.approx((0.030, 0.040))
+
+    x, y, z, w = states["vial_pose"][canonical, 3:7].unbind(dim=-1)
+    vial_axis_x = 2.0 * (x * z + w * y)
+    vial_axis_y = 2.0 * (y * z - w * x)
+    heading = torch.atan2(vial_axis_y, vial_axis_x)
+    assert heading.amin() <= -0.34
+    assert heading.amax() >= 0.34

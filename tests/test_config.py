@@ -7,7 +7,7 @@ import torch
 from rsl_rl.algorithms import Distillation
 
 from so101_vial_place import evaluation
-from so101_vial_place.agents.distillation import FineTuneDistillation
+from so101_vial_place.agents.distillation import AnnealedDaggerGeometryDistillation, FineTuneDistillation
 from so101_vial_place.agents.ppo import (
     FineTunePPO,
     FrozenStatsFineTunePPO,
@@ -18,6 +18,7 @@ from so101_vial_place.agents.ppo import (
     ResidualResumePPO,
 )
 from so101_vial_place.agents.rsl_rl_distillation_cfg import (
+    SO101AnnealedDaggerGeometrySpatialRunnerCfg,
     SO101CameraDistillationRunnerCfg,
     SO101GeometrySpatialDistillationRunnerCfg,
     SO101GeometrySpatialTeacherRolloutRunnerCfg,
@@ -642,6 +643,30 @@ def test_distillation_keeps_privileged_state_out_of_student():
     fine_teacher = SO101WideCameraFineTeacherRolloutRunnerCfg()
     assert fine_teacher.algorithm.class_name.endswith(":FineTuneTeacherRolloutDistillation")
     assert fine_teacher.algorithm.learning_rate == fine.algorithm.learning_rate
+
+    annealed = SO101AnnealedDaggerGeometrySpatialRunnerCfg()
+    assert annealed.obs_groups["student"] == ["wrist_rgb", "proprioception"]
+    assert annealed.algorithm.class_name.endswith(":AnnealedDaggerGeometryDistillation")
+    assert annealed.algorithm.teacher_anneal_start == 400
+    assert annealed.algorithm.teacher_anneal_end == 1400
+    assert annealed.max_iterations == 2000
+
+
+def test_annealed_dagger_teacher_fraction_has_teacher_student_and_handoff_windows():
+    algorithm = AnnealedDaggerGeometryDistillation.__new__(AnnealedDaggerGeometryDistillation)
+    algorithm.teacher_anneal_start = 400
+    algorithm.teacher_anneal_end = 1400
+
+    algorithm.num_updates = 0
+    assert algorithm.teacher_fraction == pytest.approx(1.0)
+    algorithm.num_updates = 400
+    assert algorithm.teacher_fraction == pytest.approx(1.0)
+    algorithm.num_updates = 900
+    assert algorithm.teacher_fraction == pytest.approx(0.5)
+    algorithm.num_updates = 1400
+    assert algorithm.teacher_fraction == pytest.approx(0.0)
+    algorithm.num_updates = 2000
+    assert algorithm.teacher_fraction == pytest.approx(0.0)
 
 
 def test_fine_distillation_resets_optimizer_but_retains_models_and_iteration(monkeypatch):
