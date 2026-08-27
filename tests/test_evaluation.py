@@ -6,9 +6,12 @@ import pytest
 import torch
 from isaaclab_rl import rsl_rl
 
-from so101_vial_place import evaluation
-from so101_vial_place.agents.models import replacement_post_lift_gate, residual_post_lift_gate
-from so101_vial_place.evaluation import _install_episode_counter
+from so101_vial_place.tasks.place_vial.config.so101.agents.models import (
+    replacement_post_lift_gate,
+    residual_post_lift_gate,
+)
+from so101_vial_place.utils import evaluation
+from so101_vial_place.utils.evaluation import _install_episode_counter
 
 
 def test_insertion_counter_selects_phase_six(monkeypatch):

@@ -72,7 +72,6 @@ Desktop.ini
 /wandb/
 /.neptune/
 /videos/
-/checkpoints/candidates/exported/
 
 # Isaac Sim / Omniverse generated state
 /.isaac-sim/

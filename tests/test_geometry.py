@@ -2,7 +2,7 @@ import math
 
 import torch
 
-from so101_vial_place.mdp.geometry import (
+from so101_vial_place.tasks.place_vial.mdp.geometry import (
     cylinder_lowest_offset,
     inside_bounds,
     rack_local_position,

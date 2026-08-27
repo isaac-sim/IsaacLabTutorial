@@ -56,23 +56,22 @@ dependencies = [
   "moviepy<2",
 ]
 
-[project.scripts]
-isaaclab = "so101_vial_place.cli:main"
-so101-vial = "so101_vial_place.cli:main"
+[project.entry-points."isaaclab.tasks"]
+so101-vial-place = "so101_vial_place.tasks"
 
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab" }
-isaaclab-assets = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_assets" }
-isaaclab-experimental = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_experimental" }
-isaaclab-newton = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_newton" }
-isaaclab-ov = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_ov" }
-isaaclab-physx = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_physx" }
-isaaclab-rl = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_rl" }
-isaaclab-tasks = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_tasks" }
-isaaclab-visualizers = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "source/isaaclab_visualizers" }
+isaaclab = { path = "../mustafa_isaaclab/source/isaaclab", editable = true }
+isaaclab-assets = { path = "../mustafa_isaaclab/source/isaaclab_assets", editable = true }
+isaaclab-experimental = { path = "../mustafa_isaaclab/source/isaaclab_experimental", editable = true }
+isaaclab-newton = { path = "../mustafa_isaaclab/source/isaaclab_newton", editable = true }
+isaaclab-ov = { path = "../mustafa_isaaclab/source/isaaclab_ov", editable = true }
+isaaclab-physx = { path = "../mustafa_isaaclab/source/isaaclab_physx", editable = true }
+isaaclab-rl = { path = "../mustafa_isaaclab/source/isaaclab_rl", editable = true }
+isaaclab-tasks = { path = "../mustafa_isaaclab/source/isaaclab_tasks", editable = true }
+isaaclab-visualizers = { path = "../mustafa_isaaclab/source/isaaclab_visualizers", editable = true }
 
 [tool.uv]
 override-dependencies = [

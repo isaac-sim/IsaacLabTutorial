@@ -2,7 +2,7 @@ import importlib
 
 import gymnasium as gym
 
-import so101_vial_place  # noqa: F401
+import so101_vial_place.tasks  # noqa: F401
 
 
 def test_task_registrations_are_module_qualified_and_use_rsl_rl():
@@ -16,8 +16,14 @@ def test_task_registrations_are_module_qualified_and_use_rsl_rl():
         assert spec.kwargs["env_cfg_entry_point"].endswith(f":{cfg_name}")
         assert spec.kwargs["default_agent"] == "rsl_rl"
         assert "rsl_rl_cfg_entry_point" in spec.kwargs
-    camera = gym.spec("IsaacTutorial-Place-Vial-SO101-Camera")
-    assert "rsl_rl_scratch_cfg_entry_point" in camera.kwargs
+
+
+def test_only_tutorial_tasks_are_registered():
+    task_ids = {spec.id for spec in gym.registry.values() if spec.id.startswith("IsaacTutorial-")}
+    assert task_ids == {
+        "IsaacTutorial-Place-Vial-SO101",
+        "IsaacTutorial-Place-Vial-SO101-Camera",
+    }
 
 
 def test_all_task_config_entry_points_resolve():

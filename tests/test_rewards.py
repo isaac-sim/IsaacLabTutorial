@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import torch
 
-import so101_vial_place.mdp.terms as terms
-from so101_vial_place.mdp.terms import (
+import so101_vial_place.tasks.place_vial.mdp.terms as terms
+from so101_vial_place.tasks.place_vial.mdp.terms import (
     HARD_RACK_IMPACT_FORCE,
     HELD_INSERTION_TARGET,
     RACK_LOWER,

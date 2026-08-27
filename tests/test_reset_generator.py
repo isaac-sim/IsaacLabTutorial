@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from so101_vial_place.control import (
+from so101_vial_place.tasks.place_vial.config.so101.control import (
     GRASP_GRIPPER_POSITION,
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
@@ -13,8 +13,8 @@ from so101_vial_place.control import (
     WORKSHOP_TASK_WAYPOINTS,
     workshop_gripper_position,
 )
-from so101_vial_place.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
-from so101_vial_place.reset.generator import (
+from so101_vial_place.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
+from so101_vial_place.tasks.place_vial.reset.generator import (
     PREGRASP_PROOF_DIFFICULTY,
     _represented_lift,
     measured_lift_progress,
@@ -42,9 +42,12 @@ def test_gripper_commands_follow_real_robot_mapping():
     assert len(WORKSHOP_PREGRASP_JOINT_POSITION) == 6
     assert len(WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION) == 6
     assert WORKSHOP_PREGRASP_JOINT_POSITION[-1] == pytest.approx(workshop_gripper_position(21.711), abs=1.0e-6)
-    assert pytest.approx(
-        (-0.1221070742, -0.9066845838, 0.1900876486, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
-    ) == WORKSHOP_INITIAL_JOINT_POSITION
+    assert (
+        pytest.approx(
+            (-0.1221070742, -0.9066845838, 0.1900876486, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
+        )
+        == WORKSHOP_INITIAL_JOINT_POSITION
+    )
 
 
 def test_real_robot_waypoints_cover_every_loaded_phase():
