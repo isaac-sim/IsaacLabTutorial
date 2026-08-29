@@ -63,15 +63,15 @@ so101-vial-place = "so101_vial_place.tasks"
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv.sources]
-isaaclab = { path = "../mustafa_isaaclab/source/isaaclab", editable = true }
-isaaclab-assets = { path = "../mustafa_isaaclab/source/isaaclab_assets", editable = true }
-isaaclab-experimental = { path = "../mustafa_isaaclab/source/isaaclab_experimental", editable = true }
-isaaclab-newton = { path = "../mustafa_isaaclab/source/isaaclab_newton", editable = true }
-isaaclab-ov = { path = "../mustafa_isaaclab/source/isaaclab_ov", editable = true }
-isaaclab-physx = { path = "../mustafa_isaaclab/source/isaaclab_physx", editable = true }
-isaaclab-rl = { path = "../mustafa_isaaclab/source/isaaclab_rl", editable = true }
-isaaclab-tasks = { path = "../mustafa_isaaclab/source/isaaclab_tasks", editable = true }
-isaaclab-visualizers = { path = "../mustafa_isaaclab/source/isaaclab_visualizers", editable = true }
+isaaclab = { path = "../IsaacLab/source/isaaclab", editable = true }
+isaaclab-assets = { path = "../IsaacLab/source/isaaclab_assets", editable = true }
+isaaclab-experimental = { path = "../IsaacLab/source/isaaclab_experimental", editable = true }
+isaaclab-newton = { path = "../IsaacLab/source/isaaclab_newton", editable = true }
+isaaclab-ov = { path = "../IsaacLab/source/isaaclab_ov", editable = true }
+isaaclab-physx = { path = "../IsaacLab/source/isaaclab_physx", editable = true }
+isaaclab-rl = { path = "../IsaacLab/source/isaaclab_rl", editable = true }
+isaaclab-tasks = { path = "../IsaacLab/source/isaaclab_tasks", editable = true }
+isaaclab-visualizers = { path = "../IsaacLab/source/isaaclab_visualizers", editable = true }
 
 [tool.uv]
 override-dependencies = [

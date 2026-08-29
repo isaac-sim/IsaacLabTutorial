@@ -11,8 +11,8 @@ The registered tasks are:
 
 ## Setup
 
-Python 3.12 and [uv](https://docs.astral.sh/uv/) are required. This checkout resolves the Isaac Lab packages from the
-local fork at `../mustafa_isaaclab`; keep the two repositories next to one another.
+Python 3.12 and [uv](https://docs.astral.sh/uv/) are required. This checkout resolves the Isaac Lab packages from an
+upstream `develop` checkout at `../IsaacLab`; keep the two repositories next to one another.
 
 ```bash
 uv sync
