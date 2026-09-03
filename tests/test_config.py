@@ -1,6 +1,7 @@
 """Configuration contracts for the public tutorial tasks."""
 
 import pytest
+from isaaclab_assets.robots.so101 import SO101_CFG
 
 from so101_vial_place.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
     SO101CameraPPORunnerCfg,
@@ -39,20 +40,9 @@ def test_state_task_control_and_physics_contract():
     assert tuple(cfg.scene.robot.init_state.joint_pos.values()) == pytest.approx(WORKSHOP_INITIAL_JOINT_POSITION)
     assert len(JOINTS) == 6
 
-    actuator = cfg.scene.robot.actuators["usd_sysid"]
-    for field in (
-        "stiffness",
-        "damping",
-        "armature",
-        "friction",
-        "dynamic_friction",
-        "viscous_friction",
-        "effort_limit",
-        "velocity_limit",
-        "effort_limit_sim",
-        "velocity_limit_sim",
-    ):
-        assert getattr(actuator, field) is None
+    assert cfg.scene.robot.spawn.usd_path == SO101_CFG.spawn.usd_path
+    assert cfg.scene.robot.spawn.activate_contact_sensors is True
+    assert cfg.scene.robot.actuators == SO101_CFG.actuators
 
 
 def test_play_mode_uses_canonical_resets(monkeypatch):

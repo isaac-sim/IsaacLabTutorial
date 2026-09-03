@@ -1,8 +1,7 @@
 """Manager-based SO-101 vial placement task with physical reset replay."""
 
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
-from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
+from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -15,10 +14,11 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
+from isaaclab_assets.robots.so101 import SO101_CFG
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg
 from isaaclab_tasks.utils import PresetCfg
 
-from so101_vial_place.assets import MAT_USD, RACK_USD, RESET_DATASET, SO101_USD, SO101_VARIANTS, VIAL_USD
+from so101_vial_place.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
 
 from ... import mdp
 from ...mdp.actions import SoftLimitRelativeGripperActionCfg, SoftLimitRelativeJointPositionActionCfg
@@ -42,27 +42,12 @@ ARM_JOINTS = JOINTS[:-1]
 class SO101SceneCfg(InteractiveSceneCfg):
     """One SO-101, one vial, one rack, and a collision mat."""
 
-    robot = ArticulationCfg(
+    robot = SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
-        spawn=sim_utils.UsdFileCfg(
-            usd_path=str(SO101_USD),
-            variants=SO101_VARIANTS,
+        spawn=SO101_CFG.spawn.replace(
             activate_contact_sensors=True,
-            # These are the non-actuator spawn properties used with this USD
-            # in the source SO-101 workshop. Adjacent authored collision
-            # meshes overlap at several joints, so self-collision remains off.
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                disable_gravity=False,
-                max_depenetration_velocity=1.0,
-            ),
-            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-                fix_root_link=True,
-                enabled_self_collisions=False,
-                solver_position_iteration_count=8,
-                solver_velocity_iteration_count=0,
-            ),
         ),
-        init_state=ArticulationCfg.InitialStateCfg(
+        init_state=SO101_CFG.init_state.replace(
             pos=(-0.05, 0.0, 0.0),
             # Isaac Lab 3 uses XYZW quaternions: +90 degrees about world Z.
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
@@ -74,24 +59,6 @@ class SO101SceneCfg(InteractiveSceneCfg):
                 for name, position in zip(JOINTS, WORKSHOP_INITIAL_JOINT_POSITION, strict=True)
             },
         ),
-        actuators={
-            "usd_sysid": ImplicitActuatorCfg(
-                joint_names_expr=[".*"],
-                # None means resolve every value from the selected Physics
-                # variant in the source USD. These are identified Newton drive
-                # parameters and must never be replaced in task Python.
-                stiffness=None,
-                damping=None,
-                armature=None,
-                friction=None,
-                dynamic_friction=None,
-                viscous_friction=None,
-                effort_limit=None,
-                velocity_limit=None,
-                effort_limit_sim=None,
-                velocity_limit_sim=None,
-            ),
-        },
         soft_joint_pos_limit_factor=0.98,
     )
 
@@ -402,21 +369,6 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
         # Direct frontal task view, raised enough to see the gripper descend
         # and the vial seat inside the selected rack opening.
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
-        sysid = self.scene.robot.actuators["usd_sysid"]
-        passthrough_fields = (
-            "stiffness",
-            "damping",
-            "armature",
-            "friction",
-            "dynamic_friction",
-            "viscous_friction",
-            "effort_limit",
-            "velocity_limit",
-            "effort_limit_sim",
-            "velocity_limit_sim",
-        )
-        if any(getattr(sysid, field) is not None for field in passthrough_fields):
-            raise RuntimeError("SO-101 actuator parameters must be loaded unchanged from the sys-ID USD.")
 
     def play_mode(self):
         """Evaluate complete episodes from validated phase-zero starts."""

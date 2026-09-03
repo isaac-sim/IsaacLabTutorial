@@ -80,8 +80,8 @@ A reference rollout is available at [`media/demo.mp4`](media/demo.mp4).
 ## Task design
 
 The policy produces five bounded, measured-relative arm-joint position increments and one bounded jaw increment at
-30 Hz. Dynamics and limits come from the tracked Sys-ID robot USD. The vial remains a free rigid body throughout each
-episode; task code does not attach it to the gripper or write its pose after reset.
+30 Hz. The robot asset, Sys-ID dynamics, and limits come from Isaac Lab's `SO101_CFG`. The vial remains a free rigid
+body throughout each episode; task code does not attach it to the gripper or write its pose after reset.
 
 Training samples a tracked reset dataset across eight physically reached phases:
 
@@ -94,7 +94,7 @@ physics settings, registrations, and agent configurations live under `config/so1
 
 ```text
 src/so101_vial_place/
-  assets/                         robot, workshop, and reset assets
+  assets/                         workshop and reset assets
   tasks/
     place_vial/
       mdp/                        actions, events, observations, rewards, terminations

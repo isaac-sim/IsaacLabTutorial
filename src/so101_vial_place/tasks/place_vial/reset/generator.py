@@ -759,7 +759,7 @@ class _Generator:
             desired_pose[:, :3] += translation * waypoint_progress.unsqueeze(-1)
             # Re-solve against the live, loaded transform at every waypoint.
             # This is ordinary closed-loop position control through the
-            # identified USD drives; the vial is never written or constrained.
+            # identified configured drives; the vial is never written or constrained.
             self.candidate_ik_valid.fill_(True)
             proposed = self._solve_vial_pose(desired_pose, target, max_joint_delta=0.45)
             waypoint_valid = connected_valid & (~active | self.candidate_ik_valid)

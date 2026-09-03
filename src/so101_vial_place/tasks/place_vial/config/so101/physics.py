@@ -3,7 +3,7 @@
 
 """Newton contact initialization validated by the SO-101 workshop.
 
-The identified joint drives remain authored entirely in the robot USD.  This
+Robot dynamics and actuator settings come from Isaac Lab's ``SO101_CFG``. This
 module configures the solver's shape contact model, which is separate from the
 robot actuators and must be initialized on Newton's completed model builder.
 """
