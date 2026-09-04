@@ -165,9 +165,7 @@ def inspect_robot_main(argv: list[str] | None = None) -> int:
             # transforms. Projecting the loaded-USD pad midpoint into the vial
             # frame provides an evidence-based axial grasp location.
             vial = env.scene["vial"]
-            measured_pregrasp = joint_position.new_tensor(
-                _WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION
-            ).unsqueeze(0)
+            measured_pregrasp = joint_position.new_tensor(_WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION).unsqueeze(0)
             robot.write_joint_position_to_sim_index(position=measured_pregrasp)
             robot.write_joint_velocity_to_sim_index(velocity=measured_pregrasp.new_zeros(measured_pregrasp.shape))
             vial_default_state = _tensor(vial.data.default_root_state).clone()

@@ -14,6 +14,7 @@ from isaaclab_tutorial.tasks.place_vial.reset.generator import (
     TABLETOP_VIAL_POSITION_HALF_RANGE,
     WORKSHOP_PREGRASP_JOINT_POSITION,
     WORKSHOP_TASK_WAYPOINTS,
+    GeneratorCfg,
     _represented_lift,
     measured_lift_progress,
 )
@@ -21,6 +22,23 @@ from isaaclab_tutorial.tasks.place_vial.reset.generator import (
 
 def test_pregrasp_resets_reach_the_grasp_transition():
     assert 0.23 < PREGRASP_PROOF_DIFFICULTY < 0.24
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    (
+        ({"seed": -1}, "seed"),
+        ({"batch_size": 0}, "batch_size"),
+        ({"joint_noise": float("nan")}, "joint_noise"),
+        ({"contact_distance": 0.0}, "contact_distance"),
+        ({"ik_joint_margin": -0.1}, "ik_joint_margin"),
+        ({"min_grasp_pad_alignment": float("nan")}, "min_grasp_pad_alignment"),
+        ({"vial_position_half_range": (0.03, float("inf"))}, "vial_position_half_range"),
+    ),
+)
+def test_generator_config_rejects_invalid_values(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        GeneratorCfg(**kwargs)
 
 
 def test_tabletop_reset_region_is_modest_but_requires_object_relative_reaching():

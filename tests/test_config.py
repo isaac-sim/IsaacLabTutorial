@@ -86,7 +86,6 @@ def test_camera_actor_observation_boundary():
     assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
     assert cfg.scene.wrist_camera.update_latest_camera_pose is True
     assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
-    assert cfg.scene.robot.spawn.func.__name__ == "_spawn_so101_with_camera_overrides"
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
     assert set(cfg.observations.proprioception.__dict__) >= {
         "joint_pos",

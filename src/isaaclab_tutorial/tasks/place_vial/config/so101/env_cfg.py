@@ -87,8 +87,9 @@ def _spawn_so101_with_camera_overrides(
     return prim
 
 
-WORKSHOP_SO101_CFG = SO101_CFG.copy()
-WORKSHOP_SO101_CFG.spawn.func = _spawn_so101_with_camera_overrides
+WORKSHOP_SO101_CFG = SO101_CFG.replace(
+    spawn=SO101_CFG.spawn.replace(func=_spawn_so101_with_camera_overrides),
+)
 
 
 def _initialize_contacts(_event: PhysicsEvent) -> None:
@@ -310,9 +311,9 @@ class DatasetEventsCfg:
         params={
             "dataset_path": str(RESET_DATASET),
             "sequential": False,
-            "phase_weights": reset_cfg.reset_curriculum_weights(),
-            "minimum_difficulty": reset_cfg.reset_curriculum_minimum_difficulty(),
-            "maximum_difficulty": reset_cfg.reset_curriculum_maximum_difficulty(),
+            "phase_weights": reset_cfg.RESET_CURRICULA["horizon"],
+            "minimum_difficulty": None,
+            "maximum_difficulty": None,
         },
     )
 

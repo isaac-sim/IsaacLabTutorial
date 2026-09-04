@@ -62,6 +62,10 @@ WORKSHOP_TASK_WAYPOINTS = {
 }
 
 
+def _is_finite_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
 @dataclass(frozen=True)
 class GeneratorCfg:
     """Reset generator quotas and physical validation settings."""
@@ -88,6 +92,8 @@ class GeneratorCfg:
     min_grasp_pad_alignment: float = 0.85
 
     def __post_init__(self) -> None:
+        if not isinstance(self.seed, int) or isinstance(self.seed, bool) or self.seed < 0:
+            raise ValueError("seed must be a nonnegative integer.")
         for name in (
             "poses_per_phase",
             "batch_size",
@@ -105,11 +111,21 @@ class GeneratorCfg:
                 raise ValueError(f"{name} must be a positive integer.")
         if self.max_attempts_per_phase < self.poses_per_phase:
             raise ValueError("max_attempts_per_phase must be at least poses_per_phase.")
-        if not 0.0 <= self.min_grasp_pad_alignment <= 1.0:
+        for name in ("contact_distance", "ik_position_tolerance", "ik_rotation_tolerance"):
+            value = getattr(self, name)
+            if not _is_finite_number(value) or value <= 0.0:
+                raise ValueError(f"{name} must be a positive finite number.")
+        for name in ("joint_noise", "ik_noise_std", "ik_joint_margin"):
+            value = getattr(self, name)
+            if not _is_finite_number(value) or value < 0.0:
+                raise ValueError(f"{name} must be a nonnegative finite number.")
+        if not _is_finite_number(self.min_grasp_pad_alignment) or not 0.0 <= self.min_grasp_pad_alignment <= 1.0:
             raise ValueError("min_grasp_pad_alignment must be between zero and one.")
-        if self.ik_joint_margin < 0.0:
-            raise ValueError("ik_joint_margin must be non-negative.")
-        if len(self.vial_position_half_range) != 2 or any(value <= 0.0 for value in self.vial_position_half_range):
+        if (
+            not isinstance(self.vial_position_half_range, tuple)
+            or len(self.vial_position_half_range) != 2
+            or any(not _is_finite_number(value) or value <= 0.0 for value in self.vial_position_half_range)
+        ):
             raise ValueError("vial_position_half_range must contain two positive half-widths.")
 
 

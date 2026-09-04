@@ -13,6 +13,30 @@ from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
+_INTEGER_DTYPES = {torch.uint8, torch.int8, torch.int16, torch.int32, torch.int64}
+
+
+def _apply_difficulty_bounds(
+    eligible: torch.Tensor,
+    phase: torch.Tensor,
+    difficulty: torch.Tensor,
+    bounds: Sequence[tuple[int, float]] | None,
+    *,
+    minimum: bool,
+) -> torch.Tensor:
+    if bounds is None:
+        return eligible
+    label = "minimum_difficulty" if minimum else "maximum_difficulty"
+    phase_count = int(phase.max().item()) + 1
+    for phase_id, bound in bounds:
+        if not 0 <= int(phase_id) < phase_count:
+            raise ValueError(f"{label} phase must lie in [0, {phase_count - 1}]")
+        if not 0.0 <= bound <= 1.0:
+            raise ValueError(f"{label} values must lie in [0, 1]")
+        within_bound = difficulty >= float(bound) if minimum else difficulty <= float(bound)
+        eligible &= (phase != int(phase_id)) | within_bound
+    return eligible
+
 
 def _phase_balanced_row_weights(
     phase: torch.Tensor,
@@ -22,6 +46,15 @@ def _phase_balanced_row_weights(
     maximum_difficulty: Sequence[tuple[int, float]] | None = None,
 ) -> torch.Tensor:
     """Spread each requested phase probability uniformly over its eligible rows."""
+    if phase.ndim != 1 or difficulty.ndim != 1 or phase.shape != difficulty.shape or phase.numel() == 0:
+        raise ValueError("phase and difficulty must be nonempty one-dimensional tensors with matching shapes")
+    if phase.dtype not in _INTEGER_DTYPES or bool((phase < 0).any()):
+        raise ValueError("phase must contain nonnegative integers")
+    if not difficulty.is_floating_point() or not bool(torch.isfinite(difficulty).all()):
+        raise ValueError("difficulty must contain finite floating-point values")
+    if bool(((difficulty < 0.0) | (difficulty > 1.0)).any()):
+        raise ValueError("difficulty must lie in [0, 1]")
+
     phase_count = int(phase.max().item()) + 1
     weights = torch.as_tensor(phase_weights, device=phase.device, dtype=torch.float32)
     if weights.ndim != 1 or len(weights) != phase_count:
@@ -30,20 +63,8 @@ def _phase_balanced_row_weights(
         raise ValueError("phase_weights must be finite, nonnegative, and not all zero")
 
     eligible = weights[phase] > 0.0
-    if minimum_difficulty is not None:
-        for phase_id, minimum in minimum_difficulty:
-            if not 0 <= int(phase_id) < phase_count:
-                raise ValueError(f"minimum_difficulty phase must lie in [0, {phase_count - 1}]")
-            if not 0.0 <= minimum <= 1.0:
-                raise ValueError("minimum_difficulty values must lie in [0, 1]")
-            eligible &= (phase != int(phase_id)) | (difficulty >= float(minimum))
-    if maximum_difficulty is not None:
-        for phase_id, maximum in maximum_difficulty:
-            if not 0 <= int(phase_id) < phase_count:
-                raise ValueError(f"maximum_difficulty phase must lie in [0, {phase_count - 1}]")
-            if not 0.0 <= maximum <= 1.0:
-                raise ValueError("maximum_difficulty values must lie in [0, 1]")
-            eligible &= (phase != int(phase_id)) | (difficulty <= float(maximum))
+    eligible = _apply_difficulty_bounds(eligible, phase, difficulty, minimum_difficulty, minimum=True)
+    eligible = _apply_difficulty_bounds(eligible, phase, difficulty, maximum_difficulty, minimum=False)
 
     eligible_counts = torch.bincount(phase[eligible], minlength=phase_count)
     missing = (weights > 0.0) & (eligible_counts == 0)
@@ -55,11 +76,21 @@ def _phase_balanced_row_weights(
     return torch.where(eligible, row_weights, torch.zeros_like(row_weights))
 
 
-def _ids(env: ManagerBasedRLEnv, env_ids: Sequence[int] | torch.Tensor | slice) -> torch.Tensor:
+def _ids(env: ManagerBasedRLEnv, env_ids: Sequence[int] | torch.Tensor | slice | None) -> torch.Tensor:
     """Normalize event-manager environment indices."""
+    if env_ids is None:
+        return torch.arange(env.num_envs, device=env.device, dtype=torch.long)
     if isinstance(env_ids, slice):
         return torch.arange(env.num_envs, device=env.device, dtype=torch.long)[env_ids]
-    return torch.as_tensor(env_ids, device=env.device, dtype=torch.long).flatten()
+    raw_ids = torch.as_tensor(env_ids)
+    if raw_ids.ndim > 1 or raw_ids.dtype not in _INTEGER_DTYPES:
+        raise ValueError("env_ids must contain integers in a scalar or one-dimensional sequence")
+    if raw_ids.device.type == "cpu":
+        if bool(((raw_ids < 0) | (raw_ids >= env.num_envs)).any()):
+            raise ValueError(f"env_ids must lie in [0, {env.num_envs - 1}]")
+        if raw_ids.numel() != torch.unique(raw_ids).numel():
+            raise ValueError("env_ids must not contain duplicates")
+    return raw_ids.to(device=env.device, dtype=torch.long).reshape(-1)
 
 
 def _reset_progress_seed(
@@ -106,7 +137,6 @@ class ResetFromDataset(ManagerTermBase):
         self.row_count = int(artifact["row_count"])
         self._cursor = 0
         phase = self.states["phase"]
-        self.phase_counts = torch.bincount(phase, minlength=int(phase.max().item()) + 1)
         phase_weights = cfg.params.get("phase_weights")
         self.row_weights = None
         if phase_weights is not None:

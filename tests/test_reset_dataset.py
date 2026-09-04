@@ -1,16 +1,15 @@
 """Portable reset-artifact schema tests."""
 
+from types import SimpleNamespace
+
 import pytest
 import torch
 
 from isaaclab_tutorial.assets import RESET_DATASET
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
-from isaaclab_tutorial.tasks.place_vial.mdp.events import _phase_balanced_row_weights
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import (
-    RESET_CURRICULA,
-    RESET_MAXIMUM_DIFFICULTY,
-    RESET_MINIMUM_DIFFICULTY,
-)
+from isaaclab_tutorial.tasks.place_vial.mdp.events import _ids, _phase_balanced_row_weights
+from isaaclab_tutorial.tasks.place_vial.reset import dataset as reset_dataset
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 
@@ -44,6 +43,57 @@ def test_reset_dataset_rejects_non_unit_quaternion(tmp_path):
     states["vial_pose"][0, 6] = 0.5
     with pytest.raises(ValueError, match="normalized"):
         save_reset_dataset(tmp_path / "bad.pt", states, generator={}, validation={})
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("phase", torch.zeros(8), "integer dtype"),
+        ("grasped", torch.zeros(8, dtype=torch.long), "boolean dtype"),
+        ("joint_target", torch.zeros((8, 6), dtype=torch.long), "floating-point dtype"),
+        ("vial_pose", None, "must be a tensor"),
+    ),
+)
+def test_reset_dataset_rejects_invalid_field_types(tmp_path, field, value, message):
+    states = _states()
+    states[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        save_reset_dataset(tmp_path / "bad.pt", states, generator={}, validation={})
+
+
+def test_reset_dataset_write_is_atomic(tmp_path, monkeypatch):
+    path = tmp_path / "resets.pt"
+    path.write_bytes(b"previous artifact")
+
+    def fail_save(*_args, **_kwargs):
+        raise RuntimeError("save failed")
+
+    monkeypatch.setattr(reset_dataset.torch, "save", fail_save)
+
+    with pytest.raises(RuntimeError, match="save failed"):
+        save_reset_dataset(path, _states(), generator={}, validation={})
+
+    assert path.read_bytes() == b"previous artifact"
+    assert list(tmp_path.glob(".resets.pt.*")) == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("states", None, "must be a mapping"),
+        ("generator", [], "metadata must be a dictionary"),
+        ("row_count", True, "row_count"),
+    ),
+)
+def test_reset_dataset_rejects_malformed_artifacts(tmp_path, field, value, message):
+    path = tmp_path / "resets.pt"
+    artifact = save_reset_dataset(path, _states(), generator={}, validation={})
+    artifact[field] = value
+    torch.save(artifact, path)
+
+    with pytest.raises(ValueError, match=message):
+        load_reset_dataset(path)
 
 
 def test_curriculum_probability_is_independent_of_eligible_row_count():
@@ -90,16 +140,43 @@ def test_curriculum_can_bound_a_local_bridge_on_both_sides():
     assert row_weights.tolist() == pytest.approx([0.0, 0.5, 0.5, 0.5, 0.5, 0.0])
 
 
+@pytest.mark.parametrize(
+    ("phase", "difficulty", "message"),
+    (
+        (torch.tensor([], dtype=torch.long), torch.tensor([]), "nonempty"),
+        (torch.tensor([0.0]), torch.tensor([0.0]), "nonnegative integers"),
+        (torch.tensor([-1]), torch.tensor([0.0]), "nonnegative integers"),
+        (torch.tensor([0]), torch.tensor([float("nan")]), "finite floating-point"),
+        (torch.tensor([0]), torch.tensor([1.1]), "lie in"),
+    ),
+)
+def test_curriculum_rejects_malformed_state_columns(phase, difficulty, message):
+    with pytest.raises(ValueError, match=message):
+        _phase_balanced_row_weights(phase, difficulty, phase_weights=(1.0,), minimum_difficulty=None)
+
+
+def test_reset_ids_are_validated():
+    env = SimpleNamespace(num_envs=3, device="cpu")
+
+    assert _ids(env, None).tolist() == [0, 1, 2]
+    assert _ids(env, 1).tolist() == [1]
+    with pytest.raises(ValueError, match="lie in"):
+        _ids(env, [-1])
+    with pytest.raises(ValueError, match="duplicates"):
+        _ids(env, [1, 1])
+    with pytest.raises(ValueError, match="integers"):
+        _ids(env, [1.0])
+
+
 def test_every_named_curriculum_has_eligible_rows_in_bundled_artifact():
     states = load_reset_dataset(RESET_DATASET)["states"]
 
-    for name, phase_weights in RESET_CURRICULA.items():
+    for phase_weights in RESET_CURRICULA.values():
         row_weights = _phase_balanced_row_weights(
             states["phase"],
             states["difficulty"],
             phase_weights,
-            RESET_MINIMUM_DIFFICULTY.get(name),
-            RESET_MAXIMUM_DIFFICULTY.get(name),
+            minimum_difficulty=None,
         )
         assert torch.isfinite(row_weights).all()
         assert row_weights.sum() > 0.0

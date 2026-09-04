@@ -37,21 +37,3 @@ RESET_CURRICULA = {
     "prefix_6": (5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0),
     "prefix_7": (6.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0),
 }
-
-RESET_MINIMUM_DIFFICULTY: dict[str, tuple[tuple[int, float], ...]] = {}
-RESET_MAXIMUM_DIFFICULTY: dict[str, tuple[tuple[int, float], ...]] = {}
-
-
-def reset_curriculum_weights() -> tuple[float, ...]:
-    """Return the validated full-horizon training distribution."""
-    return RESET_CURRICULA["horizon"]
-
-
-def reset_curriculum_minimum_difficulty() -> tuple[tuple[int, float], ...] | None:
-    """Return the fixed training lower bound."""
-    return None
-
-
-def reset_curriculum_maximum_difficulty() -> tuple[tuple[int, float], ...] | None:
-    """Return the fixed training upper bound."""
-    return None
