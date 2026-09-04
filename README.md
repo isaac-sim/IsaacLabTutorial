@@ -1,5 +1,9 @@
 # SO-101 vial placement
 
+<p align="center">
+  <img src="media/demo.gif" alt="SO-101 arm placing a vial into a four-hole rack" width="100%">
+</p>
+
 This Isaac Lab 3.0 tutorial trains an SO-101 arm to pick up a vial and place it in a four-hole rack. It is an
 installable downstream task package: the shared Isaac Lab CLI discovers the package through the `isaaclab.tasks`
 entry-point group, so this repository does not carry copies of the train, play, or benchmark launchers.
