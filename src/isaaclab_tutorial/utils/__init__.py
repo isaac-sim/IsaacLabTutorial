@@ -1,1 +1,1 @@
-"""Maintenance and evaluation utilities for the tutorial."""
+"""Exact rollout evaluation utilities for the tutorial."""

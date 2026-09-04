@@ -18,6 +18,19 @@ gym.register(
 )
 
 gym.register(
+    id="IsaacTutorial-Place-Vial-SO101-Camera-Distillation",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{_PACKAGE}.camera_env_cfg:SO101VialCameraDistillationEnvCfg",
+        "rsl_rl_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg"
+        ),
+        "default_agent": "rsl_rl",
+    },
+)
+
+gym.register(
     id="IsaacTutorial-Place-Vial-SO101-Camera",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,

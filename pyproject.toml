@@ -14,6 +14,10 @@ dependencies = ["isaaclab"]
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"
 
+[project.scripts]
+generate-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:generate_main"
+view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_main"
+
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 

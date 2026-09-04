@@ -6,10 +6,6 @@ import pytest
 import torch
 from isaaclab_rl import rsl_rl
 
-from isaaclab_tutorial.tasks.place_vial.config.so101.agents.models import (
-    replacement_post_lift_gate,
-    residual_post_lift_gate,
-)
 from isaaclab_tutorial.utils import evaluation
 from isaaclab_tutorial.utils.evaluation import _install_episode_counter
 
@@ -22,19 +18,6 @@ def test_insertion_counter_selects_phase_six(monkeypatch):
 
     assert evaluation.PLAY_RESET_PHASE == 6
     assert result == {"target": 1024, "once_per_env": True, "sequential_resets": True}
-
-
-def test_post_lift_gate_predicates_share_the_deployed_thresholds():
-    joint_position = torch.tensor(
-        [
-            [0.0, 0.76, 0.0, -1.61, 0.0, 0.24],
-            [0.0, 0.76, 0.0, -1.59, 0.0, 0.24],
-            [0.0, 0.74, 0.0, -1.61, 0.0, 0.24],
-        ]
-    )
-
-    assert residual_post_lift_gate(joint_position).squeeze(-1).tolist() == [True, True, False]
-    assert replacement_post_lift_gate(joint_position).squeeze(-1).tolist() == [True, False, False]
 
 
 def test_bridge_counter_uses_every_canonical_bridge_row_once(monkeypatch):

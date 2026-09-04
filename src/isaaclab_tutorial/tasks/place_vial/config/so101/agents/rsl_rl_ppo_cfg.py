@@ -25,8 +25,8 @@ def _algorithm(*, learning_rate: float) -> RslRlPpoAlgorithmCfg:
 class SO101StatePPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 42
     num_steps_per_env = 64
-    max_iterations = 2000
-    save_interval = 5
+    max_iterations = 800
+    save_interval = 25
     experiment_name = "so101_vial_state"
     run_name = "newton_mjwarp"
     obs_groups = {"actor": ["policy"], "critic": ["critic"]}

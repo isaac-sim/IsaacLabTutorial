@@ -3,11 +3,17 @@
 import pytest
 from isaaclab_assets.robots.so101 import SO101_CFG
 
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_distillation_cfg import (
+    SO101CameraDistillationRunnerCfg,
+)
 from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
     SO101CameraPPORunnerCfg,
     SO101StatePPORunnerCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
+from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import (
+    SO101VialCameraDistillationEnvCfg,
+    SO101VialCameraEnvCfg,
+)
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     ARM_JOINTS,
     JOINTS,
@@ -87,6 +93,8 @@ def test_camera_actor_observation_boundary():
     assert cfg.scene.wrist_camera.update_latest_camera_pose is True
     assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
+    assert "teacher_state" not in cfg.observations.__dict__
+    assert "visual_geometry" not in cfg.observations.__dict__
     assert set(cfg.observations.proprioception.__dict__) >= {
         "joint_pos",
         "joint_vel",
@@ -98,11 +106,28 @@ def test_camera_actor_observation_boundary():
     assert cfg.observations.proprioception.enable_corruption is True
 
 
+def test_distillation_uses_coherent_canonical_trajectories():
+    cfg = SO101VialCameraDistillationEnvCfg()
+
+    assert type(cfg.scene) is type(SO101VialCameraEnvCfg().scene)
+    assert cfg.events.reset_from_dataset.params["phase_weights"] == RESET_CURRICULA["initial"]
+    assert set(cfg.observations.__dict__) >= {"teacher_state", "visual_geometry"}
+
+
 def test_agent_configs_match_task_observation_groups():
     state = SO101StatePPORunnerCfg()
     camera = SO101CameraPPORunnerCfg()
+    distillation = SO101CameraDistillationRunnerCfg()
 
     assert state.obs_groups == {"actor": ["policy"], "critic": ["critic"]}
     assert camera.obs_groups == {"actor": ["wrist_rgb", "proprioception"], "critic": ["critic"]}
+    assert distillation.obs_groups == {
+        "student": ["wrist_rgb", "proprioception"],
+        "teacher": ["teacher_state"],
+    }
+    assert distillation.clip_actions == pytest.approx(1.0)
+    assert "visual_geometry" not in distillation.obs_groups["student"]
+    assert distillation.algorithm.auxiliary_group == "visual_geometry"
+    assert distillation.algorithm.min_teacher_probability == pytest.approx(0.25)
     assert state.actor.distribution_cfg.init_std == pytest.approx(0.2)
     assert camera.actor.distribution_cfg.init_std == pytest.approx(0.1)

@@ -9,6 +9,7 @@ def test_task_registrations_are_module_qualified_and_use_rsl_rl():
     expected = {
         "IsaacTutorial-Place-Vial-SO101": "SO101VialEnvCfg",
         "IsaacTutorial-Place-Vial-SO101-Camera": "SO101VialCameraEnvCfg",
+        "IsaacTutorial-Place-Vial-SO101-Camera-Distillation": "SO101VialCameraDistillationEnvCfg",
     }
     for task_id, cfg_name in expected.items():
         spec = gym.spec(task_id)
@@ -23,6 +24,7 @@ def test_only_tutorial_tasks_are_registered():
     assert task_ids == {
         "IsaacTutorial-Place-Vial-SO101",
         "IsaacTutorial-Place-Vial-SO101-Camera",
+        "IsaacTutorial-Place-Vial-SO101-Camera-Distillation",
     }
 
 

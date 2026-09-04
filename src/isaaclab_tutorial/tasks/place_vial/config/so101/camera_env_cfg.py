@@ -11,9 +11,11 @@ from isaaclab_tasks.utils.presets import MultiBackendRendererCfg
 from isaaclab_tutorial.tasks.place_vial import mdp
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     CriticStateGroupCfg,
+    PolicyStateGroupCfg,
     SO101SceneCfg,
     SO101VialEnvCfg,
 )
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
 
 
 @configclass
@@ -75,12 +77,31 @@ class ProprioceptionCfg(ObsGroup):
 
 
 @configclass
+class VisualGeometryCfg(ObsGroup):
+    """Privileged localization labels used only by the training loss."""
+
+    target = ObsTerm(func=mdp.visual_geometry_target)
+
+    def __post_init__(self):
+        self.enable_corruption = False
+        self.concatenate_terms = True
+
+
+@configclass
 class CameraObservationsCfg:
     """Actor and asymmetric-critic observation groups."""
 
     wrist_rgb: WristImageCfg = WristImageCfg()
     proprioception: ProprioceptionCfg = ProprioceptionCfg()
     critic: CriticStateGroupCfg = CriticStateGroupCfg()
+
+
+@configclass
+class DistillationCameraObservationsCfg(CameraObservationsCfg):
+    """Camera observations plus simulator-only distillation labels."""
+
+    teacher_state: PolicyStateGroupCfg = PolicyStateGroupCfg()
+    visual_geometry: VisualGeometryCfg = VisualGeometryCfg()
 
 
 @configclass
@@ -96,3 +117,17 @@ class SO101VialCameraEnvCfg(SO101VialEnvCfg):
         super().play_mode()
         if not evaluation.EXACT_EVALUATION_ACTIVE:
             self.scene.num_envs = min(self.scene.num_envs, 8)
+
+
+@configclass
+class SO101VialCameraDistillationEnvCfg(SO101VialCameraEnvCfg):
+    """Coherent canonical trajectories for state-to-vision distillation."""
+
+    observations: DistillationCameraObservationsCfg = DistillationCameraObservationsCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.events.reset_from_dataset.params["sequential"] = False
+        self.events.reset_from_dataset.params["phase_weights"] = RESET_CURRICULA["initial"]
+        self.events.reset_from_dataset.params["minimum_difficulty"] = None
+        self.events.reset_from_dataset.params["maximum_difficulty"] = None

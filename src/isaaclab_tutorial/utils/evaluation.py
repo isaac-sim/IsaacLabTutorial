@@ -561,10 +561,6 @@ def _install_episode_counter(
         result = original_step(self, actions)
         step_count += 1
         if trace_interval and step_count % trace_interval == 0:
-            from isaaclab_tutorial.tasks.place_vial.config.so101.agents.models import (
-                replacement_post_lift_gate,
-                residual_post_lift_gate,
-            )
             from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
                 _gripper_openness,
                 _placement_values,
@@ -580,8 +576,6 @@ def _install_episode_counter(
             progress = self.unwrapped._so101_placement_progress
             robot = self.unwrapped.scene["robot"]
             joint_position = _tensor(robot.data.joint_pos)[0]
-            residual_gate = bool(residual_post_lift_gate(joint_position).squeeze())
-            replacement_gate = bool(replacement_post_lift_gate(joint_position).squeeze())
             print(
                 "SO101_EVAL_TRACE="
                 + json.dumps(
@@ -589,8 +583,6 @@ def _install_episode_counter(
                         "step": step_count,
                         "action": actions[0].detach().cpu().tolist(),
                         "joint_position": joint_position.detach().cpu().tolist(),
-                        "residual_gate": residual_gate,
-                        "replacement_gate": replacement_gate,
                         "grasp_center_m": grasp_center.detach().cpu().tolist(),
                         "vial_grasp_point_m": vial_point.detach().cpu().tolist(),
                         "grasp_distance_m": float((grasp_center - vial_point).norm()),

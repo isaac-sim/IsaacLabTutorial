@@ -11,7 +11,8 @@ entry-point group, so this repository does not carry copies of the train, play, 
 The registered tasks are:
 
 - `IsaacTutorial-Place-Vial-SO101` for state observations.
-- `IsaacTutorial-Place-Vial-SO101-Camera` for 64 × 64 wrist RGB and proprioception.
+- `IsaacTutorial-Place-Vial-SO101-Camera` for the direct-from-scratch 64 × 48 visual PPO baseline.
+- `IsaacTutorial-Place-Vial-SO101-Camera-Distillation` for training that visual policy from a state teacher.
 
 ## Setup
 
@@ -53,7 +54,7 @@ uv run isaaclab benchmark runtime \
   --visualizer none presets=newton_mjwarp,newton_renderer
 ```
 
-## Train and play
+## Train the state teacher
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
@@ -64,9 +65,11 @@ CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
 
 uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 1 --checkpoint checkpoints/model.pt --deterministic \
+  --num_envs 1 --checkpoint /path/to/state_model.pt --deterministic \
   --visualizer newton presets=newton_mjwarp
 ```
+
+Training writes checkpoints under `logs/rsl_rl/so101_vial_state/<run>/`; the final checkpoint is `model_799.pt`.
 
 The optional evaluation callback runs the tracked phase-zero starts once each and prints an `SO101_EVAL_RESULT` JSON
 record:
@@ -74,12 +77,73 @@ record:
 ```bash
 uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 1024 --checkpoint checkpoints/model.pt --deterministic \
+  --num_envs 1024 --checkpoint /path/to/state_model.pt --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp
 ```
 
+## Distill the wrist-camera policy
+
+Pass the finished state checkpoint to the dedicated distillation task. Distillation is single-GPU; use
+`CUDA_VISIBLE_DEVICES` to choose that GPU.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera-Distillation \
+  --num_envs 1024 --max_iterations 800 --seed 42 \
+  --checkpoint /path/to/state_teacher.pt \
+  --run_name wrist_distillation_seed42 --device cuda:0 \
+  --visualizer none presets=newton_mjwarp,newton_renderer
+```
+
+The distillation runner uses bounded replay DAgger: it begins with coherent teacher trajectories, gradually adds
+student recovery states, and retains a 25% teacher-action floor. The replay buffer preserves recent complete task
+trajectories instead of forgetting whichever motion phase was seen in the latest update. A
+training-only geometry head gives the camera encoder a dense localization target; the exported actor still consumes
+only wrist RGB and proprioception. The last 200 iterations also maintain a sparse stochastic weight average, so the
+final `model_799.pt` is stable despite ordinary supervised-learning checkpoint noise. Distillation checkpoints are
+written under `logs/rsl_rl/so101_vial_camera_distillation/<run>/`.
+
+Play the distilled policy interactively:
+
+```bash
+uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera-Distillation \
+  --num_envs 1 --checkpoint /path/to/distilled_model.pt --deterministic \
+  --visualizer newton presets=newton_mjwarp,newton_renderer
+```
+
+Evaluate a distilled checkpoint with the same exact 1,024-start contract:
+
+```bash
+uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera-Distillation \
+  --num_envs 1024 --checkpoint /path/to/distilled_model.pt --deterministic \
+  --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
+  --visualizer none presets=newton_mjwarp,newton_renderer
+```
+
+As a reference, a fresh seed-42 run on an RTX 6000 Ada took about 37 minutes for state training and 22 minutes for
+distillation. Its state teacher succeeded on 1,018 of 1,024 starts (99.4%). Repeated audits of the distilled policy
+were 67.6–72.9% successful with no unsafe rack contacts. Small variation between vision audits is expected from the
+renderer and observation randomization even with deterministic policy actions.
+
 A reference rollout is available at [`media/demo.mp4`](media/demo.mp4).
+
+## Reset dataset maintenance
+
+The checked-in reset dataset is ready for training. To regenerate or inspect a separate candidate without
+overwriting it:
+
+```bash
+uv run generate-so101-resets \
+  --output checkpoints/reset_poses.pt --device cuda:0 \
+  --visualizer none presets=newton_mjwarp
+
+uv run view-so101-resets \
+  --dataset checkpoints/reset_poses.pt --device cuda:0 \
+  --visualizer newton presets=newton_mjwarp
+```
 
 ## Task design
 
@@ -108,7 +172,7 @@ src/isaaclab_tutorial/
           agents/                 RSL-RL configurations and models
           env_cfg.py              task and physics configuration
           camera_env_cfg.py       wrist-camera task configuration
-  utils/                          evaluation and maintainer utilities
+  utils/                          exact rollout evaluation helpers
 tests/                            behavioral and configuration contracts
 ```
 
