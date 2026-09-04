@@ -1,60 +1,15 @@
 [build-system]
-requires = ["hatchling>=1.27"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.6,<0.13"]
+build-backend = "uv_build"
 
 [project]
-name = "so101-vial-place"
+name = "isaaclab-tutorial"
 version = "0.1.0"
-description = "Newton-native Isaac Lab tutorial for placing a vial with an SO-101 arm"
+description = "Isaac Lab tutorial for placing a vial with an SO-101 arm"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
-dependencies = [
-  "fast-simplification>=0.1.11",
-  "filelock",
-  "gymnasium>=1.2",
-  "h5py>=3.15",
-  "hidapi>=0.14",
-  "hydra-core",
-  "isaaclab",
-  "isaaclab-assets",
-  "isaaclab-experimental",
-  "isaaclab-newton",
-  "isaaclab-ov",
-  "isaaclab-physx",
-  "isaaclab-rl",
-  "isaaclab-tasks",
-  "isaaclab-visualizers",
-  "lazy-loader>=0.4",
-  "mujoco~=3.11.0",
-  "mujoco-warp~=3.11.0",
-  "numba>=0.63.1",
-  "numpy>=2",
-  "onnx>=1.18",
-  "onnxscript>=0.5",
-  "packaging",
-  "pillow>=12.1.1",
-  "prettytable>=3.3",
-  "protobuf>=4.25.8,!=5.26.0",
-  "psutil",
-  "pycollada>=0.9",
-  "pyglet>=2.1.6,<3",
-  "requests>=2.25",
-  "resolve-robotics-uri-py>=0.4",
-  "rich",
-  "rsl-rl-lib==5.4.1",
-  "scipy>=1.11",
-  "tensorboard",
-  "torch>=2.11",
-  "torchvision>=0.26",
-  "tqdm>=4.67",
-  "trimesh>=4.6.8",
-  "usd-exchange==2.3.0",
-  "newton[sim]>=1.2.0",
-  "newton-usd-schemas>=0.2.0",
-  "warp-lang==1.16.0",
-  "moviepy<2",
-]
+dependencies = ["isaaclab"]
 
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "so101_vial_place.tasks"
@@ -63,28 +18,20 @@ so101-vial-place = "so101_vial_place.tasks"
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv.sources]
-isaaclab = { path = "../IsaacLab/source/isaaclab", editable = true }
-isaaclab-assets = { path = "../IsaacLab/source/isaaclab_assets", editable = true }
-isaaclab-experimental = { path = "../IsaacLab/source/isaaclab_experimental", editable = true }
-isaaclab-newton = { path = "../IsaacLab/source/isaaclab_newton", editable = true }
-isaaclab-ov = { path = "../IsaacLab/source/isaaclab_ov", editable = true }
-isaaclab-physx = { path = "../IsaacLab/source/isaaclab_physx", editable = true }
-isaaclab-rl = { path = "../IsaacLab/source/isaaclab_rl", editable = true }
-isaaclab-tasks = { path = "../IsaacLab/source/isaaclab_tasks", editable = true }
-isaaclab-visualizers = { path = "../IsaacLab/source/isaaclab_visualizers", editable = true }
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "tools/wheel_builder" }
 
 [tool.uv]
 override-dependencies = [
   "mujoco~=3.11.0",
   "mujoco-warp~=3.11.0",
-  "newton @ git+https://github.com/newton-physics/newton.git@release-1.5",
+  "newton[sim] @ git+https://github.com/newton-physics/newton.git@release-1.5",
   "newton-usd-schemas>=0.4.1",
   "torch>=2.11",
   "torchvision>=0.26",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/so101_vial_place"]
+[tool.uv.build-backend]
+module-name = "so101_vial_place"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
