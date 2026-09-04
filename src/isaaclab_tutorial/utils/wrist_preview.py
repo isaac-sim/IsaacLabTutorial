@@ -9,8 +9,8 @@ import torch
 from isaaclab.utils.math import quat_apply_inverse
 from PIL import Image, ImageDraw
 
-from so101_vial_place.assets import RESET_DATASET
-from so101_vial_place.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset
+from isaaclab_tutorial.assets import RESET_DATASET
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset
 
 
 def _rgb(env) -> torch.Tensor:
@@ -29,21 +29,21 @@ def capture_wrist_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output_dir", type=Path, default=Path("checkpoints/screenshots"))
     parser.add_argument("--dataset", type=Path, default=RESET_DATASET)
     parser.add_argument("--width", type=int, default=64)
-    parser.add_argument("--height", type=int, default=64)
+    parser.add_argument("--height", type=int, default=48)
     add_launcher_args(parser)
     args = parser.parse_args(argv)
 
     from isaaclab.envs import ManagerBasedRLEnv
 
-    from so101_vial_place.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
-    from so101_vial_place.tasks.place_vial.config.so101.state_env_cfg import InitialEventsCfg, ResetJointActionsCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import ResetEventsCfg, ResetJointActionsCfg
 
     env_cfg = SO101VialCameraEnvCfg()
     env_cfg.scene.num_envs = 1
     env_cfg.scene.wrist_camera.width = args.width
     env_cfg.scene.wrist_camera.height = args.height
     env_cfg.observations.wrist_rgb.enable_corruption = False
-    env_cfg.events = InitialEventsCfg()
+    env_cfg.events = ResetEventsCfg()
     env_cfg.actions = ResetJointActionsCfg()
     env_cfg.rewards = None
     env_cfg.terminations = None

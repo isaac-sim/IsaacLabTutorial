@@ -75,7 +75,7 @@ record:
 uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 1024 --checkpoint checkpoints/model.pt --deterministic \
-  --external_callback so101_vial_place.utils.evaluation.install_episode_counter \
+  --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp
 ```
 
@@ -97,7 +97,7 @@ The task-wide MDP and reset implementation is shared by every robot configuratio
 physics settings, registrations, and agent configurations live under `config/so101`.
 
 ```text
-src/so101_vial_place/
+src/isaaclab_tutorial/
   assets/                         workshop and reset assets
   tasks/
     place_vial/
@@ -106,10 +106,8 @@ src/so101_vial_place/
       config/
         so101/
           agents/                 RSL-RL configurations and models
-          state_env_cfg.py        state task configuration
+          env_cfg.py              task and physics configuration
           camera_env_cfg.py       wrist-camera task configuration
-          control.py              SO-101 command conventions
-          physics.py              SO-101 contact material setup
   utils/                          evaluation and maintainer utilities
 tests/                            behavioral and configuration contracts
 ```

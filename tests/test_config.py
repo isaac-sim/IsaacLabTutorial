@@ -3,19 +3,21 @@
 import pytest
 from isaaclab_assets.robots.so101 import SO101_CFG
 
-from so101_vial_place.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
     SO101CameraPPORunnerCfg,
     SO101StatePPORunnerCfg,
 )
-from so101_vial_place.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
-from so101_vial_place.tasks.place_vial.config.so101.control import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
+    ARM_JOINTS,
+    JOINTS,
     PREGRASP_GRIPPER_POSITION,
     TABLETOP_VIAL_POSITION,
     WORKSHOP_INITIAL_JOINT_POSITION,
+    SO101VialEnvCfg,
 )
-from so101_vial_place.tasks.place_vial.config.so101.state_env_cfg import ARM_JOINTS, JOINTS, SO101VialEnvCfg
-from so101_vial_place.tasks.place_vial.reset.curriculum import RESET_CURRICULA
-from so101_vial_place.utils import evaluation
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
+from isaaclab_tutorial.utils import evaluation
 
 
 def test_state_task_control_and_physics_contract():
@@ -74,10 +76,17 @@ def test_camera_actor_observation_boundary():
     cfg = SO101VialCameraEnvCfg()
 
     assert cfg.scene.num_envs == 1024
-    assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 64)
-    assert cfg.scene.wrist_camera.prim_path.endswith("/gripper/wowrobo_2MP_camera")
+    assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 48)
+    assert cfg.scene.wrist_camera.prim_path == "{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera"
     assert cfg.scene.wrist_camera.spawn is None
+    assert cfg.scene.wrist_camera.offset.pos == (0.0, 0.0, 0.0)
+    assert cfg.scene.wrist_camera.offset.rot == (0.0, 0.0, 0.0, 1.0)
+    assert cfg.scene.wrist_camera.offset.convention == "ros"
+    assert cfg.scene.wrist_camera.data_types == ["rgb"]
     assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
+    assert cfg.scene.wrist_camera.update_latest_camera_pose is True
+    assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
+    assert cfg.scene.robot.spawn.func.__name__ == "_spawn_so101_with_camera_overrides"
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
     assert set(cfg.observations.proprioception.__dict__) >= {
         "joint_pos",

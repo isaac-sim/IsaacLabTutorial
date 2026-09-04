@@ -4,6 +4,15 @@ from __future__ import annotations
 
 import argparse
 
+_WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION = (
+    0.14830200,
+    0.64005189,
+    -0.42359659,
+    1.13539731,
+    -1.65263290,
+    0.24830763,
+)
+
 
 def _tensor(value):
     return value.torch if hasattr(value, "torch") else value
@@ -25,10 +34,9 @@ def inspect_robot_main(argv: list[str] | None = None) -> int:
     from isaaclab.utils.configclass import configclass
     from isaaclab.utils.math import quat_apply_inverse
 
-    from so101_vial_place.tasks.place_vial import mdp
-    from so101_vial_place.tasks.place_vial.config.so101.control import WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION
-    from so101_vial_place.tasks.place_vial.config.so101.state_env_cfg import SO101VialGeneratorEnvCfg
-    from so101_vial_place.tasks.place_vial.mdp.terms import fingertip_positions_w
+    from isaaclab_tutorial.tasks.place_vial import mdp
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import fingertip_positions_w
 
     @configclass
     class _RobotObservations(ObsGroup):
@@ -157,7 +165,9 @@ def inspect_robot_main(argv: list[str] | None = None) -> int:
             # transforms. Projecting the loaded-USD pad midpoint into the vial
             # frame provides an evidence-based axial grasp location.
             vial = env.scene["vial"]
-            measured_pregrasp = joint_position.new_tensor(WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION).unsqueeze(0)
+            measured_pregrasp = joint_position.new_tensor(
+                _WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION
+            ).unsqueeze(0)
             robot.write_joint_position_to_sim_index(position=measured_pregrasp)
             robot.write_joint_velocity_to_sim_index(velocity=measured_pregrasp.new_zeros(measured_pregrasp.shape))
             vial_default_state = _tensor(vial.data.default_root_state).clone()

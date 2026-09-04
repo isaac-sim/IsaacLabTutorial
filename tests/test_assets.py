@@ -1,6 +1,6 @@
 import re
 
-from so101_vial_place.assets import (
+from isaaclab_tutorial.assets import (
     ASSET_ROOT,
     RACK_USD,
     VIAL_USD,

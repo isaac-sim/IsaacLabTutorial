@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 from isaaclab.managers import EventTermCfg, ManagerTermBase
 
-from ..reset.dataset import load_reset_dataset
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv

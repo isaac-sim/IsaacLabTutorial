@@ -1,21 +1,19 @@
 import pytest
 import torch
 
-from so101_vial_place.tasks.place_vial.config.so101.control import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     GRASP_GRIPPER_POSITION,
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
     TABLETOP_VIAL_HEADING_RANGE,
-    TABLETOP_VIAL_POSITION_HALF_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
-    WORKSHOP_PREGRASP_JOINT_POSITION,
-    WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION,
-    WORKSHOP_TASK_WAYPOINTS,
-    workshop_gripper_position,
 )
-from so101_vial_place.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
-from so101_vial_place.tasks.place_vial.reset.generator import (
+from isaaclab_tutorial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
+from isaaclab_tutorial.tasks.place_vial.reset.generator import (
     PREGRASP_PROOF_DIFFICULTY,
+    TABLETOP_VIAL_POSITION_HALF_RANGE,
+    WORKSHOP_PREGRASP_JOINT_POSITION,
+    WORKSHOP_TASK_WAYPOINTS,
     _represented_lift,
     measured_lift_progress,
 )
@@ -36,12 +34,8 @@ def test_tabletop_reset_region_is_modest_but_requires_object_relative_reaching()
 
 
 def test_gripper_commands_follow_real_robot_mapping():
-    assert workshop_gripper_position(0.0) == pytest.approx(torch.deg2rad(torch.tensor(-10.0)).item())
-    assert workshop_gripper_position(100.0) == pytest.approx(torch.deg2rad(torch.tensor(100.0)).item())
     assert GRASP_GRIPPER_POSITION < PREGRASP_GRIPPER_POSITION < RELEASE_GRIPPER_POSITION
     assert len(WORKSHOP_PREGRASP_JOINT_POSITION) == 6
-    assert len(WORKSHOP_PREGRASP_MEASURED_JOINT_POSITION) == 6
-    assert WORKSHOP_PREGRASP_JOINT_POSITION[-1] == pytest.approx(workshop_gripper_position(21.711), abs=1.0e-6)
     assert (
         pytest.approx(
             (-0.1221070742, -0.9066845838, 0.1900876486, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)

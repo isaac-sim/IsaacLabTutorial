@@ -1,6 +1,6 @@
 import torch
 
-from so101_vial_place.tasks.place_vial.mdp.progress import PlacementProgress
+from isaaclab_tutorial.tasks.place_vial.mdp.progress import PlacementProgress
 
 
 def test_stages_are_gated_and_success_requires_stability():

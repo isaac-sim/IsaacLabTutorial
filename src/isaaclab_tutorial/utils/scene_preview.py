@@ -28,7 +28,7 @@ def capture_main(argv: list[str] | None = None) -> int:
 
     from isaaclab.envs import ManagerBasedRLEnv
 
-    from so101_vial_place.tasks.place_vial.config.so101.state_env_cfg import SO101VialGeneratorEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
 
     env_cfg = SO101VialGeneratorEnvCfg()
     env_cfg.scene.num_envs = 1

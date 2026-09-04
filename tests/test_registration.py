@@ -2,7 +2,7 @@ import importlib
 
 import gymnasium as gym
 
-import so101_vial_place.tasks  # noqa: F401
+import isaaclab_tutorial.tasks  # noqa: F401
 
 
 def test_task_registrations_are_module_qualified_and_use_rsl_rl():

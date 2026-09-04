@@ -36,9 +36,9 @@ def install_canonical_bridge_reset_recorder() -> list[str]:
     PLAY_RESET_PHASE = 0
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
-    from so101_vial_place.assets import CANONICAL_BRIDGE_RESET_DATASET, RESET_DATASET
-    from so101_vial_place.tasks.place_vial.mdp.terms import _tensor, bilateral_contact
-    from so101_vial_place.tasks.place_vial.reset.dataset import load_reset_dataset, save_reset_dataset
+    from isaaclab_tutorial.assets import CANONICAL_BRIDGE_RESET_DATASET, RESET_DATASET
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import _tensor, bilateral_contact
+    from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset, save_reset_dataset
 
     original_step = RslRlVecEnvWrapper.step
     capture_steps = {450, 510, 570, 630, 690, 750, 810, 870}
@@ -208,7 +208,7 @@ def install_state_video_recorder() -> list[str]:
     output_prefix = os.environ.get("SO101_STATE_VIDEO_PREFIX", STATE_VIDEO_PREFIX)
     from isaaclab.envs.utils.video_recorder_cfg import VideoRecorderCfg
 
-    from so101_vial_place.tasks.place_vial.config.so101.state_env_cfg import SO101VialEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialEnvCfg
 
     original_post_init = SO101VialEnvCfg.__post_init__
 
@@ -240,7 +240,7 @@ def install_camera_video_recorders() -> list[str]:
     from isaaclab.envs.utils.video_recorder import VideoRecorder
     from isaaclab.envs.utils.video_recorder_cfg import VideoRecorderCfg
 
-    from so101_vial_place.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import SO101VialCameraEnvCfg
 
     original_post_init = SO101VialCameraEnvCfg.__post_init__
 
@@ -359,8 +359,8 @@ def install_bridge_episode_counter() -> list[str]:
     """Audit deterministic policy behavior from canonical bridge resets."""
     global PLAY_RESET_PHASE, PLAY_RESET_DATASET
 
-    from so101_vial_place.assets import CANONICAL_BRIDGE_RESET_DATASET
-    from so101_vial_place.tasks.place_vial.reset.dataset import load_reset_dataset
+    from isaaclab_tutorial.assets import CANONICAL_BRIDGE_RESET_DATASET
+    from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 
     PLAY_RESET_PHASE = 4
     PLAY_RESET_DATASET = str(CANONICAL_BRIDGE_RESET_DATASET)
@@ -377,8 +377,8 @@ def install_bridge_zero_episode_counter() -> list[str]:
     """Audit passive stability from every connected canonical bridge reset."""
     global PLAY_RESET_PHASE, PLAY_RESET_DATASET
 
-    from so101_vial_place.assets import CANONICAL_BRIDGE_RESET_DATASET
-    from so101_vial_place.tasks.place_vial.reset.dataset import load_reset_dataset
+    from isaaclab_tutorial.assets import CANONICAL_BRIDGE_RESET_DATASET
+    from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 
     PLAY_RESET_PHASE = 4
     PLAY_RESET_DATASET = str(CANONICAL_BRIDGE_RESET_DATASET)
@@ -411,8 +411,8 @@ def _install_bridge_action_probe(action_probe: str) -> list[str]:
     """Install an exact connected-bridge audit with a diagnostic action mask."""
     global PLAY_RESET_PHASE, PLAY_RESET_DATASET
 
-    from so101_vial_place.assets import CANONICAL_BRIDGE_RESET_DATASET
-    from so101_vial_place.tasks.place_vial.reset.dataset import load_reset_dataset
+    from isaaclab_tutorial.assets import CANONICAL_BRIDGE_RESET_DATASET
+    from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 
     PLAY_RESET_PHASE = 4
     PLAY_RESET_DATASET = str(CANONICAL_BRIDGE_RESET_DATASET)
@@ -430,7 +430,7 @@ def install_bridge_trace_episode_counter() -> list[str]:
     """Trace one deterministic policy trajectory from a canonical bridge reset."""
     global PLAY_RESET_PHASE, PLAY_RESET_DATASET
 
-    from so101_vial_place.assets import CANONICAL_BRIDGE_RESET_DATASET
+    from isaaclab_tutorial.assets import CANONICAL_BRIDGE_RESET_DATASET
 
     PLAY_RESET_PHASE = 4
     PLAY_RESET_DATASET = str(CANONICAL_BRIDGE_RESET_DATASET)
@@ -561,11 +561,11 @@ def _install_episode_counter(
         result = original_step(self, actions)
         step_count += 1
         if trace_interval and step_count % trace_interval == 0:
-            from so101_vial_place.tasks.place_vial.config.so101.agents.models import (
+            from isaaclab_tutorial.tasks.place_vial.config.so101.agents.models import (
                 replacement_post_lift_gate,
                 residual_post_lift_gate,
             )
-            from so101_vial_place.tasks.place_vial.mdp.terms import (
+            from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
                 _gripper_openness,
                 _placement_values,
                 _tensor,
@@ -705,7 +705,7 @@ def _install_episode_counter(
                 }
                 insertion_summary = None
                 if insertion_states:
-                    from so101_vial_place.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT
+                    from isaaclab_tutorial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT
 
                     state = torch.cat(insertion_states, dim=0)
                     radial = torch.linalg.vector_norm(state[:, :2], dim=-1)

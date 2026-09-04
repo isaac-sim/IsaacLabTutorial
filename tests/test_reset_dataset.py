@@ -3,15 +3,15 @@
 import pytest
 import torch
 
-from so101_vial_place.assets import RESET_DATASET
-from so101_vial_place.tasks.place_vial.config.so101.control import WORKSHOP_INITIAL_JOINT_POSITION
-from so101_vial_place.tasks.place_vial.mdp.events import _phase_balanced_row_weights
-from so101_vial_place.tasks.place_vial.reset.curriculum import (
+from isaaclab_tutorial.assets import RESET_DATASET
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
+from isaaclab_tutorial.tasks.place_vial.mdp.events import _phase_balanced_row_weights
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import (
     RESET_CURRICULA,
     RESET_MAXIMUM_DIFFICULTY,
     RESET_MINIMUM_DIFFICULTY,
 )
-from so101_vial_place.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 
 def _states(rows: int = 8) -> dict[str, torch.Tensor]:

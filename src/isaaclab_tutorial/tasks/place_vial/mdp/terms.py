@@ -9,14 +9,14 @@ import torch
 from isaaclab.managers import ManagerTermBase, ObservationTermCfg, RewardTermCfg, SceneEntityCfg, TerminationTermCfg
 from isaaclab.utils.math import quat_apply, quat_apply_inverse, subtract_frame_transforms
 
-from .geometry import (
+from isaaclab_tutorial.tasks.place_vial.mdp.geometry import (
     cylinder_lowest_offset,
     inside_bounds,
     rack_local_position,
     symmetric_axial_keypoint_error,
     vertical_alignment,
 )
-from .progress import PlacementProgress
+from isaaclab_tutorial.tasks.place_vial.mdp.progress import PlacementProgress
 
 if TYPE_CHECKING:
     from isaaclab.assets import Articulation, RigidObject

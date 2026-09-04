@@ -6,7 +6,7 @@ import torch
 from isaaclab.envs.mdp.actions import RelativeJointPositionAction, RelativeJointPositionActionCfg
 from isaaclab.utils.configclass import configclass
 
-from ..config.so101.control import GRIPPER_ACTION_THRESHOLD
+GRIPPER_ACTION_THRESHOLD = 0.05
 
 
 def _tensor(value):

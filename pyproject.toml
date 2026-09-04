@@ -12,7 +12,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = ["isaaclab"]
 
 [project.entry-points."isaaclab.tasks"]
-so101-vial-place = "so101_vial_place.tasks"
+so101-vial-place = "isaaclab_tutorial.tasks"
 
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
@@ -31,7 +31,7 @@ override-dependencies = [
 ]
 
 [tool.uv.build-backend]
-module-name = "so101_vial_place"
+module-name = "isaaclab_tutorial"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

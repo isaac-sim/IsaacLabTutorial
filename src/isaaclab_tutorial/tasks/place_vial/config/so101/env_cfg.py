@@ -1,6 +1,12 @@
 """Manager-based SO-101 vial placement task with physical reset replay."""
 
+from __future__ import annotations
+
+import math
+from typing import Any
+
 import isaaclab.sim as sim_utils
+import newton
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
@@ -10,29 +16,122 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.physics import PhysicsEvent
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
+from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
+from isaaclab.sim.utils import clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
 from isaaclab_assets.robots.so101 import SO101_CFG
-from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg
+from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
 from isaaclab_tasks.utils import PresetCfg
+from pxr import Gf
 
-from so101_vial_place.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
-
-from ... import mdp
-from ...mdp.actions import SoftLimitRelativeGripperActionCfg, SoftLimitRelativeJointPositionActionCfg
-from ...reset import curriculum as reset_cfg
-from .control import (
-    GRASP_GRIPPER_POSITION,
-    RELEASE_GRIPPER_POSITION,
-    TABLETOP_VIAL_HEADING_RANGE,
-    TABLETOP_VIAL_POSITION,
-    WORKSHOP_INITIAL_JOINT_POSITION,
+from isaaclab_tutorial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
+from isaaclab_tutorial.tasks.place_vial import mdp
+from isaaclab_tutorial.tasks.place_vial.mdp.actions import (
+    SoftLimitRelativeGripperActionCfg,
+    SoftLimitRelativeJointPositionActionCfg,
 )
-from .physics import register_so101_contact_model
+from isaaclab_tutorial.tasks.place_vial.reset import curriculum as reset_cfg
 
-register_so101_contact_model()
+TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
+TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
+
+# Map workshop commands onto the USD's [-10, 100] degree range.
+PREGRASP_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 22.4)
+GRASP_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 1.0)
+RELEASE_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 42.7)
+
+WORKSHOP_INITIAL_JOINT_POSITION = (
+    -0.1221070742,
+    -0.9066845838,
+    0.1900876486,
+    1.4797928525,
+    -0.8044013083,
+    PREGRASP_GRIPPER_POSITION,
+)
+
+_CONTACT_STIFFNESS = 1.57e5
+_CONTACT_DAMPING = 1.12e3
+_FRICTION = 0.7
+_ROLLING_FRICTION = 0.05
+_TORSIONAL_FRICTION = 0.005
+_SOLIMP = (0.7, 0.95, 0.0001, 0.5, 2.0)
+_SOLREF = (0.002, 1.5)
+_contact_model_registered = False
+
+
+def _apply_camera_clipping_range(stage: Any, robot_prim_path: str) -> None:
+    camera = stage.GetPrimAtPath(f"{robot_prim_path}/gripper/wowrobo_2MP_camera")
+    camera.GetAttribute("clippingRange").Set(Gf.Vec2f(0.001, 5.0))
+
+
+@clone
+def _spawn_so101_with_camera_overrides(
+    prim_path: str,
+    cfg: Any,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **kwargs,
+):
+    prim = spawn_from_usd(
+        prim_path,
+        cfg,
+        translation=translation,
+        orientation=orientation,
+        **kwargs,
+    )
+    _apply_camera_clipping_range(prim.GetStage(), prim_path)
+    return prim
+
+
+WORKSHOP_SO101_CFG = SO101_CFG.copy()
+WORKSHOP_SO101_CFG.spawn.func = _spawn_so101_with_camera_overrides
+
+
+def _initialize_contacts(_event: PhysicsEvent) -> None:
+    """Apply the workshop-validated contact model to every Newton shape."""
+    builder = NewtonManager._builder
+    if builder is None:
+        return
+
+    num_shapes = len(builder.shape_body)
+    for shape_index in range(num_shapes):
+        builder.shape_material_ke[shape_index] = _CONTACT_STIFFNESS
+        builder.shape_material_kd[shape_index] = _CONTACT_DAMPING
+        builder.shape_material_mu[shape_index] = _FRICTION
+        builder.shape_material_mu_rolling[shape_index] = _ROLLING_FRICTION
+        builder.shape_material_mu_torsional[shape_index] = _TORSIONAL_FRICTION
+
+    # Prototype builders register these attributes, but Newton's cloner does
+    # not currently carry that registration to the main builder.
+    newton.solvers.SolverMuJoCo.register_custom_attributes(builder)
+    for name, value in (("mujoco:geom_solimp", _SOLIMP), ("mujoco:geom_solref", _SOLREF)):
+        attribute = builder.custom_attributes.get(name)
+        if attribute is None:
+            continue
+        if attribute.values is None:
+            attribute.values = {}
+        for shape_index in range(num_shapes):
+            attribute.values[shape_index] = value
+
+
+def _register_contact_model() -> None:
+    """Register the contact initializer once per process."""
+    global _contact_model_registered
+    if _contact_model_registered:
+        return
+    NewtonManager.register_callback(
+        _initialize_contacts,
+        PhysicsEvent.MODEL_INIT,
+        name="so101_workshop_contact_model",
+    )
+    _contact_model_registered = True
+
+
+_register_contact_model()
 
 JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"]
 ARM_JOINTS = JOINTS[:-1]
@@ -42,19 +141,17 @@ ARM_JOINTS = JOINTS[:-1]
 class SO101SceneCfg(InteractiveSceneCfg):
     """One SO-101, one vial, one rack, and a collision mat."""
 
-    robot = SO101_CFG.replace(
+    robot = WORKSHOP_SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
-        spawn=SO101_CFG.spawn.replace(
+        spawn=WORKSHOP_SO101_CFG.spawn.replace(
             activate_contact_sensors=True,
         ),
-        init_state=SO101_CFG.init_state.replace(
+        init_state=WORKSHOP_SO101_CFG.init_state.replace(
             pos=(-0.05, 0.0, 0.0),
             # Isaac Lab 3 uses XYZW quaternions: +90 degrees about world Z.
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
             joint_pos={
-                # Canonical operational start used when the workshop's real
-                # SO-101 connects. It leaves a visible, transferable approach
-                # to the vial instead of beginning next to the grasp.
+                # Match the real controller's connection pose.
                 name: position
                 for name, position in zip(JOINTS, WORKSHOP_INITIAL_JOINT_POSITION, strict=True)
             },
@@ -136,19 +233,14 @@ class ActionsCfg:
         asset_name="robot",
         joint_names=ARM_JOINTS,
         preserve_order=True,
-        # 0.033 rad at 30 Hz is a modest speed increase over the original
-        # 0.03-rad command. A 1,024-episode ablation reduced mean completion
-        # time by 16% without compromising the controlled trajectory; larger
-        # 0.035/0.04-rad steps increased failures and rack forces.
+        # Larger steps increased failures and rack forces in evaluation.
         scale=0.033,
         use_zero_offset=True,
     )
     gripper_action: SoftLimitRelativeGripperActionCfg = SoftLimitRelativeGripperActionCfg(
         asset_name="robot",
         joint_names=["gripper"],
-        # A full-scale command moves the jaw target by 0.02 rad per control
-        # step. This is fast enough to release in ordinary task time while a
-        # small network bias cannot silently open a grasp in a few frames.
+        # Avoid opening a grasp rapidly from a small policy bias.
         scale=0.02,
         use_zero_offset=True,
     )
@@ -166,9 +258,7 @@ class PolicyStateGroupCfg(ObsGroup):
     vial = ObsTerm(func=mdp.rigid_object_state, params={"asset_cfg": SceneEntityCfg("vial")})
     rack_target = ObsTerm(func=mdp.rack_relative_target)
     placement = ObsTerm(func=mdp.placement_features)
-    # Success and valid release use irreversible, physics-measured milestones.
-    # Exposing the same state keeps the fully observed baseline Markov. Camera
-    # actors below intentionally receive neither this term nor object state.
+    # Preserve the Markov state used by milestone-based termination.
     progress = ObsTerm(func=mdp.progress_flags)
 
     def __post_init__(self):
@@ -209,8 +299,7 @@ class DatasetEventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("vial"),
-            # Newton derives an unreliable default from this detailed mesh;
-            # set the measured 20 g mass directly with modest payload DR.
+            # Newton cannot reliably infer mass from the detailed mesh.
             "mass_distribution_params": (0.015, 0.025),
             "operation": "abs",
         },
@@ -229,7 +318,7 @@ class DatasetEventsCfg:
 
 
 @configclass
-class InitialEventsCfg:
+class ResetEventsCfg:
     """Raw tabletop resets used by reset generation and diagnostics."""
 
     vial_mass = EventTerm(
@@ -350,8 +439,6 @@ class PhysicsCfg(PresetCfg):
 class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
     """State task trained from physics-validated reset poses."""
 
-    # Primitive object colliders make large state batches practical. Callers
-    # can still choose a smaller batch to suit their GPU and PPO network.
     scene: SO101SceneCfg = SO101SceneCfg(num_envs=4096, env_spacing=0.9, replicate_physics=True)
     actions: ActionsCfg = ActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
@@ -366,27 +453,21 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 1.0 / 120.0
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
-        # Direct frontal task view, raised enough to see the gripper descend
-        # and the vial seat inside the selected rack opening.
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
 
     def play_mode(self):
         """Evaluate complete episodes from validated phase-zero starts."""
-        from so101_vial_place.utils import evaluation
+        from isaaclab_tutorial.utils import evaluation
 
         requested_num_envs = self.scene.num_envs
         super().play_mode()
-        # The exact callback is installed before the environment is built. It
-        # selects the callback's exact audit batch; normal interactive play
-        # remains deliberately small.
+        # Exact evaluation selects its batch before environment construction.
         if evaluation.EXACT_EVALUATION_ACTIVE:
             self.scene.num_envs = min(requested_num_envs, evaluation.PLAY_EVALUATION_EPISODES)
         else:
             self.scene.num_envs = min(self.scene.num_envs, 16)
 
-        # Play is always the real canonical task: the exact workshop home pose
-        # with the vial sampled across the validated phase-zero tabletop rows.
-        # Training alone samples the full generated task horizon.
+        # Interactive play uses phase-zero starts; training samples all phases.
         self.events.reset_from_dataset.params["sequential"] = evaluation.PLAY_RESETS_SEQUENTIAL
         if evaluation.PLAY_RESET_DATASET is not None:
             self.events.reset_from_dataset.params["dataset_path"] = evaluation.PLAY_RESET_DATASET
@@ -418,6 +499,6 @@ class SO101VialGeneratorEnvCfg(SO101VialEnvCfg):
 
     scene: SO101SceneCfg = SO101SceneCfg(num_envs=256, env_spacing=0.9, replicate_physics=True)
     actions: ResetJointActionsCfg = ResetJointActionsCfg()
-    events: InitialEventsCfg = InitialEventsCfg()
+    events: ResetEventsCfg = ResetEventsCfg()
     rewards = None
     terminations = None
