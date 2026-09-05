@@ -114,13 +114,13 @@ Seed 42, one RTX 6000 Ada per run:
 
 | Policy | Success (1,024 episodes) | Grasp | Lift | Insert | Unsafe rack impacts | Training time |
 | --- | --- | --- | --- | --- | --- | --- |
-| State (PPO) | 99.9% (1023) | 100% | 100% | 99.9% | 0 | 35 min |
-| Wrist camera, distilled | 91.7% (939) | 100% | 91.8% | 93.4% | 0 | 31 min |
-| Wrist camera, PPO from scratch | 98.8% (1012) | 99.8% | 98.5% | 99.3% | 0 | 3.4 h |
+| State (PPO) | 99.2% (1016) | 99.4% | 99.4% | 99.2% | 0 | 34 min |
+| Wrist camera, distilled | 98.4% (1008) | 100% | 92.2% | 98.6% | 0 | 31 min |
+| Wrist camera, PPO from scratch | 99.0% (1014) | 100% | 98.7% | 99.5% | 0 | 3.3 h |
 
-Camera policies vary noticeably between training seeds: distillation seeds 42–45 audited at 91.7%, 97.6%, 97.6%,
-and 91.9% from the same teacher, and a second from-scratch visual seed (43) audited at 93.1%. The state policy is
-stable across seeds. Repeated audits of one checkpoint differ by
+The table is one fresh end-to-end run from a clean checkout. Camera policies vary noticeably between training runs:
+five distillation runs (seeds 42, 42, 43, 44, 45) audited at 98.4%, 91.7%, 97.6%, 97.6%, and 91.9%, and two further
+from-scratch visual runs (seed 42 again, seed 43) audited at 98.8% and 93.1%. State policies vary by a few tenths of a percent (99.2–99.9%). Repeated audits of one checkpoint differ by
 a few tenths of a percent because the renderer and observation noise are not seeded with the policy.
 
 ## Task design
