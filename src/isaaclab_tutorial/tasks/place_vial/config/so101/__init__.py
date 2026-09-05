@@ -23,9 +23,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{_PACKAGE}.camera_env_cfg:SO101VialCameraDistillationEnvCfg",
-        "rsl_rl_cfg_entry_point": (
-            f"{agents.__name__}.rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg"
-        ),
+        "rsl_rl_cfg_entry_point": (f"{agents.__name__}.rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg"),
         "default_agent": "rsl_rl",
     },
 )

@@ -13,6 +13,5 @@
 # Reset datasets are small, required runtime inputs. Keep them as ordinary
 # Git blobs so a fresh checkout can train without Git LFS.
 src/isaaclab_tutorial/assets/reset_poses.pt -filter -diff -merge -text
-src/isaaclab_tutorial/assets/canonical_bridge_reset_poses.pt -filter -diff -merge -text
 *.jit filter=lfs diff=lfs merge=lfs -text
 *.hdf5 filter=lfs diff=lfs merge=lfs -text

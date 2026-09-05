@@ -2,95 +2,46 @@ import torch
 
 from isaaclab_tutorial.tasks.place_vial.mdp.progress import PlacementProgress
 
-
-def test_stages_are_gated_and_success_requires_stability():
-    state = PlacementProgress(2, "cpu", stable_steps=3)
-    step = torch.tensor([1, 1])
-
-    state.update(torch.tensor([False, True]), torch.tensor([True, False]), torch.tensor([True, True]), step)
-    assert state.grasped.tolist() == [False, False]
-    assert state.lifted.tolist() == [False, False]
-    assert state.stable_count.tolist() == [0, 0]
-
-    state.update(torch.tensor([True, True]), torch.tensor([True, True]), torch.tensor([False, False]), step + 1)
-    assert state.grasped.tolist() == [False, True]
-    state.update(
-        torch.tensor([True, True]),
-        torch.tensor([True, True]),
-        torch.tensor([False, False]),
-        step + 2,
-        torch.tensor([True, True]),
-    )
-    assert state.lifted.tolist() == [True, True]
-    assert state.stable_count.tolist() == [0, 0]
-    assert not state.success.any()
-
-    state.update(
-        torch.ones(2, dtype=torch.bool),
-        torch.ones(2, dtype=torch.bool),
-        torch.zeros(2, dtype=torch.bool),
-        step + 3,
-        torch.ones(2, dtype=torch.bool),
-    )
-    assert state.release_ready.tolist() == [True, True]
-    for offset in (4, 5):
-        state.update(
-            torch.zeros(2, dtype=torch.bool),
-            torch.ones(2, dtype=torch.bool),
-            torch.ones(2, dtype=torch.bool),
-            step + offset,
-        )
-    success = state.update(
-        torch.zeros(2, dtype=torch.bool), torch.ones(2, dtype=torch.bool), torch.ones(2, dtype=torch.bool), step + 6
-    )
-    assert success.tolist() == [True, True]
-    assert state.time_to_success.tolist() == [7, 7]
+T = torch.tensor([True])
+F = torch.tensor([False])
 
 
-def test_invalid_placement_breaks_consecutive_count():
+def test_milestones_latch_and_success_requires_stability():
+    state = PlacementProgress(1, "cpu", stable_steps=3, grasp_steps=2)
+    step = torch.tensor([0])
+
+    state.update(holding=T, cleared=F, inserted=F, seated=F, step=step)
+    assert not state.grasped.item(), "one holding sample is not a grasp"
+    state.update(holding=T, cleared=T, inserted=F, seated=F, step=step + 1)
+    assert state.grasped.item() and state.lifted.item() and not state.inserted.item()
+
+    state.update(holding=F, cleared=F, inserted=T, seated=F, step=step + 2)
+    assert state.inserted.item()
+    assert state.grasped.item() and state.lifted.item(), "milestones stay latched after the jaws open"
+
+    for offset in (3, 4):
+        assert not state.update(holding=F, cleared=F, inserted=F, seated=T, step=step + offset).item()
+    assert state.update(holding=F, cleared=F, inserted=F, seated=T, step=step + 5).item()
+    assert state.time_to_success.item() == 5
+
+
+def test_unstable_placement_restarts_the_stability_count():
     state = PlacementProgress(1, "cpu", stable_steps=2)
-    state.update(torch.tensor([True]), torch.tensor([True]), torch.tensor([True]), torch.tensor([1]))
-    state.update(torch.tensor([False]), torch.tensor([False]), torch.tensor([False]), torch.tensor([2]))
+    state.update(T, T, T, T, torch.tensor([1]))
+    state.update(F, F, F, F, torch.tensor([2]))
     assert state.stable_count.item() == 0
     assert not state.success.item()
 
 
 def test_partial_reset_does_not_touch_other_environments():
     state = PlacementProgress(3, "cpu", stable_steps=1)
-    state.update(
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.long),
-        torch.ones(3, dtype=torch.bool),
-    )
-    state.update(
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.long),
-        torch.ones(3, dtype=torch.bool),
-    )
-    state.update(
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.bool),
-        torch.ones(3, dtype=torch.long),
-        torch.ones(3, dtype=torch.bool),
-    )
+    ones = torch.ones(3, dtype=torch.bool)
+    state.update(ones, ones, ones, ones, torch.ones(3, dtype=torch.long))
+    state.update(ones, ones, ones, ones, torch.ones(3, dtype=torch.long))
     state.reset(torch.tensor([1]))
     assert state.grasped.tolist() == [True, False, True]
     assert state.lifted.tolist() == [True, False, True]
+    assert state.inserted.tolist() == [True, False, True]
     assert state.success.tolist() == [True, False, True]
-    assert state.unsafe_rack_contact.tolist() == [False, False, False]
     assert state.stable_count.tolist() == [2, 0, 2]
-
-
-def test_release_requires_a_stable_grasped_rack_sample():
-    state = PlacementProgress(1, "cpu", stable_steps=2)
-    false = torch.tensor([False])
-    true = torch.tensor([True])
-    state.update(true, true, false, torch.tensor([0]), true)
-    assert not state.release_ready.item()
-    state.update(true, true, false, torch.tensor([1]), true)
-    assert state.release_ready.item()
+    assert state.time_to_success.tolist() == [1, -1, 1]

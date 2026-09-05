@@ -22,6 +22,59 @@ from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_r
 
 TABLETOP_VIAL_POSITION_HALF_RANGE = (0.030, 0.040)
 
+
+# Validity checks that only the generator applies. They are stricter than the task's physical milestones because
+# generated states seed training and evaluation, so every row must be an unambiguous instance of its phase.
+_HELD_INSERTION_ALIGNMENT = 0.985
+_RACK_XY_BOUNDS = (-0.031, 0.091, -0.031, 0.091)
+
+
+def _rack_clearance_violation(env) -> torch.Tensor:
+    """Return unsafe rack-overflight states: a held vial below the rim anywhere except the target opening."""
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
+        RACK_CLEARANCE_HEIGHT,
+        _placement_values,
+        bilateral_contact,
+        vial_lowest_height_in_rack,
+    )
+
+    local = _placement_values(env)[0]
+    x_min, x_max, y_min, y_max = _RACK_XY_BOUNDS
+    over_rack = (local[:, 0] > x_min) & (local[:, 0] < x_max) & (local[:, 1] > y_min) & (local[:, 1] < y_max)
+    in_target_hole = torch.linalg.vector_norm(local[:, :2], dim=-1) < 0.012
+    below_clearance = vial_lowest_height_in_rack(env) < RACK_CLEARANCE_HEIGHT
+    return (bilateral_contact(env) & over_rack & below_clearance & ~in_target_hole).float()
+
+
+def _undesired_rack_contact(env) -> torch.Tensor:
+    """Return a soft vial/rack force cost, reduced inside the intended insertion corridor."""
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
+        HARD_RACK_IMPACT_FORCE,
+        _contact_magnitude,
+        _placement_values,
+    )
+
+    local, alignment, *_ = _placement_values(env)
+    insertion_corridor = (torch.linalg.vector_norm(local[:, :2], dim=-1) < 0.014) & (alignment > 0.88)
+    force = (_contact_magnitude(env, "vial_rack_contact") / HARD_RACK_IMPACT_FORCE).clamp(0.0, 1.0)
+    return force * torch.where(insertion_corridor, 0.1, 1.0)
+
+
+def _held_insertion_ready(env) -> torch.Tensor:
+    """Whether a held vial is centred, upright, slow, and engaged with the target opening above its seat."""
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
+        RACK_RIM_HEIGHT,
+        _placement_values,
+        vial_lowest_height_in_rack,
+    )
+
+    local, alignment, speed, _, _, _ = _placement_values(env)
+    centered = torch.linalg.vector_norm(local[:, :2], dim=-1) < 0.004
+    tip_inside_opening = vial_lowest_height_in_rack(env) < RACK_RIM_HEIGHT
+    above_seated_pose = local[:, 2] > 0.030
+    return centered & tip_inside_opening & above_seated_pose & (alignment > _HELD_INSERTION_ALIGNMENT) & (speed < 0.12)
+
+
 # Demonstrated pregrasp seed for the multi-start IK search.
 WORKSHOP_PREGRASP_JOINT_POSITION = (
     0.14852054,
@@ -1159,18 +1212,14 @@ class _Generator:
             self.env.sim.step()
             self.env.scene.update(self.env.physics_dt)
             if self._track_safety:
-                from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-                    rack_clearance_violation,
-                    undesired_rack_contact,
-                    unsafe_rack_contact,
-                )
+                from isaaclab_tutorial.tasks.place_vial.mdp.terms import unsafe_rack_contact
 
                 # Endpoint validation is insufficient: a candidate can hit a
                 # rail, rebound, and look calm after settling. Preserve every
                 # violation along the transport/insertion rollout.
                 if self._track_clearance:
-                    self.candidate_clearance_violation |= rack_clearance_violation(self.env).bool()
-                self.candidate_rack_contact |= undesired_rack_contact(self.env) > 0.0
+                    self.candidate_clearance_violation |= _rack_clearance_violation(self.env).bool()
+                self.candidate_rack_contact |= _undesired_rack_contact(self.env) > 0.0
                 self.candidate_unsafe |= self.candidate_clearance_violation | unsafe_rack_contact(self.env)
 
     def _record_grasp_diagnostics(self, prefix: str) -> None:
@@ -1980,9 +2029,7 @@ class _Generator:
             # Release branches must begin from the same physically verified
             # held insertion used online. A centered but tilted vial can lodge
             # on the tight rim and never descend after the jaws open.
-            from isaaclab_tutorial.tasks.place_vial.mdp.terms import held_insertion_ready
-
-            valid &= held_insertion_ready(self.env)
+            valid &= _held_insertion_ready(self.env)
             if not valid.any():
                 return valid, target
             self.release_seed_joint_position = _tensor(self.robot.data.joint_pos)[valid].detach().clone()
@@ -2072,9 +2119,8 @@ class _Generator:
                     # the command. Only near-upright endpoints may seed
                     # transport; later segments preserve this orientation.
                     from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
-                    from isaaclab_tutorial.tasks.place_vial.mdp.terms import HELD_INSERTION_ALIGNMENT
 
-                    terminal &= vertical_alignment(_tensor(self.vial.data.root_quat_w)) > HELD_INSERTION_ALIGNMENT
+                    terminal &= vertical_alignment(_tensor(self.vial.data.root_quat_w)) > _HELD_INSERTION_ALIGNMENT
                 self._append_seed_bank(seed_name, terminal, target)
             return valid, target
         valid, target, _, _ = self._approach_candidate(phase)

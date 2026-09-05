@@ -9,7 +9,7 @@ from isaaclab_tutorial.assets import RESET_DATASET
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
 from isaaclab_tutorial.tasks.place_vial.mdp.events import _ids, _phase_balanced_row_weights
 from isaaclab_tutorial.tasks.place_vial.reset import dataset as reset_dataset
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 
@@ -96,63 +96,33 @@ def test_reset_dataset_rejects_malformed_artifacts(tmp_path, field, value, messa
         load_reset_dataset(path)
 
 
-def test_curriculum_probability_is_independent_of_eligible_row_count():
+def test_phase_weights_are_spread_uniformly_over_each_phase_rows():
     phase = torch.tensor([0, 0, 0, 0, 1, 1])
-    difficulty = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.8, 0.9])
 
-    row_weights = _phase_balanced_row_weights(
-        phase,
-        difficulty,
-        phase_weights=(1.0, 3.0),
-        minimum_difficulty=((0, 0.4),),
-    )
+    row_weights = _phase_balanced_row_weights(phase, phase_weights=(1.0, 3.0))
 
-    assert row_weights[:3].tolist() == [0.0, 0.0, 0.0]
-    assert row_weights[phase == 0].sum() == pytest.approx(1.0)
-    assert row_weights[phase == 1].sum() == pytest.approx(3.0)
+    assert row_weights[phase == 0].tolist() == pytest.approx([0.25] * 4)
+    assert row_weights[phase == 1].tolist() == pytest.approx([1.5] * 2)
 
 
-def test_curriculum_rejects_a_requested_phase_with_no_eligible_rows():
-    phase = torch.tensor([0, 1])
-    difficulty = torch.tensor([0.1, 0.9])
-
-    with pytest.raises(ValueError, match="no eligible rows for phases \\[0\\]"):
-        _phase_balanced_row_weights(
-            phase,
-            difficulty,
-            phase_weights=(1.0, 1.0),
-            minimum_difficulty=((0, 0.5),),
-        )
-
-
-def test_curriculum_can_bound_a_local_bridge_on_both_sides():
-    phase = torch.tensor([0, 0, 0, 1, 1, 1])
-    difficulty = torch.tensor([0.1, 0.2, 0.3, 0.6, 0.7, 0.8])
-
-    row_weights = _phase_balanced_row_weights(
-        phase,
-        difficulty,
-        phase_weights=(1.0, 1.0),
-        minimum_difficulty=((0, 0.2),),
-        maximum_difficulty=((1, 0.7),),
-    )
-
-    assert row_weights.tolist() == pytest.approx([0.0, 0.5, 0.5, 0.5, 0.5, 0.0])
+def test_phase_weights_reject_a_requested_phase_with_no_rows():
+    with pytest.raises(ValueError, match="no eligible rows for phases \\[1\\]"):
+        _phase_balanced_row_weights(torch.tensor([0, 0, 2]), phase_weights=(1.0, 1.0, 1.0))
+    with pytest.raises(ValueError, match="exactly 3 values"):
+        _phase_balanced_row_weights(torch.tensor([0, 1, 2]), phase_weights=(1.0, 1.0))
 
 
 @pytest.mark.parametrize(
-    ("phase", "difficulty", "message"),
+    ("phase", "message"),
     (
-        (torch.tensor([], dtype=torch.long), torch.tensor([]), "nonempty"),
-        (torch.tensor([0.0]), torch.tensor([0.0]), "nonnegative integers"),
-        (torch.tensor([-1]), torch.tensor([0.0]), "nonnegative integers"),
-        (torch.tensor([0]), torch.tensor([float("nan")]), "finite floating-point"),
-        (torch.tensor([0]), torch.tensor([1.1]), "lie in"),
+        (torch.tensor([], dtype=torch.long), "nonempty"),
+        (torch.tensor([0.0]), "nonnegative integers"),
+        (torch.tensor([-1]), "nonnegative integers"),
     ),
 )
-def test_curriculum_rejects_malformed_state_columns(phase, difficulty, message):
+def test_phase_weights_reject_malformed_phase_columns(phase, message):
     with pytest.raises(ValueError, match=message):
-        _phase_balanced_row_weights(phase, difficulty, phase_weights=(1.0,), minimum_difficulty=None)
+        _phase_balanced_row_weights(phase, phase_weights=(1.0,))
 
 
 def test_reset_ids_are_validated():
@@ -168,18 +138,13 @@ def test_reset_ids_are_validated():
         _ids(env, [1.0])
 
 
-def test_every_named_curriculum_has_eligible_rows_in_bundled_artifact():
+def test_bundled_artifact_supports_both_reset_distributions():
     states = load_reset_dataset(RESET_DATASET)["states"]
 
-    for phase_weights in RESET_CURRICULA.values():
-        row_weights = _phase_balanced_row_weights(
-            states["phase"],
-            states["difficulty"],
-            phase_weights,
-            minimum_difficulty=None,
-        )
+    for phase_weights in (CANONICAL_START, ALL_PHASES):
+        row_weights = _phase_balanced_row_weights(states["phase"], phase_weights)
         assert torch.isfinite(row_weights).all()
-        assert row_weights.sum() > 0.0
+        assert row_weights.sum() == pytest.approx(sum(phase_weights))
 
 
 def test_bundled_canonical_rows_are_exact_unstarted_home_resets():

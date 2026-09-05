@@ -15,12 +15,11 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     SO101SceneCfg,
     SO101VialEnvCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
 
 
 @configclass
 class SO101CameraSceneCfg(SO101SceneCfg):
-    """SO-101 scene with the camera authored on the gripper."""
+    """SO-101 scene reading the wrist camera authored in the robot asset."""
 
     wrist_camera = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera",
@@ -56,7 +55,7 @@ class WristImageCfg(ObsGroup):
 
 @configclass
 class ProprioceptionCfg(ObsGroup):
-    """Proprioceptive observations available to the deployed policy."""
+    """Proprioceptive observations available on the real robot."""
 
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
@@ -77,19 +76,8 @@ class ProprioceptionCfg(ObsGroup):
 
 
 @configclass
-class VisualGeometryCfg(ObsGroup):
-    """Privileged localization labels used only by the training loss."""
-
-    target = ObsTerm(func=mdp.visual_geometry_target)
-
-    def __post_init__(self):
-        self.enable_corruption = False
-        self.concatenate_terms = True
-
-
-@configclass
 class CameraObservationsCfg:
-    """Actor and asymmetric-critic observation groups."""
+    """Deployable actor inputs plus the privileged asymmetric-critic state."""
 
     wrist_rgb: WristImageCfg = WristImageCfg()
     proprioception: ProprioceptionCfg = ProprioceptionCfg()
@@ -97,11 +85,10 @@ class CameraObservationsCfg:
 
 
 @configclass
-class DistillationCameraObservationsCfg(CameraObservationsCfg):
-    """Camera observations plus simulator-only distillation labels."""
+class DistillationObservationsCfg(CameraObservationsCfg):
+    """Camera observations plus the state teacher's inputs, used only to label the student's data."""
 
     teacher_state: PolicyStateGroupCfg = PolicyStateGroupCfg()
-    visual_geometry: VisualGeometryCfg = VisualGeometryCfg()
 
 
 @configclass
@@ -121,13 +108,6 @@ class SO101VialCameraEnvCfg(SO101VialEnvCfg):
 
 @configclass
 class SO101VialCameraDistillationEnvCfg(SO101VialCameraEnvCfg):
-    """Coherent canonical trajectories for state-to-vision distillation."""
+    """The camera task with the teacher's state observations attached for distillation."""
 
-    observations: DistillationCameraObservationsCfg = DistillationCameraObservationsCfg()
-
-    def __post_init__(self):
-        super().__post_init__()
-        self.events.reset_from_dataset.params["sequential"] = False
-        self.events.reset_from_dataset.params["phase_weights"] = RESET_CURRICULA["initial"]
-        self.events.reset_from_dataset.params["minimum_difficulty"] = None
-        self.events.reset_from_dataset.params["maximum_difficulty"] = None
+    observations: DistillationObservationsCfg = DistillationObservationsCfg()

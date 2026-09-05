@@ -22,7 +22,7 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     WORKSHOP_INITIAL_JOINT_POSITION,
     SO101VialEnvCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import RESET_CURRICULA
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
 from isaaclab_tutorial.utils import evaluation
 
 
@@ -53,21 +53,23 @@ def test_state_task_control_and_physics_contract():
     assert cfg.scene.robot.actuators == SO101_CFG.actuators
 
 
-def test_play_mode_uses_canonical_resets(monkeypatch):
-    monkeypatch.setattr(evaluation, "PLAY_RESETS_SEQUENTIAL", True)
+def test_training_samples_every_phase_and_play_uses_canonical_starts(monkeypatch):
+    monkeypatch.setattr(evaluation, "EXACT_EVALUATION_ACTIVE", False)
     cfg = SO101VialEnvCfg()
+    training = dict(cfg.events.reset_from_dataset.params)
 
     cfg.play_mode()
 
-    reset = cfg.events.reset_from_dataset.params
-    assert reset["sequential"] is True
-    assert reset["phase_weights"] == RESET_CURRICULA["initial"]
-    assert reset["minimum_difficulty"] is None
+    play = cfg.events.reset_from_dataset.params
+    assert training["sequential"] is False
+    assert training["phase_weights"] == ALL_PHASES
+    assert play["sequential"] is True
+    assert play["phase_weights"] == CANONICAL_START
+    assert cfg.scene.num_envs == 16
 
 
 def test_exact_evaluation_retains_requested_batch(monkeypatch):
     monkeypatch.setattr(evaluation, "EXACT_EVALUATION_ACTIVE", True)
-    monkeypatch.setattr(evaluation, "PLAY_EVALUATION_EPISODES", 1024)
     state = SO101VialEnvCfg()
     camera = SO101VialCameraEnvCfg()
 
@@ -94,7 +96,6 @@ def test_camera_actor_observation_boundary():
     assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
     assert "teacher_state" not in cfg.observations.__dict__
-    assert "visual_geometry" not in cfg.observations.__dict__
     assert set(cfg.observations.proprioception.__dict__) >= {
         "joint_pos",
         "joint_vel",
@@ -106,12 +107,13 @@ def test_camera_actor_observation_boundary():
     assert cfg.observations.proprioception.enable_corruption is True
 
 
-def test_distillation_uses_coherent_canonical_trajectories():
+def test_distillation_task_only_adds_the_teacher_observation():
     cfg = SO101VialCameraDistillationEnvCfg()
+    camera = SO101VialCameraEnvCfg()
 
-    assert type(cfg.scene) is type(SO101VialCameraEnvCfg().scene)
-    assert cfg.events.reset_from_dataset.params["phase_weights"] == RESET_CURRICULA["initial"]
-    assert set(cfg.observations.__dict__) >= {"teacher_state", "visual_geometry"}
+    assert type(cfg.scene) is type(camera.scene)
+    assert cfg.events.reset_from_dataset.params == camera.events.reset_from_dataset.params
+    assert set(cfg.observations.__dict__) - set(camera.observations.__dict__) == {"teacher_state"}
 
 
 def test_agent_configs_match_task_observation_groups():
@@ -126,8 +128,10 @@ def test_agent_configs_match_task_observation_groups():
         "teacher": ["teacher_state"],
     }
     assert distillation.clip_actions == pytest.approx(1.0)
-    assert "visual_geometry" not in distillation.obs_groups["student"]
-    assert distillation.algorithm.auxiliary_group == "visual_geometry"
-    assert distillation.algorithm.min_teacher_probability == pytest.approx(0.25)
-    assert state.actor.distribution_cfg.init_std == pytest.approx(0.2)
-    assert camera.actor.distribution_cfg.init_std == pytest.approx(0.1)
+    assert distillation.algorithm.class_name.endswith(":BoundedTeacherDistillation")
+    # The teacher must mirror the state actor so the PPO checkpoint loads into it.
+    assert distillation.teacher.hidden_dims == state.actor.hidden_dims
+    assert distillation.teacher.distribution_cfg.std_type == state.actor.distribution_cfg.std_type
+    # The student and the from-scratch visual actor share one encoder definition.
+    assert distillation.student.cnn_cfg == camera.actor.cnn_cfg
+    assert camera.actor.obs_normalization is True

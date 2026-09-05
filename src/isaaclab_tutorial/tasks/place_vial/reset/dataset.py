@@ -155,7 +155,7 @@ def load_reset_dataset(path: str | Path, device: str | torch.device = "cpu") -> 
     source = Path(path).expanduser().resolve()
     if not source.is_file():
         raise FileNotFoundError(
-            f"Reset dataset not found at {source}. Generate it with `uv run isaaclab generate_resets`."
+            f"Reset dataset not found at {source}. Generate it with `uv run generate-so101-resets`."
         )
     artifact = torch.load(source, map_location="cpu", weights_only=True)
     if not isinstance(artifact, dict) or artifact.get("format") != FORMAT:

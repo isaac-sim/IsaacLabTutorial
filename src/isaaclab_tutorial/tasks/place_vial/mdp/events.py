@@ -16,44 +16,12 @@ if TYPE_CHECKING:
 _INTEGER_DTYPES = {torch.uint8, torch.int8, torch.int16, torch.int32, torch.int64}
 
 
-def _apply_difficulty_bounds(
-    eligible: torch.Tensor,
-    phase: torch.Tensor,
-    difficulty: torch.Tensor,
-    bounds: Sequence[tuple[int, float]] | None,
-    *,
-    minimum: bool,
-) -> torch.Tensor:
-    if bounds is None:
-        return eligible
-    label = "minimum_difficulty" if minimum else "maximum_difficulty"
-    phase_count = int(phase.max().item()) + 1
-    for phase_id, bound in bounds:
-        if not 0 <= int(phase_id) < phase_count:
-            raise ValueError(f"{label} phase must lie in [0, {phase_count - 1}]")
-        if not 0.0 <= bound <= 1.0:
-            raise ValueError(f"{label} values must lie in [0, 1]")
-        within_bound = difficulty >= float(bound) if minimum else difficulty <= float(bound)
-        eligible &= (phase != int(phase_id)) | within_bound
-    return eligible
-
-
-def _phase_balanced_row_weights(
-    phase: torch.Tensor,
-    difficulty: torch.Tensor,
-    phase_weights: Sequence[float],
-    minimum_difficulty: Sequence[tuple[int, float]] | None,
-    maximum_difficulty: Sequence[tuple[int, float]] | None = None,
-) -> torch.Tensor:
-    """Spread each requested phase probability uniformly over its eligible rows."""
-    if phase.ndim != 1 or difficulty.ndim != 1 or phase.shape != difficulty.shape or phase.numel() == 0:
-        raise ValueError("phase and difficulty must be nonempty one-dimensional tensors with matching shapes")
+def _phase_balanced_row_weights(phase: torch.Tensor, phase_weights: Sequence[float]) -> torch.Tensor:
+    """Spread each requested phase probability uniformly over that phase's rows."""
+    if phase.ndim != 1 or phase.numel() == 0:
+        raise ValueError("phase must be a nonempty one-dimensional tensor")
     if phase.dtype not in _INTEGER_DTYPES or bool((phase < 0).any()):
         raise ValueError("phase must contain nonnegative integers")
-    if not difficulty.is_floating_point() or not bool(torch.isfinite(difficulty).all()):
-        raise ValueError("difficulty must contain finite floating-point values")
-    if bool(((difficulty < 0.0) | (difficulty > 1.0)).any()):
-        raise ValueError("difficulty must lie in [0, 1]")
 
     phase_count = int(phase.max().item()) + 1
     weights = torch.as_tensor(phase_weights, device=phase.device, dtype=torch.float32)
@@ -63,9 +31,6 @@ def _phase_balanced_row_weights(
         raise ValueError("phase_weights must be finite, nonnegative, and not all zero")
 
     eligible = weights[phase] > 0.0
-    eligible = _apply_difficulty_bounds(eligible, phase, difficulty, minimum_difficulty, minimum=True)
-    eligible = _apply_difficulty_bounds(eligible, phase, difficulty, maximum_difficulty, minimum=False)
-
     eligible_counts = torch.bincount(phase[eligible], minlength=phase_count)
     missing = (weights > 0.0) & (eligible_counts == 0)
     if bool(missing.any()):
@@ -128,7 +93,7 @@ def _reset_controller_seed(
 
 
 class ResetFromDataset(ManagerTermBase):
-    """Replay physics-validated rows, uniformly or in deterministic order."""
+    """Replay physics-validated reset rows, sampled by phase weight or in deterministic order."""
 
     def __init__(self, cfg: EventTermCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
@@ -136,17 +101,10 @@ class ResetFromDataset(ManagerTermBase):
         self.states = artifact["states"]
         self.row_count = int(artifact["row_count"])
         self._cursor = 0
-        phase = self.states["phase"]
         phase_weights = cfg.params.get("phase_weights")
         self.row_weights = None
         if phase_weights is not None:
-            self.row_weights = _phase_balanced_row_weights(
-                phase,
-                self.states["difficulty"],
-                phase_weights,
-                cfg.params.get("minimum_difficulty"),
-                cfg.params.get("maximum_difficulty"),
-            )
+            self.row_weights = _phase_balanced_row_weights(self.states["phase"], phase_weights)
         self.sequential_rows = (
             torch.arange(self.row_count, device=env.device)
             if self.row_weights is None
@@ -160,11 +118,9 @@ class ResetFromDataset(ManagerTermBase):
         dataset_path: str,
         sequential: bool = False,
         phase_weights: tuple[float, ...] | None = None,
-        minimum_difficulty: tuple[tuple[int, float], ...] | None = None,
-        maximum_difficulty: tuple[tuple[int, float], ...] | None = None,
     ) -> None:
         """Write selected joint and vial states into the requested worlds."""
-        del dataset_path, phase_weights, minimum_difficulty, maximum_difficulty
+        del dataset_path, phase_weights
         ids = _ids(env, env_ids)
         if ids.numel() == 0:
             return
@@ -216,10 +172,6 @@ class ResetFromDataset(ManagerTermBase):
             grasped=self.states["grasped"][rows],
             lifted=self.states["lifted"][rows],
         )
-        if not hasattr(env, "_so101_reset_row"):
-            env._so101_reset_row = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
-        env._so101_reset_row[ids] = rows
-        env.extras.setdefault("log", {})["Reset/mean_difficulty"] = self.states["difficulty"][rows].mean()
 
 
 def clear_reset_progress(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:

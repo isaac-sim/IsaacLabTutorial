@@ -34,7 +34,7 @@ from isaaclab_tutorial.tasks.place_vial.mdp.actions import (
     SoftLimitRelativeGripperActionCfg,
     SoftLimitRelativeJointPositionActionCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.reset import curriculum as reset_cfg
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
@@ -259,7 +259,7 @@ class PolicyStateGroupCfg(ObsGroup):
     vial = ObsTerm(func=mdp.rigid_object_state, params={"asset_cfg": SceneEntityCfg("vial")})
     rack_target = ObsTerm(func=mdp.rack_relative_target)
     placement = ObsTerm(func=mdp.placement_features)
-    # Preserve the Markov state used by milestone-based termination.
+    # Latched milestones make the once-per-episode milestone rewards Markov.
     progress = ObsTerm(func=mdp.progress_flags)
 
     def __post_init__(self):
@@ -308,13 +308,7 @@ class DatasetEventsCfg:
     reset_from_dataset = EventTerm(
         func=mdp.ResetFromDataset,
         mode="reset",
-        params={
-            "dataset_path": str(RESET_DATASET),
-            "sequential": False,
-            "phase_weights": reset_cfg.RESET_CURRICULA["horizon"],
-            "minimum_difficulty": None,
-            "maximum_difficulty": None,
-        },
+        params={"dataset_path": str(RESET_DATASET), "sequential": False, "phase_weights": ALL_PHASES},
     )
 
 
@@ -371,38 +365,15 @@ class ResetEventsCfg:
 
 @configclass
 class RewardsCfg:
-    """Physical task rewards plus one compact object-centric shaping term."""
+    """Sparse physical milestones, a success bonus, two dense shaping terms, and light regularization."""
 
-    object_goal = RewTerm(func=mdp.object_goal_reward, weight=0.1)
-    grasp_proof = RewTerm(func=mdp.grasp_proof_reward, weight=0.0)
-    lift_clearance = RewTerm(func=mdp.lift_clearance_reward, weight=0.0)
-    lift_progress = RewTerm(func=mdp.LoadBearingLiftProgressReward, weight=0.0)
+    approach_progress = RewTerm(func=mdp.ApproachProgressReward, weight=1.0)
+    held_goal = RewTerm(func=mdp.held_goal_reward, weight=0.1)
     milestones = RewTerm(func=mdp.PhysicalMilestoneReward, weight=10.0)
     success = RewTerm(func=mdp.success_bonus, weight=200.0)
-    release_opening = RewTerm(func=mdp.release_opening_reward, weight=0.0)
-    release_opening_progress = RewTerm(func=mdp.ReleaseOpeningProgressReward, weight=0.0)
-    release_action = RewTerm(func=mdp.release_action_reward, weight=0.0)
     vial_lost = RewTerm(func=mdp.vial_lost, weight=-50.0)
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.002)
-    action_magnitude = RewTerm(func=mdp.action_magnitude_l2, weight=0.0)
-    arm_action_magnitude = RewTerm(func=mdp.arm_action_magnitude_l2, weight=0.0)
     joint_velocity = RewTerm(func=mdp.joint_velocity_l2, weight=-0.0002)
-    joint_limit_margin = RewTerm(func=mdp.joint_limit_margin_l2, weight=0.0)
-    rack_clearance = RewTerm(func=mdp.rack_clearance_violation, weight=0.0)
-    held_goal_progress = RewTerm(func=mdp.HeldObjectGoalProgressReward, weight=0.0)
-    held_goal_error = RewTerm(func=mdp.held_object_goal_error_cost, weight=0.0)
-    held_goal_basin = RewTerm(func=mdp.held_object_goal_basin_reward, weight=0.0)
-    held_upright_progress = RewTerm(func=mdp.HeldUprightProgressReward, weight=0.0)
-    held_upright_alignment = RewTerm(func=mdp.held_upright_alignment_reward, weight=0.0)
-    held_upright_clearance = RewTerm(func=mdp.held_upright_clearance_reward, weight=0.0)
-    held_upright_lift = RewTerm(func=mdp.held_upright_lift_reward, weight=0.0)
-    held_lift_clearance = RewTerm(func=mdp.held_lift_clearance_reward, weight=0.0)
-    held_radial_progress = RewTerm(func=mdp.HeldRadialCenterProgressReward, weight=0.0)
-    held_radial_center = RewTerm(func=mdp.held_radial_center_reward, weight=0.0)
-    held_radial_error = RewTerm(func=mdp.held_radial_error_cost, weight=0.0)
-    held_clearance_error = RewTerm(func=mdp.held_clearance_error_cost, weight=0.0)
-    held_tip_inside = RewTerm(func=mdp.held_tip_inside_reward, weight=0.0)
-    held_insertion_gate = RewTerm(func=mdp.held_insertion_gate_reward, weight=0.0)
 
 
 @configclass
@@ -457,41 +428,18 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
 
     def play_mode(self):
-        """Evaluate complete episodes from validated phase-zero starts."""
+        """Play and evaluate complete episodes from the canonical home-pose starts, in dataset order."""
         from isaaclab_tutorial.utils import evaluation
 
         requested_num_envs = self.scene.num_envs
         super().play_mode()
-        # Exact evaluation selects its batch before environment construction.
         if evaluation.EXACT_EVALUATION_ACTIVE:
-            self.scene.num_envs = min(requested_num_envs, evaluation.PLAY_EVALUATION_EPISODES)
+            # The exact audit runs one episode per environment, so it needs the full requested batch.
+            self.scene.num_envs = min(requested_num_envs, evaluation.EVALUATION_EPISODES)
         else:
             self.scene.num_envs = min(self.scene.num_envs, 16)
-
-        # Interactive play uses phase-zero starts; training samples all phases.
-        self.events.reset_from_dataset.params["sequential"] = evaluation.PLAY_RESETS_SEQUENTIAL
-        if evaluation.PLAY_RESET_DATASET is not None:
-            self.events.reset_from_dataset.params["dataset_path"] = evaluation.PLAY_RESET_DATASET
-        reset_phase = evaluation.PLAY_RESET_PHASE
-        if reset_phase is None:
-            phase_weights = reset_cfg.RESET_CURRICULA["initial"]
-        else:
-            phase_weights = tuple(float(index == reset_phase) for index in range(8))
-        self.events.reset_from_dataset.params["phase_weights"] = phase_weights
-        self.events.reset_from_dataset.params["minimum_difficulty"] = None
-        self.events.reset_from_dataset.params["maximum_difficulty"] = None
-
-
-@configclass
-class SO101VialCanonicalEnvCfg(SO101VialEnvCfg):
-    """State-policy refinement from the complete canonical home task."""
-
-    def __post_init__(self):
-        super().__post_init__()
-        self.events.reset_from_dataset.params["sequential"] = False
-        self.events.reset_from_dataset.params["phase_weights"] = reset_cfg.RESET_CURRICULA["initial"]
-        self.events.reset_from_dataset.params["minimum_difficulty"] = None
-        self.events.reset_from_dataset.params["maximum_difficulty"] = None
+        self.events.reset_from_dataset.params["sequential"] = True
+        self.events.reset_from_dataset.params["phase_weights"] = CANONICAL_START
 
 
 @configclass
