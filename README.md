@@ -1,4 +1,4 @@
-# SO-101 vial placement
+# IsaacLab Tutorial - SO101 Vial Place
 
 <p align="center">
   <img src="media/demo.gif" alt="SO-101 arm placing a vial into a four-hole rack" width="100%">
