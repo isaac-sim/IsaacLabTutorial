@@ -37,10 +37,10 @@ uv run python -c 'import importlib.metadata; print([e.name for e in importlib.me
 Smoke test and benchmark:
 
 ```bash
-uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --visualizer none presets=newton_mjwarp
+uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --max_steps 100 presets=newton_mjwarp
 
 uv run isaaclab benchmark runtime --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 4096 --num_steps 1000 --warmup_steps 50 --visualizer none presets=newton_mjwarp
+  --num_envs 4096 --num_steps 1000 --warmup_steps 50 presets=newton_mjwarp
 ```
 
 Camera tasks add the renderer preset: `presets=newton_mjwarp,newton_renderer`.
@@ -48,10 +48,10 @@ Camera tasks add the renderer preset: `presets=newton_mjwarp,newton_renderer`.
 ## 1. Train the state policy
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
+uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 4096 --max_iterations 800 --seed 42 --run_name state \
-  --visualizer none presets=newton_mjwarp
+  presets=newton_mjwarp
 ```
 
 Checkpoints are written to `logs/rsl_rl/so101_vial_state/<run>/`; the final one is `model_799.pt`.
@@ -61,11 +61,11 @@ Checkpoints are written to `logs/rsl_rl/so101_vial_state/<run>/`; the final one 
 Pass the finished state checkpoint as the teacher:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
+uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Distillation \
   --num_envs 1024 --max_iterations 1600 --seed 42 --run_name distillation \
   --checkpoint logs/rsl_rl/so101_vial_state/<run>/model_799.pt \
-  --visualizer none presets=newton_mjwarp,newton_renderer
+  presets=newton_mjwarp,newton_renderer
 ```
 
 This is RSL-RL's standard student–teacher distillation (DAgger): the camera student acts in the environment, the state
@@ -78,10 +78,10 @@ task from the first iteration without teacher-driven rollouts, replay buffers, o
 ## 3. Train a wrist-camera policy from scratch
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
+uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera \
   --num_envs 1024 --max_iterations 5000 --seed 42 --run_name vision \
-  --visualizer none presets=newton_mjwarp,newton_renderer
+  presets=newton_mjwarp,newton_renderer
 ```
 
 The actor is the same CNN as the distillation student; the critic is an MLP on the privileged state (asymmetric
@@ -103,7 +103,7 @@ per environment. The callback stops play after exactly 1,024 episodes and prints
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 1024 --checkpoint /path/to/model.pt --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
-  --visualizer none presets=newton_mjwarp
+  presets=newton_mjwarp
 ```
 
 Use the matching task ID (and add `newton_renderer`) to evaluate the camera policies.
@@ -192,6 +192,6 @@ a sibling of `tasks/place_vial` with its own MDP and robot configurations.
 The checked-in reset dataset is ready for training. To regenerate or inspect a candidate without overwriting it:
 
 ```bash
-uv run generate-so101-resets --output checkpoints/reset_poses.pt --visualizer none presets=newton_mjwarp
-uv run view-so101-resets --dataset checkpoints/reset_poses.pt --visualizer newton presets=newton_mjwarp
+uv run generate-so101-resets --output checkpoints/reset_poses.pt
+uv run view-so101-resets --dataset checkpoints/reset_poses.pt --visualizer newton
 ```
