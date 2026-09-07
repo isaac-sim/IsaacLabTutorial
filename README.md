@@ -58,13 +58,17 @@ Checkpoints are written to `logs/rsl_rl/so101_vial_state/<run>/`; the final one 
 
 ## 2. Distill it into a wrist-camera policy
 
-Pass the finished state checkpoint as the teacher:
+Pass the finished state checkpoint as the teacher. This is a cross-task checkpoint, so resolve it explicitly rather
+than using `--checkpoint latest`, which searches the distillation task's own experiment directory:
 
 ```bash
+STATE_CHECKPOINT=$(find logs/rsl_rl/so101_vial_state -type f -name model_799.pt | sort | tail -n 1)
+test -f "$STATE_CHECKPOINT"
+
 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Distillation \
   --num_envs 1024 --max_iterations 1600 --seed 42 --run_name distillation \
-  --checkpoint logs/rsl_rl/so101_vial_state/<run>/model_799.pt \
+  --checkpoint "$STATE_CHECKPOINT" \
   presets=newton_mjwarp,newton_renderer
 ```
 
@@ -93,7 +97,8 @@ Watch a policy (16 environments for state, 8 for camera tasks):
 
 ```bash
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
-  --checkpoint /path/to/model.pt --deterministic --visualizer newton presets=newton_mjwarp
+  --num_envs 16 --checkpoint latest --deterministic \
+  --visualizer newton presets=newton_mjwarp
 ```
 
 Measure success on the acceptance audit — the 128 canonical home-pose starts, each played eight times, one episode
@@ -101,7 +106,7 @@ per environment. The callback stops play after exactly 1,024 episodes and prints
 
 ```bash
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
-  --num_envs 1024 --checkpoint /path/to/model.pt --deterministic \
+  --num_envs 1024 --checkpoint latest --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   presets=newton_mjwarp
 ```
