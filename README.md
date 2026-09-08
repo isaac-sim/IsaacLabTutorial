@@ -149,8 +149,6 @@ Side-by-side rollouts from identical canonical starts (four environments, 10 s a
 - `docs/sim2sim/physx_policy_physx_vs_newton.mp4` - the PhysX-trained state policy on PhysX (left) and on Newton (right)
 - `docs/sim2sim/newton_dr_contact_policy_newton_vs_physx.mp4` - the Newton-trained contact-DR state policy (`-DR-Contact`,
   1,600 iterations; 76% on PhysX) on Newton (left) and on PhysX (right)
-- `docs/sim2sim/finetuned_policy_newton_vs_physx.mp4` - the Newton state policy after its 100-iteration PhysX fine-tune
-  (99.5% / 92.3%) on Newton (left) and on PhysX (right)
 
 Record side-by-side rollouts with the `-Record` task (the state task plus a fixed third-person camera; any state
 checkpoint plays) and compose them into a video (`uv sync --extra video` for MP4 output, GIF needs no extra):
@@ -198,8 +196,6 @@ Cross-backend audits of the state policy (1,024 episodes each, `--deterministic`
 | State, contact domain randomization (`-DR-Contact`, 1,600 it) | Newton | PhysX | 76.0% (778) | 95.4% | 90.7% | 78.4% |
 | State, MuJoCo `condim = 4` (torsional friction active, 800 it) | Newton | Newton | 99.8% (1022) | 100% | 100% | 98.7% |
 | State, MuJoCo `condim = 4` | Newton | PhysX | 36.2% (371) | 66.9% | 58.6% | 45.5% |
-| State, Newton policy fine-tuned on PhysX (100 iterations, `--checkpoint`) | Newton, then PhysX | PhysX | 99.5% (1019) | 100% | 99.9% | 99.6% |
-| State, Newton policy fine-tuned on PhysX (100 iterations) | Newton, then PhysX | Newton | 92.3% (945) | 94.7% | 94.1% | 93.6% |
 | Wrist camera, PPO from scratch | Newton | PhysX + OVRTX | 0.2% (2) | 46.7% | 28.1% | 0.4% |
 | Wrist camera, distilled (from the PhysX state policy, 1,600 iterations) | PhysX + OVRTX | PhysX + OVRTX | 93.0% (952) | 98.9% | 84.4% | 94.1% |
 | Wrist camera, distilled (PhysX teacher) | PhysX + OVRTX | Newton | 13.2% (135) | 69.0% | 54.0% | 21.6% |
@@ -214,17 +210,12 @@ the vial on both backends, but PhysX reports ~28 N of jaw force where Newton rep
 off-centre grasp that lets the vial swing upright while lifting) does not happen on PhysX: the vial stays horizontal
 and ends lying on the rack. Mat friction, jaw-pad friction, PhysX torsional patch radius, vial angular damping and a
 Newton retrain with torsional friction active (`condim = 4`, see issue 13) all made transfer worse or left it unchanged.
-Two routes get a Newton-trained state policy past the 90% mark on OV PhysX:
+The sim2sim route here is domain randomization only (no training on the target backend). Randomizing what
+actually differs between the backends (the vial's friction, 0.2-1.3 per reset, and its mass, 12-30 g; `-DR-Contact`)
+and training to convergence lifts Newton -> PhysX from 55.4% to 76.0% while keeping 99.7% on Newton. Actuator
+randomization alone (`-DR`, `-DR-Wide`) makes transfer worse (2-3%): the gap is in the contact, not the actuator.
+PhysX -> Newton stands at 66.5% without any randomization; a PhysX-trained `-DR-Contact` policy is the open experiment.
 
-- **Domain randomization only.** Randomizing what actually differs between the backends (the vial's friction, 0.2-1.3
-  per reset, and its mass, 12-30 g; `-DR-Contact`) and training to convergence lifts Newton -> PhysX from 55.4% to
-  76.0% while keeping 99.7% on Newton. Actuator randomization alone (`-DR`, `-DR-Wide`) makes transfer worse (2-3%):
-  the gap is in the contact, not the actuator.
-- **Short fine-tune on the target backend.** Resuming the Newton checkpoint on PhysX for 100 PPO iterations (~8 min
-  at 4,096 environments) gives one policy at 99.5% on PhysX and 92.3% on Newton, i.e. the fine-tune is a small update
-  on top of the Newton skill rather than a retrain (PhysX from scratch needs ~3 h). Use `isaaclab train --checkpoint
-  <newton_model.pt> presets=physx agent.resume=True agent.max_iterations=100`; the Hydra `agent.load_run` fields alone
-  do not load anything.
 
 ### Reference results
 
