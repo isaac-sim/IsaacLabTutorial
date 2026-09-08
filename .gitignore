@@ -98,3 +98,7 @@ benchmark_*.json
 # Keep tracked task assets and curated artifacts visible to Git. In
 # particular, do not ignore *.usd, *.pt, *.png, or *.mp4: required assets,
 # reset datasets, accepted checkpoints, and tutorial media use Git LFS.
+
+# probe/recording artefacts
+*.pt
+!logs/**

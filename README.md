@@ -140,6 +140,11 @@ system-identification values onto PhysX and fixes two solver-level differences t
 
 Newton is untouched by these settings (it ignores `physx*` schema attributes), and its audits are unchanged.
 
+Side-by-side rollouts from identical canonical starts (four environments, 10 s at 30 Hz):
+
+- `docs/sim2sim/newton_policy_newton_vs_physx.mp4` - the Newton-trained state policy on Newton (left) and on PhysX (right)
+- `docs/sim2sim/physx_policy_physx_vs_newton.mp4` - the PhysX-trained state policy on PhysX (left) and on Newton (right)
+
 Record side-by-side rollouts with the `-Record` task (the state task plus a fixed third-person camera; any state
 checkpoint plays) and compose them into a video (`uv sync --extra video` for MP4 output, GIF needs no extra):
 
@@ -176,13 +181,19 @@ Cross-backend audits of the state policy (1,024 episodes each, `--deterministic`
 | State | Newton | PhysX | 13.4% (137) | 93.8% | 74.4% | 24.4% |
 | Wrist camera, distilled | Newton | PhysX + OVRTX | 3.0% (31) | 64.9% | 32.8% | 5.5% |
 | Wrist camera, PPO from scratch | Newton | PhysX + OVRTX | 0.2% (2) | 46.7% | 28.1% | 0.4% |
+| Wrist camera, distilled (from the PhysX state policy, 1,600 iterations) | PhysX + OVRTX | PhysX + OVRTX | 93.0% (952) | 98.9% | 84.4% | 94.1% |
+| Wrist camera, distilled (PhysX teacher) | PhysX + OVRTX | Newton | 13.2% (135) | 69.0% | 54.0% | 21.6% |
+| Wrist camera, PPO from scratch, 1,000 of 5,000 iterations | PhysX + OVRTX | PhysX + OVRTX | 0% | 33.9% | 23.8% | 0% |
 
 Without the solver fixes the PhysX-trained state policy reached only 33.9% on PhysX itself and 0% on Newton; with the
 128-iteration fix alone it reached 98.4% on PhysX and 68.3% on Newton. Newton-trained policies remain hard to move to
 PhysX: the Newton state policy grasps (94%) and lifts (79%) on PhysX but places the vial 1-2 cm off the rack opening
 and times out, because the vial's in-hand equilibrium under Newton's compliant contact differs from PhysX's from the
 first step of every grasp (an action replay diverges within five control steps). Training on PhysX is the reliable
-direction. Before the material fix the camera policies scored 0% on PhysX + OVRTX with 23% and 0.1% grasps; the
+direction, and the camera pipeline (distillation on `presets=physx,ovrtx`) works there: the PhysX-distilled student
+audits at 93.0% on PhysX + OVRTX (Newton equivalent: 98.4%). The from-scratch PhysX vision run was stopped at 1,000
+iterations (~3.4 h at PhysX speed; the Newton run needs ~2,000 iterations to reach 94%) and is listed only for
+completeness. Before the material fix the camera policies scored 0% on PhysX + OVRTX with 23% and 0.1% grasps; the
 renderer fix restores perception (65% / 47% grasps) and leaves the same physics gap as the state policy.
 
 ### Reference results
