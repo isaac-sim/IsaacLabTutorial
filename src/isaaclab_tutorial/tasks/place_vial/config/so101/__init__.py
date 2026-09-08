@@ -38,3 +38,14 @@ gym.register(
         "default_agent": "rsl_rl",
     },
 )
+
+gym.register(
+    id="IsaacTutorial-Place-Vial-SO101-Record",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{_PACKAGE}.record_env_cfg:SO101VialRecordEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
+        "default_agent": "rsl_rl",
+    },
+)

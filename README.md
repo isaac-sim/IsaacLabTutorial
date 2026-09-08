@@ -108,6 +108,83 @@ uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
 
 Use the matching task ID (and add `newton_renderer`) to evaluate the camera policies.
 
+### Sim2sim: play Newton policies on PhysX (and back)
+
+The task runs on two physics backends selected from the command line: `presets=newton_mjwarp` (default, Newton with
+the MuJoCo-Warp solver) and `presets=physx` (Isaac Sim PhysX when Isaac Sim is installed, otherwise the standalone
+OV PhysX runtime). Install the standalone runtime and its renderer with the optional extras:
+
+```bash
+uv sync --extra ovphysx --extra ovrtx   # add --extra video for MP4 export of the rollout comparisons
+```
+
+Then audit any checkpoint on the other backend by changing only the preset:
+
+```bash
+uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
+  --num_envs 1024 --checkpoint /path/to/newton_model.pt --deterministic \
+  --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
+  --visualizer none presets=physx
+```
+
+The PhysX preset (`WORKSHOP_SO101_CFG`, `PhysicsCfg` and the vial spawn in `env_cfg.py`) maps the Newton
+system-identification values onto PhysX and fixes two solver-level differences that otherwise make every grasp fail:
+
+| Newton quantity | PhysX equivalent in the preset | Why |
+| --- | --- | --- |
+| `newton:armature`, `newton:friction`, `newton:damping` (per joint) | actuator `armature`, `friction`/`dynamic_friction`, `viscous_friction` (`newton:damping` is per degree; the preset converts it) | same joint dynamics parameters |
+| USD variant `Physics=physics` | `Physics=physx` | the asset ships one layer per backend |
+| MJWarp Newton solver, 100 iterations, 2 substeps | `OvPhysxCfg(rigid_body_position_iteration_count=128, articulation_position_iteration_count=128)` on the `physx` preset (scene-wide defaults, added to Isaac Lab in the fork) | at PhysX's default 4 rigid-body iterations the jaw/vial pinch is under-converged: the jaw closes through the vial regardless of friction; 64 is not enough, 128 holds |
+| Newton contact stiffness/damping 1.57e5 / 1.12e3 | compliant PhysX contact material with the same stiffness/damping, friction combine `max` | rigid PhysX contacts release the vial as soon as the pinch relaxes during the lift; letting the pads sink 1-2 mm into the cap keeps it on the cap ledge like Newton |
+| sys-ID joint friction / viscous friction | the same values (`PHYSX_JOINT_FRICTION_SCALE` / `PHYSX_JOINT_VISCOUS_SCALE` are 1.0) | with identical numbers the PhysX joints respond faster than Newton's, most of all the loaded shoulder (2.4x). Per-joint factors that match the open-loop traces were measured (see `SIM2SIM_ISAACLAB_ISSUES.md (issue 3)`) but did not improve transfer, so they are recorded, not applied |
+
+Newton is untouched by these settings (it ignores `physx*` schema attributes), and its audits are unchanged.
+
+Record side-by-side rollouts with the `-Record` task (the state task plus a fixed third-person camera; any state
+checkpoint plays) and compose them into a video (`uv sync --extra video` for MP4 output, GIF needs no extra):
+
+```bash
+RECORD_OUT=/tmp/rec/newton_on_newton RECORD_ENVS=6 RECORD_STEPS=300 uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Record --num_envs 6 --checkpoint /path/to/newton_model.pt --deterministic \
+  --external_callback isaaclab_tutorial.utils.sim2sim_video.install_recorder --visualizer none presets=newton_mjwarp,newton_renderer
+RECORD_OUT=/tmp/rec/newton_on_physx RECORD_ENVS=6 RECORD_STEPS=300 uv run isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Record --num_envs 6 --checkpoint /path/to/newton_model.pt --deterministic \
+  --external_callback isaaclab_tutorial.utils.sim2sim_video.install_recorder --visualizer none presets=physx,ovrtx
+uv run python -m isaaclab_tutorial.utils.sim2sim_video /tmp/rec/newton_on_newton /tmp/rec/newton_on_physx \
+  --labels "Newton policy on Newton" "Newton policy on PhysX" --out newton_policy_sim2sim.mp4
+```
+
+Canonical starts are sequential, so environment *i* starts from the same state on both backends.
+
+Two more gaps sit outside the physics preset:
+
+- **Renderer.** The standalone OVRTX renderer (`presets=physx,ovrtx`) cannot compile the `OmniPBR` MDL materials the
+  workshop assets used to carry (the vendored `OmniPBR.mdl` imports modules that are not shipped next to it) and painted
+  the vial and rack red. The assets now define plain `UsdPreviewSurface` materials with the same colours, which both
+  renderers draw identically.
+- **Speed.** PhysX at 128 solver iterations runs about 18k environment steps/s at 4,096 environments against 89k for
+  Newton, so a PhysX state-policy run takes roughly 3 h instead of 34 min. The compliant contact material costs only
+  about 4% of that.
+
+Cross-backend audits of the state policy (1,024 episodes each, `--deterministic`):
+
+| Policy | Trained on | Audited on | Success | Grasp | Lift | Insert |
+| --- | --- | --- | --- | --- | --- | --- |
+| State | Newton | Newton | 99.4% (1018) | 99.5% | 99.5% | 99.4% |
+| State | PhysX (`presets=physx`, 800 iterations) | PhysX | 98.4% (1008) | 98.8% | 98.8% | 98.4% |
+| State | PhysX | Newton | 66.5% (681) | 87.4% | 85.7% | 72.8% |
+| State | Newton | PhysX | 13.4% (137) | 93.8% | 74.4% | 24.4% |
+| Wrist camera, distilled | Newton | PhysX + OVRTX | 3.0% (31) | 64.9% | 32.8% | 5.5% |
+| Wrist camera, PPO from scratch | Newton | PhysX + OVRTX | 0.2% (2) | 46.7% | 28.1% | 0.4% |
+
+Without the solver fixes the PhysX-trained state policy reached only 33.9% on PhysX itself and 0% on Newton; with the
+128-iteration fix alone it reached 98.4% on PhysX and 68.3% on Newton. Newton-trained policies remain hard to move to
+PhysX: the Newton state policy grasps (94%) and lifts (79%) on PhysX but places the vial 1-2 cm off the rack opening
+and times out, because the vial's in-hand equilibrium under Newton's compliant contact differs from PhysX's from the
+first step of every grasp (an action replay diverges within five control steps). Training on PhysX is the reliable
+direction. Before the material fix the camera policies scored 0% on PhysX + OVRTX with 23% and 0.1% grasps; the
+renderer fix restores perception (65% / 47% grasps) and leaves the same physics gap as the state policy.
+
 ### Reference results
 
 Seed 42, one RTX 6000 Ada per run:

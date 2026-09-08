@@ -1,5 +1,7 @@
 """Configuration contracts for the public tutorial tasks."""
 
+import math
+
 import pytest
 from isaaclab_assets.robots.so101 import SO101_CFG
 
@@ -50,7 +52,36 @@ def test_state_task_control_and_physics_contract():
 
     assert cfg.scene.robot.spawn.usd_path == SO101_CFG.spawn.usd_path
     assert cfg.scene.robot.spawn.activate_contact_sensors is True
-    assert cfg.scene.robot.actuators == SO101_CFG.actuators
+    # Newton uses the USD-authored Sys-ID dynamics; PhysX re-applies them through the actuator configuration.
+    actuator = cfg.scene.robot.actuators["usd"]
+    assert actuator.stiffness is None and actuator.damping is None
+    for field in ("armature", "friction", "dynamic_friction", "viscous_friction"):
+        assert getattr(actuator, field).newton_mjwarp is None
+        assert set(getattr(actuator, field).physx) == set(JOINTS)
+    assert actuator.viscous_friction.physx["shoulder_pan"] == pytest.approx(1.5907, abs=1e-3)
+    assert actuator.friction.physx["gripper"] == pytest.approx(0.083458, abs=1e-6)
+    assert actuator.friction.physx["elbow_flex"] == pytest.approx(0.41119, abs=1e-6)
+    assert actuator.friction.physx["shoulder_lift"] == pytest.approx(0.344793, abs=1e-6)
+    assert actuator.viscous_friction.physx["wrist_flex"] == pytest.approx(math.degrees(0.0187076781), abs=1e-4)
+    assert cfg.scene.robot.spawn.variants["Physics"].newton_mjwarp == "physics"
+    assert cfg.scene.robot.spawn.variants["Physics"].physx == "physx"
+    assert cfg.sim.physics.physx.ovphysx is not None
+    # PhysX needs more solver iterations to hold the jaw/vial pinch; Newton keeps the asset defaults.
+    from isaaclab_tutorial.tasks.place_vial.config.so101 import env_cfg as so101_env_cfg
+
+    iterations = so101_env_cfg.PHYSX_SOLVER_POSITION_ITERATIONS
+    assert iterations >= 128
+    ovphysx = cfg.sim.physics.physx.ovphysx
+    assert ovphysx.rigid_body_position_iteration_count == iterations
+    assert ovphysx.articulation_position_iteration_count == iterations
+    assert cfg.scene.vial.spawn.rigid_props is None
+    assert cfg.scene.robot.spawn.articulation_props.solver_position_iteration_count == 8
+    # The shared contact material carries Newton's contact stiffness/damping as a PhysX compliant contact.
+    material = so101_env_cfg.WORKSHOP_CONTACT_MATERIAL
+    assert material.compliant_contact_stiffness == pytest.approx(1.57e5)
+    assert material.compliant_contact_damping == pytest.approx(1.12e3)
+    assert material.friction_combine_mode == "max"
+    assert material.static_friction == material.dynamic_friction == pytest.approx(0.7)
 
 
 def test_training_samples_every_phase_and_play_uses_canonical_starts(monkeypatch):
@@ -93,7 +124,7 @@ def test_camera_actor_observation_boundary():
     assert cfg.scene.wrist_camera.data_types == ["rgb"]
     assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
     assert cfg.scene.wrist_camera.update_latest_camera_pose is True
-    assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
+    assert cfg.scene.robot.spawn.variants["Physics"].default == "physics"
     assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
     assert "teacher_state" not in cfg.observations.__dict__
     assert set(cfg.observations.proprioception.__dict__) >= {
@@ -135,3 +166,26 @@ def test_agent_configs_match_task_observation_groups():
     # The student and the from-scratch visual actor share one encoder definition.
     assert distillation.student.cnn_cfg == camera.actor.cnn_cfg
     assert camera.actor.obs_normalization is True
+
+
+def test_record_task_keeps_state_observations():
+    import gymnasium as gym
+
+    from isaaclab_tutorial.tasks.place_vial.config.so101.record_env_cfg import (
+        RECORD_CAMERA_EYE,
+        RECORD_CAMERA_TARGET,
+        SO101VialRecordEnvCfg,
+        look_at_quaternion,
+    )
+
+    assert "IsaacTutorial-Place-Vial-SO101-Record" in gym.registry
+    cfg = SO101VialRecordEnvCfg()
+    assert cfg.scene.record_camera.width == 320 and cfg.scene.record_camera.height == 240
+    assert cfg.observations.policy.__class__ is SO101VialEnvCfg().observations.policy.__class__
+    q = look_at_quaternion(RECORD_CAMERA_EYE, RECORD_CAMERA_TARGET)
+    assert sum(v * v for v in q) == pytest.approx(1.0)
+    x, y, z, w = q
+    forward = (1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w))
+    direction = [t - e for t, e in zip(RECORD_CAMERA_TARGET, RECORD_CAMERA_EYE, strict=True)]
+    norm = math.sqrt(sum(v * v for v in direction))
+    assert all(abs(f - d / norm) < 1e-6 for f, d in zip(forward, direction, strict=True))

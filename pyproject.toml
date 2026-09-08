@@ -11,6 +11,13 @@ license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
 dependencies = ["isaaclab"]
 
+[project.optional-dependencies]
+# Standalone PhysX runtime for the `physx` physics preset and the standalone RTX renderer for the `rtx` renderer
+# preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
+ovphysx = ["ovphysx"]
+ovrtx = ["ovrtx==0.4.1.364340"]
+video = ["imageio[ffmpeg]"]
+
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"
 
@@ -21,8 +28,15 @@ view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_mai
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
+
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "tools/wheel_builder" }
+isaaclab = { path = "../mustafa_isaaclab/tools/wheel_builder" }
+ovphysx = { index = "nvidia" }
+ovrtx = { index = "nvidia" }
 
 [tool.uv]
 override-dependencies = [

@@ -16,16 +16,20 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
-from isaaclab.physics import PhysicsEvent
+from isaaclab.physics import PhysicsEvent, PhysxAutoCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
-from isaaclab.sim.utils import clone
+from isaaclab.sim.spawners.materials.physics_materials import spawn_physics_material
+from isaaclab.sim.utils import bind_physics_material, clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
 from isaaclab_assets.robots.so101 import SO101_CFG
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
-from isaaclab_tasks.utils import PresetCfg
+from isaaclab_ov.physics import OvPhysxCfg
+from isaaclab_physx.physics import PhysxCfg
+from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
+from isaaclab_tasks.utils import PresetCfg, preset
 from pxr import Gf
 
 from isaaclab_tutorial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
@@ -63,6 +67,42 @@ _SOLREF = (0.002, 1.5)
 _contact_model_registered = False
 
 
+# The workshop contact model, authored as a USD physics material on every collider of every asset so that both
+# physics backends see the same friction. Newton additionally applies the MuJoCo contact solver settings below.
+# On PhysX the same material also carries the Newton contact stiffness/damping as a compliant contact and the
+# MuJoCo "max" friction-combine rule. Rigid PhysX contacts drop the vial once the pinch relaxes during the lift;
+# letting the pads sink ~1-2 mm into the cap (as Newton's soft contact does) keeps it on the cap ledge. Newton
+# ignores the ``physxMaterial:*`` attributes.
+WORKSHOP_CONTACT_MATERIAL = PhysxRigidBodyMaterialCfg(
+    static_friction=_FRICTION,
+    dynamic_friction=_FRICTION,
+    restitution=0.0,
+    friction_combine_mode="max",
+    compliant_contact_stiffness=_CONTACT_STIFFNESS,
+    compliant_contact_damping=_CONTACT_DAMPING,
+)
+
+
+def _bind_workshop_contact_material(prim: Any, prim_path: str) -> None:
+    material_path = f"{prim_path}/workshopContactMaterial"
+    spawn_physics_material(material_path, WORKSHOP_CONTACT_MATERIAL, stage=prim.GetStage())
+    bind_physics_material(prim_path, material_path, stage=prim.GetStage())
+
+
+@clone
+def _spawn_usd_with_contact_material(
+    prim_path: str,
+    cfg: Any,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **kwargs,
+):
+    """Spawn a USD asset and bind the workshop contact material to all of its colliders."""
+    prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
+    _bind_workshop_contact_material(prim, prim_path)
+    return prim
+
+
 def _apply_camera_clipping_range(stage: Any, robot_prim_path: str) -> None:
     camera = stage.GetPrimAtPath(f"{robot_prim_path}/gripper/wowrobo_2MP_camera")
     camera.GetAttribute("clippingRange").Set(Gf.Vec2f(0.001, 5.0))
@@ -76,19 +116,80 @@ def _spawn_so101_with_camera_overrides(
     orientation: tuple[float, float, float, float] | None = None,
     **kwargs,
 ):
-    prim = spawn_from_usd(
-        prim_path,
-        cfg,
-        translation=translation,
-        orientation=orientation,
-        **kwargs,
-    )
+    prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
+    _bind_workshop_contact_material(prim, prim_path)
     _apply_camera_clipping_range(prim.GetStage(), prim_path)
     return prim
 
 
+# The Sys-ID joint dynamics are authored in the asset's Newton USD variant as ``newton:armature`` [kg m^2],
+# ``newton:damping`` (passive viscous joint damping, authored per degree like the USD drive gains) and
+# ``newton:friction`` (Coulomb friction loss [N m]). PhysX ignores those attributes, so the PhysX preset re-applies
+# them through the actuator configuration in the SI values Newton itself ends up using: armature is identical,
+# passive damping becomes the viscous joint-friction coefficient (converted to per radian), and friction loss
+# becomes the static and dynamic joint-friction efforts. Drive stiffness, damping and effort limits are shared by
+# both USD variants and need no translation.
+SYS_ID_ARMATURE = {
+    "shoulder_pan": 0.06762,
+    "shoulder_lift": 0.027645,
+    "elbow_flex": 0.03772,
+    "wrist_flex": 0.050714,
+    "wrist_roll": 0.054898,
+    "gripper": 0.077625,
+}
+SYS_ID_JOINT_DAMPING = {  # N m s / rad
+    "shoulder_pan": math.degrees(0.0277631095),
+    "shoulder_lift": math.degrees(0.00979871475),
+    "elbow_flex": math.degrees(0.0139039735),
+    "wrist_flex": math.degrees(0.0187076781),
+    "wrist_roll": math.degrees(0.028582751),
+    "gripper": math.degrees(0.0167301153),
+}
+SYS_ID_JOINT_FRICTION = {
+    "shoulder_pan": 0.347432,
+    "shoulder_lift": 0.344793,
+    "elbow_flex": 0.41119,
+    "wrist_flex": 0.248233,
+    "wrist_roll": 0.221761,
+    "gripper": 0.083458,
+}
+
+# PhysX interprets the joint friction/viscous values differently from Newton: with the sys-ID numbers above, the
+# open-loop response of every joint is faster on PhysX, and under the extended-arm load the shoulder moves 2.4x
+# faster per commanded step (see SIM2SIM_ISAACLAB_ISSUES.md (issue 3)). Per-joint multipliers fitted against
+# Newton's response (friction x1.5 pan/shoulder/roll, x2 gripper; viscous x2 pan/roll/gripper, x3 shoulder/wrist_flex,
+# x1.5 elbow) match the open-loop traces to 0.001-0.005 rad, but they did not improve Newton->PhysX transfer and
+# lowered PhysX->Newton transfer (68% -> 42%), so the shipped preset keeps the raw sys-ID values (all factors 1.0).
+PHYSX_JOINT_FRICTION_SCALE = {name: 1.0 for name in SYS_ID_JOINT_FRICTION}
+PHYSX_JOINT_VISCOUS_SCALE = {name: 1.0 for name in SYS_ID_JOINT_DAMPING}
+PHYSX_JOINT_FRICTION = {name: value * PHYSX_JOINT_FRICTION_SCALE[name] for name, value in SYS_ID_JOINT_FRICTION.items()}
+PHYSX_JOINT_DAMPING = {name: value * PHYSX_JOINT_VISCOUS_SCALE[name] for name, value in SYS_ID_JOINT_DAMPING.items()}
+
+# PhysX under-converges the jaw/vial pinch at its default iteration counts (4 for rigid bodies): the vial is
+# squeezed out along the pads regardless of friction. 128 position iterations on the vial and the articulation hold
+# the pinch like Newton's 100-iteration MJWarp solve; 64 is not enough. Applied scene-wide through ``OvPhysxCfg``
+# (see ``PhysicsCfg.physx``); prims that author their own iteration count keep it. Newton ignores these.
+PHYSX_SOLVER_POSITION_ITERATIONS = 128
+
 WORKSHOP_SO101_CFG = SO101_CFG.replace(
-    spawn=SO101_CFG.spawn.replace(func=_spawn_so101_with_camera_overrides),
+    spawn=SO101_CFG.spawn.replace(
+        func=_spawn_so101_with_camera_overrides,
+        # The asset instances its collision meshes; binding the contact material needs real prims.
+        make_uninstanceable=True,
+        variants={
+            "Robot": "robot",
+            "Sensor": "sensors",
+            "Physics": preset(default="physics", newton_mjwarp="physics", physx="physx"),
+        },
+    ),
+    actuators={
+        "usd": SO101_CFG.actuators["usd"].replace(
+            armature=preset(default=None, newton_mjwarp=None, physx=SYS_ID_ARMATURE),
+            friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_FRICTION),
+            dynamic_friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_FRICTION),
+            viscous_friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_DAMPING),
+        )
+    },
 )
 
 
@@ -162,7 +263,11 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
     vial = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Vial",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(VIAL_USD)),
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=str(VIAL_USD),
+            activate_contact_sensors=True,
+            func=_spawn_usd_with_contact_material,
+        ),
         init_state=RigidObjectCfg.InitialStateCfg(
             pos=TABLETOP_VIAL_POSITION,
             # Horizontal vial: +90 degrees about world Y (XYZW).
@@ -172,24 +277,24 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
     rack = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Rack",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(RACK_USD)),
+        spawn=sim_utils.UsdFileCfg(usd_path=str(RACK_USD), func=_spawn_usd_with_contact_material),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.18, 0.08, 0.04)),
     )
 
     mat = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Mat",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(MAT_USD)),
+        spawn=sim_utils.UsdFileCfg(usd_path=str(MAT_USD), func=_spawn_usd_with_contact_material),
         init_state=AssetBaseCfg.InitialStateCfg(
             pos=(0.22, 0.0, 0.032),
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
         ),
     )
 
-    fixed_jaw_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/gripper",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Vial"],
-        history_length=4,
-    )
+    # The fixed jaw is part of the ``gripper`` link. Its sensor is deliberately unfiltered (net contact force):
+    # OV PhysX fails to build a filtered contact view for this link when the scene is cloned, see
+    # SIM2SIM_ISAACLAB_ISSUES.md (issue 4). The moving-jaw sensor is filtered to the vial, so bilateral contact
+    # still requires the vial to be between the jaws.
+    fixed_jaw_contact = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/gripper", history_length=4)
     moving_jaw_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/moving_jaw_so101_v1",
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Vial"],
@@ -403,6 +508,14 @@ class PhysicsCfg(PresetCfg):
         collision_cfg=NewtonCollisionPipelineCfg(),
         num_substeps=2,
         debug_mode=False,
+    )
+    # Isaac Sim PhysX when Isaac Sim is installed, otherwise the standalone OV PhysX runtime.
+    physx = PhysxAutoCfg(
+        isaacsim_physx=PhysxCfg(bounce_threshold_velocity=0.01),
+        ovphysx=OvPhysxCfg(
+            rigid_body_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS,
+            articulation_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS,
+        ),
     )
     default = newton_mjwarp
 

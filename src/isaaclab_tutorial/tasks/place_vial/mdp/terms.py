@@ -76,9 +76,9 @@ def _finite_error(value: torch.Tensor) -> torch.Tensor:
 
 
 def _contact_magnitude(env: ManagerBasedRLEnv, name: str) -> torch.Tensor:
-    """Return the maximum filtered contact-force magnitude for a sensor."""
+    """Return the maximum contact-force magnitude for a sensor (filtered if the sensor declares filters)."""
     sensor: ContactSensor = env.scene.sensors[name]
-    forces = _tensor(sensor.data.force_matrix_w)
+    forces = _tensor(sensor.data.force_matrix_w if sensor.cfg.filter_prim_paths_expr else sensor.data.net_forces_w)
     magnitude = torch.linalg.vector_norm(forces, dim=-1).reshape(env.num_envs, -1).amax(dim=-1)
     return _finite(magnitude)
 
