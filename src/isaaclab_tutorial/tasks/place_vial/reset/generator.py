@@ -2307,7 +2307,8 @@ def generate_main(argv: list[str] | None = None) -> int:
     env_cfg.scene.num_envs = cfg.batch_size
     env_cfg.sim.device = args.device
     env_cfg.seed = cfg.seed
-    with launch_simulation(env_cfg, args):
+    with launch_simulation(env_cfg, args) as physics_cfg:
+        env_cfg.sim.physics = physics_cfg
         env = ManagerBasedRLEnv(env_cfg)
         try:
             states, rejections = _Generator(env, cfg).generate()
@@ -2347,7 +2348,8 @@ def view_main(argv: list[str] | None = None) -> int:
     env_cfg = SO101VialGeneratorEnvCfg()
     env_cfg.scene.num_envs = 1
     env_cfg.sim.device = args.device
-    with launch_simulation(env_cfg, args):
+    with launch_simulation(env_cfg, args) as physics_cfg:
+        env_cfg.sim.physics = physics_cfg
         env = ManagerBasedRLEnv(env_cfg)
         try:
             artifact = load_reset_dataset(args.dataset, device=env.device)

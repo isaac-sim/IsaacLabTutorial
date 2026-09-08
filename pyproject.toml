@@ -22,7 +22,7 @@ view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_mai
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "develop", subdirectory = "tools/wheel_builder" }
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "c58715b1db1107d79d06213066c175ef771aa5ac", subdirectory = "tools/wheel_builder" }
 
 [tool.uv]
 override-dependencies = [

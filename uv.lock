@@ -889,7 +889,7 @@ wheels = [
 [[package]]
 name = "isaaclab"
 version = "3.0.0"
-source = { git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&branch=develop#c58715b1db1107d79d06213066c175ef771aa5ac" }
+source = { git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=c58715b1db1107d79d06213066c175ef771aa5ac#c58715b1db1107d79d06213066c175ef771aa5ac" }
 dependencies = [
     { name = "alphashape" },
     { name = "botocore" },
@@ -960,7 +960,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "isaaclab", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&branch=develop" }]
+requires-dist = [{ name = "isaaclab", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=c58715b1db1107d79d06213066c175ef771aa5ac" }]
 
 [package.metadata.requires-dev]
 dev = [
