@@ -26,6 +26,9 @@ def test_only_tutorial_tasks_are_registered():
         "IsaacTutorial-Place-Vial-SO101-Camera",
         "IsaacTutorial-Place-Vial-SO101-Camera-Distillation",
         "IsaacTutorial-Place-Vial-SO101-Record",
+        "IsaacTutorial-Place-Vial-SO101-DR",
+        "IsaacTutorial-Place-Vial-SO101-DR-Wide",
+        "IsaacTutorial-Place-Vial-SO101-DR-Contact",
     }
 
 

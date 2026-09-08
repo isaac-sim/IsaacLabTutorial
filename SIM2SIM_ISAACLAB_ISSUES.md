@@ -28,7 +28,10 @@ and `sim2sim-ov-fixes` (commit `f97cc14f`, based on `develop` 18086270e, which a
   MDL source does not resolve so their `UsdPreviewSurface` renders (`ovrtx_usd.apply_mdl_fallback`). Tests:
   `source/isaaclab_ov/test/renderers/test_ovrtx_mdl_fallback.py`.
 
-Issues 2, 3, 6, 7, 8, 9 and 11 remain open (runtime semantics or model differences that cannot be fixed in Python).
+Issues 2, 3, 6, 7, 8, 9, 11, 12 and 13 remain open (runtime semantics or model differences that cannot be fixed in
+Python from the task side). Issue 13 (Newton ignores torsional/rolling friction unless `mujoco:condim` is raised) is
+worked around in the task only as documentation: writing `condim = 4` is a one-liner in the builder callback, but the
+policy trained with it transferred worse to OV PhysX (36% vs 55%), so the shipped task keeps the default.
 
 ---
 
@@ -43,8 +46,11 @@ asset's 8, and the articulation-vs-rigid-body contact does not converge.
 
 **Measured.** Position iterations on the vial and the articulation: 4/8 -> 6 N (fails), 32 -> 12 N (fails),
 64 -> 23 N (fails slowly), 128 -> 33 N (holds), 255 -> 31 N (holds). Halving the physics step (240 Hz) alone does
-not help. `isaaclab_ov` exposes no solver settings on `OvPhysxCfg` (only GPU capacities and determinism flags), and
-`physxScene:solverType` / `physxScene:frictionType` authored on the scene prim are ignored (bit-identical results).
+not help. Neither does the solver choice: at 32 iterations TGS (the runtime default), PGS and
+`enable_external_forces_every_iteration` all let the jaw close through, and raising only the articulation to 128 while
+the vial keeps the default also fails, so both bodies need ~128 iterations. Upstream `isaaclab_ov` exposes no solver
+settings on `OvPhysxCfg` (only GPU capacities and determinism flags); the fork adds them. Throughput at 4,096 envs:
+4 iterations 80k steps/s (Newton: 89k), 32 iterations 47k, 128 iterations 18k.
 
 **Workaround here.** `solver_position_iteration_count=128` on the vial (`RigidBodyPropertiesCfg`) and on the
 articulation (`ArticulationRootPropertiesCfg`), PhysX preset only (`PHYSX_SOLVER_POSITION_ITERATIONS` in
@@ -93,6 +99,12 @@ state checkpoint scores 98.4% with the compliant material and 89.7% (30% unsafe 
 > that presses a rigid body between two links with a relaxing drive on both backends and asserts the body stays in
 > contact with the same interpenetration budget.
 
+**Addendum (Sept 8).** The in-hand equilibrium can be matched from the actuator side: with the gripper drive
+stiffness scaled x0.6 on OV PhysX (separate `gripper` actuator group in the tutorial), the stall angle becomes +0.067
+rad (Newton +0.065) and the retention curve follows Newton within 0.01 rad; the frozen Newton policy then scores 32%
+on OV PhysX instead of 13.7%. Scaling the gripper effort limit (x0.2) matches the stall too (+0.068) but transfers
+worse (26%). This is a workaround for the missing shared contact-compliance model, not a fix.
+
 ---
 
 ## 3. OV PhysX joint friction / viscous friction act weaker than the same values on Newton (semantics / units)
@@ -109,9 +121,10 @@ dimensionless coefficients and claims to mirror `isaaclab_physx`; PhysX 5.6's jo
 *efforts* (N m) and a viscous coefficient (N m s / rad), and Newton's `frictionloss` is a torque. The systematic ~2x
 on viscous friction across all joints points at a units mismatch in the OV runtime binding or the writer.
 
-**Workaround here.** None shipped: the fitted factors matched the open-loop traces to 0.001-0.005 rad but did not
-improve Newton->PhysX transfer and lowered PhysX->Newton transfer (68% -> 42%), so `PHYSX_JOINT_FRICTION_SCALE` /
-`PHYSX_JOINT_VISCOUS_SCALE` are 1.0 and the values are only recorded.
+**Workaround here.** `PHYSX_JOINT_FRICTION_SCALE` / `PHYSX_JOINT_VISCOUS_SCALE` in `env_cfg.py` apply the fitted
+per-joint factors to the OV PhysX preset (loaded-regime traces match Newton to 0.001-0.005 rad, folded-arm traces to
+0.002-0.05 rad). The remaining residual is covered by actuator domain randomization during Newton training
+(`IsaacTutorial-Place-Vial-SO101-DR`).
 
 **Fix prompt.**
 > In Isaac Lab, determine the units and semantics the `ovphysx` `ARTICULATION_DOF_FRICTION_PROPERTIES` binding
@@ -266,3 +279,57 @@ residual Newton->PhysX gap).
 > that a body pressed by a position drive penetrates by `F / k`; if the runtime clamps or ignores the values, expose
 > the working parameter path (e.g. `compliantContactAccelerationSpring`) or file the runtime issue, and document the
 > supported range.
+
+---
+
+## 12. Newton contact softness is set by the substep (MuJoCo ref-safe clamp), and the task's ke/kd/solref values are inert
+
+**What happens.** The task configures Newton contacts through a `NewtonManager` builder callback (`shape_material_ke =
+1.57e5`, `kd = 1.12e3`, `mujoco:geom_solref = (0.002, 1.5)`, `solimp`). Scaling ke x4, kd x2 and halving the solref
+time constant changes nothing (bit-identical pinch/lift traces): with `use_mujoco_contacts=False` the MJWarp solver
+resolves rigid contacts as MuJoCo soft constraints whose time constant is clamped to 2 x dt (ref-safe), i.e. ~8.3 ms at
+the 240 Hz substep, regardless of the authored values. The effective contact softness therefore follows
+`num_substeps`, which is not documented anywhere near the contact parameters. The Newton model also lists the vial's
+`collisionEnabled = false` mesh (`/Vial/collider`) among its shapes (and the vial's Newton mass, 23.3 g, differs from
+OV PhysX's 21.1 g accordingly), so the importer does not fully honour the disabled collider.
+
+**Workaround here.** None: raising `num_substeps` to 4 or 8 makes Newton's pinch stiffer than rigid PhysX (stall
++0.108 / +0.127 rad vs +0.099) without changing the behaviour that actually differs. With the shipped OV PhysX preset
+the Newton policy succeeds 87-100% from every start phase after the grasp but only 20% from the pregrasp phase, so
+the residual Newton -> OV PhysX gap is the grasp acquisition on the mat (the vial stays put on Newton and is pushed
+on PhysX while the jaws close).
+
+**Fix prompt.**
+> In Isaac Lab's Newton backend, document (and warn at build time) that with `use_mujoco_contacts=False` the
+> `shape_material_ke/kd` and `mujoco:geom_solref` values are subject to MuJoCo's ref-safe clamp (time constant >= 2 dt)
+> so that authored contact stiffness above the clamp has no effect; expose the effective contact time constant in
+> the solver cfg validation. Separately, make the Newton USD importer skip collider prims with
+> `physics:collisionEnabled = false` for both collision and mass computation, and add a test with an asset that carries
+> a disabled mesh collider next to enabled primitive colliders (the workshop vial) asserting shape count and mass.
+
+## 13. Newton silently ignores torsional and rolling friction (MuJoCo `condim` defaults to 3)
+
+**What happens.** `ModelBuilder.shape_material_mu_torsional` / `shape_material_mu_rolling` are populated (the task sets
+0.005 / 0.05 on every shape and the Newton `Model` reports them), and the MJWarp model's `geom_friction` rows do carry
+`(0.7, 0.005, 0.05)`. But `SolverMuJoCo` registers the per-shape custom attribute `mujoco:condim` with default 3, so
+every geom is built with `condim = 3` and MuJoCo evaluates sliding friction only. Nothing warns. Verified in-session:
+`mjw_model.geom_condim` is 3 everywhere; zeroing both coefficients at the source leaves the trained policy's success
+bit-for-bit unchanged (99.4 %).
+
+**Why it matters for sim2sim.** A two-jaw pinch on a cylinder has two opposed point contacts. With `condim = 3` the
+vial spins freely about the contact normal, so the Newton policy learned a gravity-pivot grasp (grab off-centre, let the
+vial swing upright while lifting). OV PhysX produces multi-point contact patches per pad (torsionally stiff), so the
+same grasp holds the vial horizontal and it ends lying on the rack: this was the dominant residual failure (pregrasp
+starts 35 %). Raising PhysX torsional patch radius makes PhysX stricter still (20 mm: 8 %), so the mismatch must be
+closed on the Newton side.
+
+**Workaround here.** The task's builder callback now writes `mujoco:condim = 4` on every shape (torsional honoured,
+rolling still off because PhysX has no rolling friction) and the state policy is retrained with it.
+
+**Fix prompt.**
+> In Isaac Lab's Newton backend (`isaaclab_newton`), when a shape has non-zero `shape_material_mu_torsional` or
+> `shape_material_mu_rolling` and its `mujoco:condim` is still the default 3, either raise the condim automatically
+> (4 for torsional, 6 for rolling) or emit a warning that the coefficients will be ignored. Expose `condim` in
+> `MJWarpSolverCfg` (a global default plus per-asset override via the existing custom-attribute path) and document
+> in the contact-parameter section that torsional/rolling friction require `condim >= 4 / 6`. Add a test that builds
+> a model with `mu_torsional > 0` and asserts `geom_condim >= 4` (or the warning).

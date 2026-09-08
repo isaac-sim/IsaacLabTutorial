@@ -62,6 +62,10 @@ _CONTACT_DAMPING = 1.12e3
 _FRICTION = 0.7
 _ROLLING_FRICTION = 0.05
 _TORSIONAL_FRICTION = 0.005
+# MuJoCo contact dimensionality. Newton's default is 3 (sliding only), which silently ignores the torsional and rolling
+# coefficients above (see SIM2SIM_ISAACLAB_ISSUES.md, issue 13). 4 would honour torsional friction; a policy trained
+# with 4 transferred worse to OV PhysX (36 % vs 55 %), so the shipped task keeps the default.
+_CONDIM = 3
 _SOLIMP = (0.7, 0.95, 0.0001, 0.5, 2.0)
 _SOLREF = (0.002, 1.5)
 _contact_model_registered = False
@@ -154,16 +158,54 @@ SYS_ID_JOINT_FRICTION = {
     "gripper": 0.083458,
 }
 
-# PhysX interprets the joint friction/viscous values differently from Newton: with the sys-ID numbers above, the
+# OV PhysX interprets the joint friction/viscous values differently from Newton: with the sys-ID numbers above, the
 # open-loop response of every joint is faster on PhysX, and under the extended-arm load the shoulder moves 2.4x
-# faster per commanded step (see SIM2SIM_ISAACLAB_ISSUES.md (issue 3)). Per-joint multipliers fitted against
-# Newton's response (friction x1.5 pan/shoulder/roll, x2 gripper; viscous x2 pan/roll/gripper, x3 shoulder/wrist_flex,
-# x1.5 elbow) match the open-loop traces to 0.001-0.005 rad, but they did not improve Newton->PhysX transfer and
-# lowered PhysX->Newton transfer (68% -> 42%), so the shipped preset keeps the raw sys-ID values (all factors 1.0).
-PHYSX_JOINT_FRICTION_SCALE = {name: 1.0 for name in SYS_ID_JOINT_FRICTION}
-PHYSX_JOINT_VISCOUS_SCALE = {name: 1.0 for name in SYS_ID_JOINT_DAMPING}
+# faster per commanded step (see SIM2SIM_ISAACLAB_ISSUES.md (issue 3)). The per-joint multipliers below were fitted
+# on OV PhysX against Newton's step and sinusoid responses (folded arm for pan/roll/gripper/elbow, transport-pose load
+# for shoulder_lift and wrist_flex) and bring the traces to 0.001-0.005 rad RMSE (0.016-0.14 before). They make the
+# PhysX actuators behave like Newton's, which is what a Newton-trained policy expects.
+PHYSX_JOINT_FRICTION_SCALE = {
+    "shoulder_pan": 1.5,
+    "shoulder_lift": 1.5,
+    "elbow_flex": 1.0,
+    "wrist_flex": 1.0,
+    "wrist_roll": 1.5,
+    "gripper": 2.0,
+}
+PHYSX_JOINT_VISCOUS_SCALE = {
+    "shoulder_pan": 2.0,
+    "shoulder_lift": 3.0,
+    "elbow_flex": 1.5,
+    "wrist_flex": 3.0,
+    "wrist_roll": 2.0,
+    "gripper": 2.0,
+}
 PHYSX_JOINT_FRICTION = {name: value * PHYSX_JOINT_FRICTION_SCALE[name] for name, value in SYS_ID_JOINT_FRICTION.items()}
 PHYSX_JOINT_DAMPING = {name: value * PHYSX_JOINT_VISCOUS_SCALE[name] for name, value in SYS_ID_JOINT_DAMPING.items()}
+
+ARM_JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"]
+
+
+def _subset(values: dict[str, float], names: list[str]) -> dict[str, float]:
+    return {name: values[name] for name in names}
+
+
+# Vial friction. Newton and OV PhysX read the same mu, but the closing jaws on OV PhysX drag the vial into a different
+# in-hand pose than on Newton (grasp acquisition from the pregrasp pose: 20% success at mu 0.7-1.3). Lowering the
+# vial's friction on PhysX brings the acquired grasp back toward Newton's (x0.5 -> 31-33%, x2 -> 4-6%), so the PhysX
+# preset scales the randomization range; Newton keeps the workshop values.
+VIAL_FRICTION_RANGE = (0.7, 1.3)
+PHYSX_VIAL_FRICTION_SCALE = 0.5
+PHYSX_VIAL_FRICTION_RANGE = tuple(v * PHYSX_VIAL_FRICTION_SCALE for v in VIAL_FRICTION_RANGE)
+
+# In-hand equilibrium: the gripper drive (USD stiffness 68.25 N m/rad) stalls against the vial at +0.065 rad on Newton
+# but at +0.02 rad on OV PhysX with the compliant contact, so the vial sits deeper in the PhysX jaws and the policy's
+# gripper observation is off-distribution from the first grasp step. Scaling the gripper drive stiffness on PhysX
+# moves the stall angle (x0.6 -> +0.067 rad, retention curve within 0.01 rad of Newton) and doubled the Newton
+# policy's success on PhysX (13.7% -> 32%). Effort-limit scaling matches the stall too but transfers worse.
+SO101_GRIPPER_USD_STIFFNESS = 68.2508
+PHYSX_GRIPPER_STIFFNESS_SCALE = 0.6
+PHYSX_GRIPPER_STIFFNESS = SO101_GRIPPER_USD_STIFFNESS * PHYSX_GRIPPER_STIFFNESS_SCALE
 
 # PhysX under-converges the jaw/vial pinch at its default iteration counts (4 for rigid bodies): the vial is
 # squeezed out along the pads regardless of friction. 128 position iterations on the vial and the articulation hold
@@ -182,13 +224,24 @@ WORKSHOP_SO101_CFG = SO101_CFG.replace(
             "Physics": preset(default="physics", newton_mjwarp="physics", physx="physx"),
         },
     ),
+    # Two actuator groups so the gripper can carry a PhysX-only drive stiffness (per-joint dicts must cover every
+    # joint of their group). Both groups keep the USD-authored gains on Newton.
     actuators={
-        "usd": SO101_CFG.actuators["usd"].replace(
-            armature=preset(default=None, newton_mjwarp=None, physx=SYS_ID_ARMATURE),
-            friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_FRICTION),
-            dynamic_friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_FRICTION),
-            viscous_friction=preset(default=None, newton_mjwarp=None, physx=PHYSX_JOINT_DAMPING),
-        )
+        "arm": SO101_CFG.actuators["usd"].replace(
+            joint_names_expr=ARM_JOINTS,
+            armature=preset(default=None, newton_mjwarp=None, physx=_subset(SYS_ID_ARMATURE, ARM_JOINTS)),
+            friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ARM_JOINTS)),
+            dynamic_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ARM_JOINTS)),
+            viscous_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_DAMPING, ARM_JOINTS)),
+        ),
+        "gripper": SO101_CFG.actuators["usd"].replace(
+            joint_names_expr=["gripper"],
+            armature=preset(default=None, newton_mjwarp=None, physx=_subset(SYS_ID_ARMATURE, ["gripper"])),
+            friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ["gripper"])),
+            dynamic_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ["gripper"])),
+            viscous_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_DAMPING, ["gripper"])),
+            stiffness=preset(default=None, newton_mjwarp=None, physx={"gripper": PHYSX_GRIPPER_STIFFNESS}),
+        ),
     },
 )
 
@@ -210,7 +263,7 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
     # Prototype builders register these attributes, but Newton's cloner does
     # not currently carry that registration to the main builder.
     newton.solvers.SolverMuJoCo.register_custom_attributes(builder)
-    for name, value in (("mujoco:geom_solimp", _SOLIMP), ("mujoco:geom_solref", _SOLREF)):
+    for name, value in (("mujoco:geom_solimp", _SOLIMP), ("mujoco:geom_solref", _SOLREF), ("mujoco:condim", _CONDIM)):
         attribute = builder.custom_attributes.get(name)
         if attribute is None:
             continue
@@ -394,8 +447,8 @@ class DatasetEventsCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("vial"),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.7, 1.3),
+            "static_friction_range": preset(default=VIAL_FRICTION_RANGE, physx=PHYSX_VIAL_FRICTION_RANGE),
+            "dynamic_friction_range": preset(default=VIAL_FRICTION_RANGE, physx=PHYSX_VIAL_FRICTION_RANGE),
             "restitution_range": (0.0, 0.02),
             "num_buckets": 32,
         },

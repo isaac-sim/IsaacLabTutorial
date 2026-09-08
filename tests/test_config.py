@@ -53,16 +53,20 @@ def test_state_task_control_and_physics_contract():
     assert cfg.scene.robot.spawn.usd_path == SO101_CFG.spawn.usd_path
     assert cfg.scene.robot.spawn.activate_contact_sensors is True
     # Newton uses the USD-authored Sys-ID dynamics; PhysX re-applies them through the actuator configuration.
-    actuator = cfg.scene.robot.actuators["usd"]
+    actuator = cfg.scene.robot.actuators["arm"]
+    gripper = cfg.scene.robot.actuators["gripper"]
+    assert gripper.joint_names_expr == ["gripper"]
+    assert gripper.stiffness.newton_mjwarp is None and gripper.stiffness.default is None
+    assert gripper.stiffness.physx["gripper"] == pytest.approx(0.6 * 68.2508, abs=1e-3)
+    assert gripper.friction.physx["gripper"] == pytest.approx(2.0 * 0.083458, abs=1e-6)
     assert actuator.stiffness is None and actuator.damping is None
     for field in ("armature", "friction", "dynamic_friction", "viscous_friction"):
         assert getattr(actuator, field).newton_mjwarp is None
-        assert set(getattr(actuator, field).physx) == set(JOINTS)
-    assert actuator.viscous_friction.physx["shoulder_pan"] == pytest.approx(1.5907, abs=1e-3)
-    assert actuator.friction.physx["gripper"] == pytest.approx(0.083458, abs=1e-6)
+        assert set(getattr(actuator, field).physx) | set(getattr(gripper, field).physx) == set(JOINTS)
+    assert actuator.viscous_friction.physx["shoulder_pan"] == pytest.approx(2.0 * 1.5907, abs=2e-3)
     assert actuator.friction.physx["elbow_flex"] == pytest.approx(0.41119, abs=1e-6)
-    assert actuator.friction.physx["shoulder_lift"] == pytest.approx(0.344793, abs=1e-6)
-    assert actuator.viscous_friction.physx["wrist_flex"] == pytest.approx(math.degrees(0.0187076781), abs=1e-4)
+    assert actuator.friction.physx["shoulder_lift"] == pytest.approx(1.5 * 0.344793, abs=1e-6)
+    assert actuator.viscous_friction.physx["wrist_flex"] == pytest.approx(3.0 * math.degrees(0.0187076781), abs=1e-4)
     assert cfg.scene.robot.spawn.variants["Physics"].newton_mjwarp == "physics"
     assert cfg.scene.robot.spawn.variants["Physics"].physx == "physx"
     assert cfg.sim.physics.physx.ovphysx is not None
@@ -77,6 +81,10 @@ def test_state_task_control_and_physics_contract():
     assert cfg.scene.vial.spawn.rigid_props is None
     assert cfg.scene.robot.spawn.articulation_props.solver_position_iteration_count == 8
     # The shared contact material carries Newton's contact stiffness/damping as a PhysX compliant contact.
+    friction = cfg.events.vial_material.params["static_friction_range"]
+    assert friction.default == so101_env_cfg.VIAL_FRICTION_RANGE == (0.7, 1.3)
+    assert friction.physx == so101_env_cfg.PHYSX_VIAL_FRICTION_RANGE
+    assert friction.physx[1] < friction.default[0]  # the PhysX range sits below Newton's
     material = so101_env_cfg.WORKSHOP_CONTACT_MATERIAL
     assert material.compliant_contact_stiffness == pytest.approx(1.57e5)
     assert material.compliant_contact_damping == pytest.approx(1.12e3)
@@ -189,3 +197,27 @@ def test_record_task_keeps_state_observations():
     direction = [t - e for t, e in zip(RECORD_CAMERA_TARGET, RECORD_CAMERA_EYE, strict=True)]
     norm = math.sqrt(sum(v * v for v in direction))
     assert all(abs(f - d / norm) < 1e-6 for f, d in zip(forward, direction, strict=True))
+
+
+def test_domain_randomization_variants():
+    from isaaclab_tutorial.tasks.place_vial.config.so101.dr_env_cfg import (
+        JOINT_FRICTION_SCALE_RANGE,
+        JOINT_VISCOUS_SCALE_RANGE,
+        SO101VialDREnvCfg,
+        SO101VialDRWideEnvCfg,
+    )
+
+    narrow = SO101VialDREnvCfg()
+    assert narrow.events.robot_joint_parameters.params["friction_distribution_params"] == JOINT_FRICTION_SCALE_RANGE
+    assert narrow.events.robot_joint_parameters.params["operation"] == "scale"
+    assert narrow.events.robot_viscous_friction.params["scale_range"] == JOINT_VISCOUS_SCALE_RANGE
+    assert narrow.events.robot_viscous_friction.mode == "reset"
+    # The randomized ranges bracket the measured Newton -> OV PhysX actuator gap (friction x1.5-2, viscous x1.5-3).
+    assert JOINT_FRICTION_SCALE_RANGE[0] < 1.0 < 2.0 <= JOINT_FRICTION_SCALE_RANGE[1]
+    assert JOINT_VISCOUS_SCALE_RANGE[0] < 1.0 < 3.0 <= JOINT_VISCOUS_SCALE_RANGE[1]
+    wide = SO101VialDRWideEnvCfg()
+    assert wide.events.gripper_gains.params["asset_cfg"].joint_names == ["gripper"]
+    assert wide.events.vial_scale.mode == "usd"
+    # Observations and actions are untouched: any DR checkpoint plays on the plain task and vice versa.
+    assert type(wide.observations) is type(SO101VialEnvCfg().observations)
+    assert type(wide.actions) is type(SO101VialEnvCfg().actions)

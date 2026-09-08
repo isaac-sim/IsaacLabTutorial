@@ -185,3 +185,49 @@ def clear_reset_progress(env: ManagerBasedRLEnv, env_ids: torch.Tensor) -> None:
         lifted=torch.zeros_like(ids, dtype=torch.bool),
     )
     _reset_controller_seed(env, ids, None)
+
+
+class RandomizeJointViscousFriction(ManagerTermBase):
+    """Scale the passive viscous joint friction of an articulation per environment.
+
+    Isaac Lab randomizes Coulomb friction and armature (:func:`randomize_joint_parameters`) and the drive gains
+    (:func:`randomize_actuator_gains`) but not the passive viscous term, which is the joint quantity that differs
+    most between the Newton and OV PhysX backends for the SO-101. The scale is sampled uniformly per environment and
+    joint from ``scale_range`` and applied to the values the asset had at startup.
+    """
+
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.asset_cfg = cfg.params["asset_cfg"]
+        self.asset = env.scene[self.asset_cfg.name]
+        viscous = self.asset.data.joint_viscous_friction_coeff
+        self.default_viscous = (viscous.torch if hasattr(viscous, "torch") else viscous).clone()
+        low, high = cfg.params["scale_range"]
+        if not 0.0 < low <= high:
+            raise ValueError(f"scale_range must satisfy 0 < low <= high, got {cfg.params['scale_range']}")
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        env_ids: torch.Tensor | None,
+        asset_cfg,
+        scale_range: tuple[float, float],
+    ) -> None:
+        ids = _ids(env, env_ids)
+        if ids.numel() == 0:
+            return
+        joint_ids = self.asset_cfg.joint_ids
+        base = self.default_viscous[ids]
+        if joint_ids != slice(None):
+            base = base[:, joint_ids]
+        scale = torch.empty_like(base).uniform_(scale_range[0], scale_range[1])
+        friction = self.asset.data.joint_friction_coeff
+        friction = (friction.torch if hasattr(friction, "torch") else friction)[ids]
+        if joint_ids != slice(None):
+            friction = friction[:, joint_ids]
+        self.asset.write_joint_friction_coefficient_to_sim_index(
+            joint_friction_coeff=friction,
+            joint_viscous_friction_coeff=base * scale,
+            joint_ids=None if joint_ids == slice(None) else joint_ids,
+            env_ids=ids,
+        )

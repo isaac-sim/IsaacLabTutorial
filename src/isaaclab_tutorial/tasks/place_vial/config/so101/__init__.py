@@ -49,3 +49,36 @@ gym.register(
         "default_agent": "rsl_rl",
     },
 )
+
+gym.register(
+    id="IsaacTutorial-Place-Vial-SO101-DR",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDREnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
+        "default_agent": "rsl_rl",
+    },
+)
+
+gym.register(
+    id="IsaacTutorial-Place-Vial-SO101-DR-Wide",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDRWideEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
+        "default_agent": "rsl_rl",
+    },
+)
+
+gym.register(
+    id="IsaacTutorial-Place-Vial-SO101-DR-Contact",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDRContactEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
+        "default_agent": "rsl_rl",
+    },
+)
