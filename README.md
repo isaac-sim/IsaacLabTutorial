@@ -18,14 +18,30 @@ wrist camera come from Isaac Lab's `SO101_CFG`, and the scene matches the real w
 
 ## Setup
 
-Python 3.12 and [uv](https://docs.astral.sh/uv/) are required. Isaac Lab and its runtime dependencies are built from
-the upstream Git repository's `develop` branch.
+Python 3.12 and [uv](https://docs.astral.sh/uv/) are required. Isaac Lab is built from the upstream Git commit pinned
+in `pyproject.toml`. The lockfile pairs it with Newton 1.6.0rc1, which supports the cloner's `label_prefixes` API.
 
 ```bash
 uv sync
 uv run pytest -q
 uv run ruff check .
 ```
+
+PyTorch uses CUDA 12.8 on Linux x86_64 and Windows, and CUDA 13.0 on Linux aarch64, matching Isaac Lab's defaults.
+The explicit PyTorch indexes and lockfile select the build automatically; no additional command flags are needed.
+PyTorch bundles its CUDA runtime, which requires a compatible NVIDIA driver.
+
+The kitless Newton preset uses OpenUSD 25.05 from `usd-exchange`, even if Isaac Sim 6.1 is installed. That runtime
+has a [physics-parser race](https://github.com/PixarAnimationStudios/OpenUSD/pull/4002) when one body has multiple
+colliders, which can cause `malloc(): unaligned tcache chunk detected`, a crash, or a hang. Set this before running
+the simulation commands below (Windows Command Prompt: `set PXR_WORK_THREAD_LIMIT=1`):
+
+```bash
+export PXR_WORK_THREAD_LIMIT=1
+```
+
+This workaround limits OpenUSD's worker pool and can slow USD import. Remove it when using an OpenUSD runtime
+containing the fix (26.05 or newer, or Isaac Sim 6.1's Kit runtime).
 
 Confirm that the installed Isaac Lab command sees the downstream tasks:
 

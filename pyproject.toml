@@ -23,16 +23,45 @@ dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv.sources]
 isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "f754f2965af9d6aa4f2e18d7d6d3ddf8f8471c69", subdirectory = "tools/wheel_builder" }
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+torchvision = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+torchaudio = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+  { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [tool.uv]
-override-dependencies = [
-  "mujoco~=3.11.0",
-  "mujoco-warp~=3.11.0",
-  "newton[sim] @ git+https://github.com/newton-physics/newton.git@release-1.5",
-  "newton-usd-schemas>=0.4.1",
-  "torch>=2.11",
-  "torchvision>=0.26",
+environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'linux' and platform_machine == 'aarch64'",
+  "sys_platform == 'win32' and platform_machine == 'AMD64'",
 ]
+# Match the pinned Isaac Lab checkout; uv does not inherit dependency projects' overrides.
+override-dependencies = [
+  "mujoco~=3.12.0",
+  "mujoco-warp~=3.12.0",
+  "newton-usd-schemas>=0.4.1",
+]
+constraint-dependencies = ["torch==2.11.0", "torchvision==0.26.0", "torchaudio==2.11.0"]
 
 [tool.uv.build-backend]
 module-name = "isaaclab_tutorial"
