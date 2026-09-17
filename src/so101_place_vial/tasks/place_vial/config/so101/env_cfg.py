@@ -28,13 +28,13 @@ from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionP
 from isaaclab_tasks.utils import PresetCfg
 from pxr import Gf
 
-from isaaclab_tutorial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
-from isaaclab_tutorial.tasks.place_vial import mdp
-from isaaclab_tutorial.tasks.place_vial.mdp.actions import (
+from so101_place_vial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
+from so101_place_vial.tasks.place_vial import mdp
+from so101_place_vial.tasks.place_vial.mdp.actions import (
     SoftLimitRelativeGripperActionCfg,
     SoftLimitRelativeJointPositionActionCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+from so101_place_vial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
@@ -429,7 +429,7 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
 
     def play_mode(self):
         """Play and evaluate complete episodes from the canonical home-pose starts, in dataset order."""
-        from isaaclab_tutorial.utils import evaluation
+        from so101_place_vial.utils import evaluation
 
         requested_num_envs = self.scene.num_envs
         super().play_mode()

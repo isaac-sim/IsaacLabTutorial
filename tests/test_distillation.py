@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import torch
 
-from isaaclab_tutorial.tasks.place_vial.config.so101.agents.distillation import BoundedTeacherDistillation
+from so101_place_vial.tasks.place_vial.config.so101.agents.distillation import BoundedTeacherDistillation
 
 
 def test_student_acts_and_teacher_labels_are_clamped_to_the_executed_action():

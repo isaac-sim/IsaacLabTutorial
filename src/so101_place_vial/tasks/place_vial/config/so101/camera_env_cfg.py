@@ -8,8 +8,8 @@ from isaaclab.utils.configclass import configclass
 from isaaclab.utils.noise import UniformNoiseCfg
 from isaaclab_tasks.utils.presets import MultiBackendRendererCfg
 
-from isaaclab_tutorial.tasks.place_vial import mdp
-from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
+from so101_place_vial.tasks.place_vial import mdp
+from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
     CriticStateGroupCfg,
     PolicyStateGroupCfg,
     SO101SceneCfg,
@@ -99,7 +99,7 @@ class SO101VialCameraEnvCfg(SO101VialEnvCfg):
     observations: CameraObservationsCfg = CameraObservationsCfg()
 
     def play_mode(self):
-        from isaaclab_tutorial.utils import evaluation
+        from so101_place_vial.utils import evaluation
 
         super().play_mode()
         if not evaluation.EXACT_EVALUATION_ACTIVE:

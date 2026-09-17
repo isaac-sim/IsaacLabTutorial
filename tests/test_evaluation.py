@@ -6,8 +6,8 @@ import pytest
 import torch
 from isaaclab_rl import rsl_rl
 
-from isaaclab_tutorial.utils import evaluation
-from isaaclab_tutorial.utils.evaluation import _install_episode_counter
+from so101_place_vial.utils import evaluation
+from so101_place_vial.utils.evaluation import _install_episode_counter
 
 
 class _TerminationManager:

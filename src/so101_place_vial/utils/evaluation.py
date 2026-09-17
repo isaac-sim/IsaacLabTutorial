@@ -1,7 +1,7 @@
 """Exact episode accounting for Isaac Lab's ``play`` entrypoint.
 
 Isaac Lab's play loop runs forever. Passing
-``--external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter`` patches the RSL-RL environment
+``--external_callback so101_place_vial.utils.evaluation.install_episode_counter`` patches the RSL-RL environment
 wrapper so that play stops after exactly :data:`EVALUATION_EPISODES` episodes, one per environment, and prints one
 ``SO101_EVAL_RESULT`` JSON line with the outcome statistics.
 """
