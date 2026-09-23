@@ -7,7 +7,7 @@ from typing import Any
 
 import isaaclab.sim as sim_utils
 import newton
-from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
+from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -15,7 +15,6 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.physics import PhysicsEvent
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
 from isaaclab.sim.utils import clone
 from isaaclab.utils.configclass import configclass
@@ -25,7 +24,6 @@ from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionP
 from isaaclab_tasks.utils import PresetCfg
 from pxr import Gf
 
-from so101_place_vial.assets import MAT_USD, RACK_USD, VIAL_USD
 from so101_place_vial.tasks.place_vial import mdp
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
@@ -132,7 +130,6 @@ ARM_JOINTS = JOINTS[:-1]
 
 @configclass
 class SO101SceneCfg(InteractiveSceneCfg):
-    """One SO-101, one vial, one rack, and a collision mat."""
 
     robot = WORKSHOP_SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
@@ -152,48 +149,6 @@ class SO101SceneCfg(InteractiveSceneCfg):
         soft_joint_pos_limit_factor=0.98,
     )
 
-    vial = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Vial",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(VIAL_USD)),
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=TABLETOP_VIAL_POSITION,
-            # Horizontal vial: +90 degrees about world Y (XYZW).
-            rot=(0.0, 0.7071068, 0.0, 0.7071068),
-        ),
-    )
-
-    rack = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Rack",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(RACK_USD)),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.18, 0.08, 0.04)),
-    )
-
-    mat = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/Mat",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(MAT_USD)),
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(0.22, 0.0, 0.032),
-            rot=(0.0, 0.0, 0.7071068, 0.7071068),
-        ),
-    )
-
-    fixed_jaw_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/gripper",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Vial"],
-        history_length=4,
-    )
-    moving_jaw_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/moving_jaw_so101_v1",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Vial"],
-        history_length=4,
-    )
-
-    vial_rack_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Vial",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Rack"],
-        history_length=4,
-    )
-
     light = AssetBaseCfg(
         prim_path="/World/Light",
         spawn=sim_utils.DomeLightCfg(intensity=1200.0, color=(0.9, 0.9, 0.9)),
@@ -203,16 +158,6 @@ class SO101SceneCfg(InteractiveSceneCfg):
 @configclass
 class EventsCfg:
     reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset", params={"reset_joint_targets": True})
-
-    vial_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            "mass_distribution_params": (0.02, 0.02),
-            "operation": "abs",
-        },
-    )
 
 
 @configclass
