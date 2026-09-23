@@ -36,17 +36,3 @@ def joint_vel(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg | None = None) -
     asset_cfg = SceneEntityCfg("robot") if asset_cfg is None else asset_cfg
     robot: Articulation = env.scene[asset_cfg.name]
     return _finite(_tensor(robot.data.joint_vel)[:, asset_cfg.joint_ids]).clamp(-12.0, 12.0)
-
-
-def last_action(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Return the previous finite policy action."""
-    return _finite(env.action_manager.action).clamp(-1.0, 1.0)
-
-
-def unstable_robot(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Terminate non-finite or extreme joint motion."""
-    robot: Articulation = env.scene["robot"]
-    joint_pos = _tensor(robot.data.joint_pos)
-    joint_vel = _tensor(robot.data.joint_vel)
-    finite = torch.isfinite(joint_pos).all(dim=-1) & torch.isfinite(joint_vel).all(dim=-1)
-    return (~finite) | (joint_vel.abs().amax(dim=1) > 12.0)

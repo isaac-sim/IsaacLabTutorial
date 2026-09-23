@@ -8,13 +8,11 @@ from typing import Any
 import isaaclab.sim as sim_utils
 import newton
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
-from isaaclab.envs import ManagerBasedEnvCfg, ManagerBasedRLEnvCfg
-from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
+from isaaclab.envs import ManagerBasedEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.physics import PhysicsEvent
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
@@ -29,7 +27,6 @@ from pxr import Gf
 
 from so101_place_vial.assets import MAT_USD, RACK_USD, VIAL_USD
 from so101_place_vial.tasks.place_vial import mdp
-from so101_place_vial.tasks.place_vial.mdp.actions import SoftLimitRelativeGripperActionCfg
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
@@ -272,64 +269,6 @@ class SO101InspectionEnvCfg(ManagerBasedEnvCfg):
 
     def __post_init__(self):
         self.decimation = 4
-        self.sim.dt = 1.0 / 120.0
-        self.sim.render_interval = self.decimation
-        self.sim.physics = PhysicsCfg()
-        self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
-
-
-@configclass
-class ActionsCfg:
-    """Bounded relative joint targets matching the real SO-101 interface."""
-
-    arm_action: RelativeJointPositionActionCfg = RelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=ARM_JOINTS,
-        preserve_order=True,
-        # Larger steps increased failures and rack forces in evaluation.
-        scale=0.033,
-        use_zero_offset=True,
-    )
-    gripper_action: SoftLimitRelativeGripperActionCfg = SoftLimitRelativeGripperActionCfg(
-        asset_name="robot",
-        joint_names=["gripper"],
-        # Avoid opening a grasp rapidly from a small policy bias.
-        scale=0.02,
-        use_zero_offset=True,
-    )
-
-
-@configclass
-class AgentObservationsCfg(JointObservationsCfg):
-    previous_action = ObsTerm(func=mdp.last_action)
-
-
-@configclass
-class AgentObservationGroupsCfg:
-    policy: AgentObservationsCfg = AgentObservationsCfg()
-
-
-@configclass
-class TerminationsCfg:
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    unstable_robot = DoneTerm(func=mdp.unstable_robot)
-
-
-@configclass
-class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
-    """A registered stepping task; teacher rewards and dataset resets come next."""
-
-    scene: SO101SceneCfg = SO101SceneCfg(num_envs=8, env_spacing=0.9, replicate_physics=True)
-    actions: ActionsCfg = ActionsCfg()
-    observations: AgentObservationGroupsCfg = AgentObservationGroupsCfg()
-    events: EventsCfg = EventsCfg()
-    rewards = None
-    terminations: TerminationsCfg = TerminationsCfg()
-
-    def __post_init__(self):
-        self.decimation = 4
-        self.episode_length_s = 20.0
-        self.is_finite_horizon = False
         self.sim.dt = 1.0 / 120.0
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
