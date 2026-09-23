@@ -1,7 +1,7 @@
-"""RSL-RL PPO configurations for the state and wrist-camera tasks."""
+"""RSL-RL PPO configurations for the state tasks."""
 
 from isaaclab.utils.configclass import configclass
-from isaaclab_rl.rsl_rl import RslRlCNNModelCfg, RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
 
 
 @configclass
@@ -16,14 +16,6 @@ class BoundedGaussianDistributionCfg(RslRlMLPModelCfg.GaussianDistributionCfg):
 
     std_range: tuple[float, float] = (0.05, 0.3)
 
-
-WRIST_CAMERA_CNN_CFG = RslRlCNNModelCfg.CNNCfg(
-    output_channels=[16, 32, 32],
-    kernel_size=[5, 3, 3],
-    stride=[2, 2, 2],
-    activation="elu",
-)
-"""Compact encoder for the 64 x 48 wrist image, shared by the visual PPO actor and the distillation student."""
 
 PPO_ALGORITHM_CFG = RslRlPpoAlgorithmCfg(
     value_loss_coef=1.0,
@@ -55,29 +47,6 @@ class SO101StatePPORunnerCfg(RslRlOnPolicyRunnerCfg):
     clip_actions = 1.0
     actor = RslRlMLPModelCfg(
         hidden_dims=[256, 256, 128],
-        activation="elu",
-        obs_normalization=True,
-        distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
-    )
-    critic = RslRlMLPModelCfg(hidden_dims=[256, 256, 128], activation="elu", obs_normalization=True)
-    algorithm = PPO_ALGORITHM_CFG
-
-
-@configclass
-class SO101CameraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    """Visual policy trained from scratch: wrist RGB and proprioception actor, privileged state critic."""
-
-    seed = 42
-    num_steps_per_env = 64
-    max_iterations = 5000
-    save_interval = 100
-    experiment_name = "so101_vial_camera"
-    run_name = ""
-    obs_groups = {"actor": ["wrist_rgb", "proprioception"], "critic": ["critic"]}
-    clip_actions = 1.0
-    actor = RslRlCNNModelCfg(
-        cnn_cfg=WRIST_CAMERA_CNN_CFG,
-        hidden_dims=[256, 128],
         activation="elu",
         obs_normalization=True,
         distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),

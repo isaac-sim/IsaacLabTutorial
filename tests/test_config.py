@@ -3,17 +3,6 @@
 import pytest
 from isaaclab_assets.robots.so101 import SO101_CFG
 
-from so101_place_vial.tasks.place_vial.config.so101.agents.rsl_rl_distillation_cfg import (
-    SO101CameraDistillationRunnerCfg,
-)
-from so101_place_vial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
-    SO101CameraPPORunnerCfg,
-    SO101StatePPORunnerCfg,
-)
-from so101_place_vial.tasks.place_vial.config.so101.camera_env_cfg import (
-    SO101VialCameraDistillationEnvCfg,
-    SO101VialCameraEnvCfg,
-)
 from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
     ARM_JOINTS,
     JOINTS,
@@ -66,72 +55,3 @@ def test_training_samples_every_phase_and_play_uses_canonical_starts(monkeypatch
     assert play["sequential"] is True
     assert play["phase_weights"] == CANONICAL_START
     assert cfg.scene.num_envs == 16
-
-
-def test_exact_evaluation_retains_requested_batch(monkeypatch):
-    monkeypatch.setattr(evaluation, "EXACT_EVALUATION_ACTIVE", True)
-    state = SO101VialEnvCfg()
-    camera = SO101VialCameraEnvCfg()
-
-    state.play_mode()
-    camera.play_mode()
-
-    assert state.scene.num_envs == 1024
-    assert camera.scene.num_envs == 1024
-
-
-def test_camera_actor_observation_boundary():
-    cfg = SO101VialCameraEnvCfg()
-
-    assert cfg.scene.num_envs == 1024
-    assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 48)
-    assert cfg.scene.wrist_camera.prim_path == "{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera"
-    assert cfg.scene.wrist_camera.spawn is None
-    assert cfg.scene.wrist_camera.offset.pos == (0.0, 0.0, 0.0)
-    assert cfg.scene.wrist_camera.offset.rot == (0.0, 0.0, 0.0, 1.0)
-    assert cfg.scene.wrist_camera.offset.convention == "ros"
-    assert cfg.scene.wrist_camera.data_types == ["rgb"]
-    assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
-    assert cfg.scene.wrist_camera.update_latest_camera_pose is True
-    assert cfg.scene.robot.spawn.variants == {"Robot": "robot", "Sensor": "sensors", "Physics": "physics"}
-    assert set(cfg.observations.__dict__) >= {"wrist_rgb", "proprioception", "critic"}
-    assert "teacher_state" not in cfg.observations.__dict__
-    assert set(cfg.observations.proprioception.__dict__) >= {
-        "joint_pos",
-        "joint_vel",
-        "joint_target",
-        "previous_action",
-    }
-    assert not {"vial", "rack_target", "progress"} & set(cfg.observations.proprioception.__dict__)
-    assert cfg.observations.wrist_rgb.enable_corruption is True
-    assert cfg.observations.proprioception.enable_corruption is True
-
-
-def test_distillation_task_only_adds_the_teacher_observation():
-    cfg = SO101VialCameraDistillationEnvCfg()
-    camera = SO101VialCameraEnvCfg()
-
-    assert type(cfg.scene) is type(camera.scene)
-    assert cfg.events.reset_from_dataset.params == camera.events.reset_from_dataset.params
-    assert set(cfg.observations.__dict__) - set(camera.observations.__dict__) == {"teacher_state"}
-
-
-def test_agent_configs_match_task_observation_groups():
-    state = SO101StatePPORunnerCfg()
-    camera = SO101CameraPPORunnerCfg()
-    distillation = SO101CameraDistillationRunnerCfg()
-
-    assert state.obs_groups == {"actor": ["policy"], "critic": ["critic"]}
-    assert camera.obs_groups == {"actor": ["wrist_rgb", "proprioception"], "critic": ["critic"]}
-    assert distillation.obs_groups == {
-        "student": ["wrist_rgb", "proprioception"],
-        "teacher": ["teacher_state"],
-    }
-    assert distillation.clip_actions == pytest.approx(1.0)
-    assert distillation.algorithm.class_name.endswith(":BoundedTeacherDistillation")
-    # The teacher must mirror the state actor so the PPO checkpoint loads into it.
-    assert distillation.teacher.hidden_dims == state.actor.hidden_dims
-    assert distillation.teacher.distribution_cfg.std_type == state.actor.distribution_cfg.std_type
-    # The student and the from-scratch visual actor share one encoder definition.
-    assert distillation.student.cnn_cfg == camera.actor.cnn_cfg
-    assert camera.actor.obs_normalization is True
