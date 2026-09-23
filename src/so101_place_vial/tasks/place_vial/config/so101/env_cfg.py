@@ -27,6 +27,9 @@ from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionP
 from isaaclab_tasks.utils import PresetCfg
 from pxr import Gf
 
+from isaaclab.envs.utils.video_recorder_cfg import VideoRecorderCfg
+from isaaclab_tasks.utils import preset
+
 from so101_place_vial.assets import MAT_USD, RACK_USD, VIAL_USD
 from so101_place_vial.tasks.place_vial import mdp
 from so101_place_vial.tasks.place_vial.mdp.actions import SoftLimitRelativeGripperActionCfg
@@ -334,3 +337,15 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
+
+        self.video_recorders = preset(
+            default=[],
+            record_video=[
+                VideoRecorderCfg(
+                    source="visualizer:newton",
+                    output_dir="videos/simple_agents",
+                    video_length=150,
+                    fps=30,
+                )
+            ],
+        )
