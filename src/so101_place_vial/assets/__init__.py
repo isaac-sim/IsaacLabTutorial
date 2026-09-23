@@ -9,7 +9,6 @@ VIAL_RACK_ASSET_DIR = f"{ISAACLAB_NUCLEUS_DIR}/Objects/Vial_Rack"
 VIAL_USD = f"{VIAL_RACK_ASSET_DIR}/vial.usda"
 RACK_USD = f"{VIAL_RACK_ASSET_DIR}/rack.usda"
 MAT_USD = f"{VIAL_RACK_ASSET_DIR}/mat.usda"
-RESET_DATASET = ASSET_ROOT / "reset_poses.pt"
 
 
 def validate_assets() -> list[str]:

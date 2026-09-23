@@ -8,12 +8,11 @@ from typing import Any
 import isaaclab.sim as sim_utils
 import newton
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
-from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.envs import ManagerBasedEnvCfg, ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
-from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.physics import PhysicsEvent
@@ -28,13 +27,9 @@ from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionP
 from isaaclab_tasks.utils import PresetCfg
 from pxr import Gf
 
-from so101_place_vial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
+from so101_place_vial.assets import MAT_USD, RACK_USD, VIAL_USD
 from so101_place_vial.tasks.place_vial import mdp
-from so101_place_vial.tasks.place_vial.mdp.actions import (
-    SoftLimitRelativeGripperActionCfg,
-    SoftLimitRelativeJointPositionActionCfg,
-)
-from so101_place_vial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+from so101_place_vial.tasks.place_vial.mdp.actions import SoftLimitRelativeGripperActionCfg
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
@@ -209,112 +204,8 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
 
 @configclass
-class ResetJointActionsCfg:
-    """Direct joint targets used only by reset generation and diagnostics."""
-
-    joint_delta: SoftLimitRelativeJointPositionActionCfg = SoftLimitRelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=JOINTS,
-        preserve_order=True,
-        scale={
-            "shoulder_lift|elbow_flex": 0.04,
-            "shoulder_pan|wrist_.*": 0.03,
-            "gripper": 1.0,
-        },
-        gripper_open_position=RELEASE_GRIPPER_POSITION,
-        gripper_close_position=GRASP_GRIPPER_POSITION,
-    )
-
-
-@configclass
-class ActionsCfg:
-    """Bounded relative joint targets matching the real SO-101 interface."""
-
-    arm_action: RelativeJointPositionActionCfg = RelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=ARM_JOINTS,
-        preserve_order=True,
-        # Larger steps increased failures and rack forces in evaluation.
-        scale=0.033,
-        use_zero_offset=True,
-    )
-    gripper_action: SoftLimitRelativeGripperActionCfg = SoftLimitRelativeGripperActionCfg(
-        asset_name="robot",
-        joint_names=["gripper"],
-        # Avoid opening a grasp rapidly from a small policy bias.
-        scale=0.02,
-        use_zero_offset=True,
-    )
-
-
-@configclass
-class PolicyStateGroupCfg(ObsGroup):
-    """Fully observed state actor inputs."""
-
-    joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
-    joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
-    joint_target = ObsTerm(func=mdp.joint_target)
-    previous_action = ObsTerm(func=mdp.last_action)
-    end_effector = ObsTerm(func=mdp.body_state, params={"asset_cfg": SceneEntityCfg("robot", body_names="gripper")})
-    vial = ObsTerm(func=mdp.rigid_object_state, params={"asset_cfg": SceneEntityCfg("vial")})
-    rack_target = ObsTerm(func=mdp.rack_relative_target)
-    placement = ObsTerm(func=mdp.placement_features)
-    # Latched milestones make the once-per-episode milestone rewards Markov.
-    progress = ObsTerm(func=mdp.progress_flags)
-
-    def __post_init__(self):
-        self.enable_corruption = False
-        self.concatenate_terms = True
-
-
-@configclass
-class CriticStateGroupCfg(PolicyStateGroupCfg):
-    """Privileged training critic inputs."""
-
-    contact = ObsTerm(func=mdp.contact_state)
-
-
-@configclass
-class ObservationsCfg:
-    policy: PolicyStateGroupCfg = PolicyStateGroupCfg()
-    critic: CriticStateGroupCfg = CriticStateGroupCfg()
-
-
-@configclass
-class DatasetEventsCfg:
-    """Task-horizon resets plus modest physical domain randomization."""
-
-    vial_material = EventTerm(
-        func=mdp.randomize_rigid_body_material,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.7, 1.3),
-            "restitution_range": (0.0, 0.02),
-            "num_buckets": 32,
-        },
-    )
-    vial_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            # Newton cannot reliably infer mass from the detailed mesh.
-            "mass_distribution_params": (0.015, 0.025),
-            "operation": "abs",
-        },
-    )
-    reset_from_dataset = EventTerm(
-        func=mdp.ResetFromDataset,
-        mode="reset",
-        params={"dataset_path": str(RESET_DATASET), "sequential": False, "phase_weights": ALL_PHASES},
-    )
-
-
-@configclass
-class ResetEventsCfg:
-    """Raw tabletop resets used by reset generation and diagnostics."""
+class EventsCfg:
+    reset_scene = EventTerm(func=mdp.reset_scene_to_default, mode="reset", params={"reset_joint_targets": True})
 
     vial_mass = EventTerm(
         func=mdp.randomize_rigid_body_mass,
@@ -326,62 +217,25 @@ class ResetEventsCfg:
         },
     )
 
-    reset_robot = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-0.025, 0.025),
-            "velocity_range": (0.0, 0.0),
-            "asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
-    reset_vial = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {
-                "x": (-0.012, 0.012),
-                "y": (-0.012, 0.012),
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": TABLETOP_VIAL_HEADING_RANGE,
-            },
-            "velocity_range": {key: (0.0, 0.0) for key in ("x", "y", "z", "roll", "pitch", "yaw")},
-            "asset_cfg": SceneEntityCfg("vial"),
-        },
-    )
-    reset_rack = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {key: (0.0, 0.0) for key in ("x", "y", "z", "roll", "pitch", "yaw")},
-            "velocity_range": {key: (0.0, 0.0) for key in ("x", "y", "z", "roll", "pitch", "yaw")},
-            "asset_cfg": SceneEntityCfg("rack"),
-        },
-    )
-    clear_progress = EventTerm(func=mdp.clear_reset_progress, mode="reset")
+
+@configclass
+class JointObservationsCfg(ObsGroup):
+    joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
+    joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
+
+    def __post_init__(self):
+        self.enable_corruption = False
+        self.concatenate_terms = True
 
 
 @configclass
-class RewardsCfg:
-    """Sparse physical milestones, a success bonus, two dense shaping terms, and light regularization."""
-
-    approach_progress = RewTerm(func=mdp.ApproachProgressReward, weight=1.0)
-    held_goal = RewTerm(func=mdp.held_goal_reward, weight=0.1)
-    milestones = RewTerm(func=mdp.PhysicalMilestoneReward, weight=10.0)
-    success = RewTerm(func=mdp.success_bonus, weight=200.0)
-    vial_lost = RewTerm(func=mdp.vial_lost, weight=-50.0)
-    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.002)
-    joint_velocity = RewTerm(func=mdp.joint_velocity_l2, weight=-0.0002)
+class ObservationsCfg:
+    policy: JointObservationsCfg = JointObservationsCfg()
 
 
 @configclass
-class TerminationsCfg:
-    success = DoneTerm(func=mdp.PlacementHistoryTerm)
-    vial_lost = DoneTerm(func=mdp.vial_lost)
-    unstable_robot = DoneTerm(func=mdp.unstable_robot)
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+class EmptyActionsCfg:
+    pass
 
 
 @configclass
@@ -408,14 +262,68 @@ class PhysicsCfg(PresetCfg):
 
 
 @configclass
-class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
-    """State task trained from physics-validated reset poses."""
+class SO101InspectionEnvCfg(ManagerBasedEnvCfg):
+    """A scene with observations and resets, before agent control is introduced."""
 
-    scene: SO101SceneCfg = SO101SceneCfg(num_envs=4096, env_spacing=0.9, replicate_physics=True)
-    actions: ActionsCfg = ActionsCfg()
+    scene: SO101SceneCfg = SO101SceneCfg(num_envs=1, env_spacing=0.9, replicate_physics=True)
+    actions: EmptyActionsCfg = EmptyActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
-    events: DatasetEventsCfg = DatasetEventsCfg()
-    rewards: RewardsCfg = RewardsCfg()
+    events: EventsCfg = EventsCfg()
+
+    def __post_init__(self):
+        self.decimation = 4
+        self.sim.dt = 1.0 / 120.0
+        self.sim.render_interval = self.decimation
+        self.sim.physics = PhysicsCfg()
+        self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
+
+
+@configclass
+class ActionsCfg:
+    """Bounded relative joint targets matching the real SO-101 interface."""
+
+    arm_action: RelativeJointPositionActionCfg = RelativeJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=ARM_JOINTS,
+        preserve_order=True,
+        # Larger steps increased failures and rack forces in evaluation.
+        scale=0.033,
+        use_zero_offset=True,
+    )
+    gripper_action: SoftLimitRelativeGripperActionCfg = SoftLimitRelativeGripperActionCfg(
+        asset_name="robot",
+        joint_names=["gripper"],
+        # Avoid opening a grasp rapidly from a small policy bias.
+        scale=0.02,
+        use_zero_offset=True,
+    )
+
+
+@configclass
+class AgentObservationsCfg(JointObservationsCfg):
+    previous_action = ObsTerm(func=mdp.last_action)
+
+
+@configclass
+class AgentObservationGroupsCfg:
+    policy: AgentObservationsCfg = AgentObservationsCfg()
+
+
+@configclass
+class TerminationsCfg:
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    unstable_robot = DoneTerm(func=mdp.unstable_robot)
+
+
+@configclass
+class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
+    """A registered stepping task; teacher rewards and dataset resets come next."""
+
+    scene: SO101SceneCfg = SO101SceneCfg(num_envs=8, env_spacing=0.9, replicate_physics=True)
+    actions: ActionsCfg = ActionsCfg()
+    observations: AgentObservationGroupsCfg = AgentObservationGroupsCfg()
+    events: EventsCfg = EventsCfg()
+    rewards = None
     terminations: TerminationsCfg = TerminationsCfg()
 
     def __post_init__(self):
@@ -426,28 +334,3 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
-
-    def play_mode(self):
-        """Play and evaluate complete episodes from the canonical home-pose starts, in dataset order."""
-        from so101_place_vial.utils import evaluation
-
-        requested_num_envs = self.scene.num_envs
-        super().play_mode()
-        if evaluation.EXACT_EVALUATION_ACTIVE:
-            # The exact audit runs one episode per environment, so it needs the full requested batch.
-            self.scene.num_envs = min(requested_num_envs, evaluation.EVALUATION_EPISODES)
-        else:
-            self.scene.num_envs = min(self.scene.num_envs, 16)
-        self.events.reset_from_dataset.params["sequential"] = True
-        self.events.reset_from_dataset.params["phase_weights"] = CANONICAL_START
-
-
-@configclass
-class SO101VialGeneratorEnvCfg(SO101VialEnvCfg):
-    """Raw task scene used by the standalone reset generator."""
-
-    scene: SO101SceneCfg = SO101SceneCfg(num_envs=256, env_spacing=0.9, replicate_physics=True)
-    actions: ResetJointActionsCfg = ResetJointActionsCfg()
-    events: ResetEventsCfg = ResetEventsCfg()
-    rewards = None
-    terminations = None

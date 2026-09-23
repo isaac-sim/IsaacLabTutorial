@@ -2,8 +2,6 @@
 
 import gymnasium as gym
 
-from so101_place_vial.tasks.place_vial.config.so101 import agents
-
 _PACKAGE = "so101_place_vial.tasks.place_vial.config.so101"
 
 gym.register(
@@ -12,7 +10,5 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{_PACKAGE}.env_cfg:SO101VialEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
     },
 )

@@ -12,4 +12,3 @@ def test_only_state_task_is_registered_and_entry_points_resolve():
         if key.endswith("_entry_point"):
             module, attribute = value.split(":")
             assert hasattr(importlib.import_module(module), attribute)
-    assert spec.kwargs["default_agent"] == "rsl_rl"
