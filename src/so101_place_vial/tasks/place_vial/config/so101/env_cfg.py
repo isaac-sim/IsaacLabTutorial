@@ -87,7 +87,7 @@ def _spawn_so101_with_camera_overrides(
     return prim
 
 
-WORKSHOP_SO101_CFG = SO101_CFG.replace(
+TUTORIAL_SO101_CFG = SO101_CFG.replace(
     spawn=SO101_CFG.spawn.replace(func=_spawn_so101_with_camera_overrides),
 )
 
@@ -142,12 +142,12 @@ ARM_JOINTS = JOINTS[:-1]
 class SO101SceneCfg(InteractiveSceneCfg):
     """One SO-101, one vial, one rack, and a collision mat."""
 
-    robot = WORKSHOP_SO101_CFG.replace(
+    robot = TUTORIAL_SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
-        spawn=WORKSHOP_SO101_CFG.spawn.replace(
+        spawn=TUTORIAL_SO101_CFG.spawn.replace(
             activate_contact_sensors=True,
         ),
-        init_state=WORKSHOP_SO101_CFG.init_state.replace(
+        init_state=TUTORIAL_SO101_CFG.init_state.replace(
             pos=(-0.05, 0.0, 0.0),
             # Isaac Lab 3 uses XYZW quaternions: +90 degrees about world Z.
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
