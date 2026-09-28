@@ -8,7 +8,7 @@ from typing import Any
 import isaaclab.sim as sim_utils
 import newton
 from isaaclab.assets import AssetBaseCfg
-from isaaclab.envs import ManagerBasedEnvCfg
+from isaaclab.envs import ManagerBasedEnvCfg, ManagerBasedRLEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -214,6 +214,27 @@ class SO101InspectionEnvCfg(ManagerBasedEnvCfg):
 
     def __post_init__(self):
         self.decimation = 4
+        self.sim.dt = 1.0 / 120.0
+        self.sim.render_interval = self.decimation
+        self.sim.physics = PhysicsCfg()
+        self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
+
+
+@configclass
+class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
+    """Registered task scaffold; actions and episode logic arrive in later milestones."""
+
+    scene: SO101SceneCfg = SO101SceneCfg(num_envs=1, env_spacing=0.9, replicate_physics=True)
+    actions: EmptyActionsCfg = EmptyActionsCfg()
+    observations: ObservationsCfg = ObservationsCfg()
+    events: EventsCfg = EventsCfg()
+    rewards = None
+    terminations = None
+
+    def __post_init__(self):
+        self.decimation = 4
+        self.episode_length_s = 20.0
+        self.is_finite_horizon = False
         self.sim.dt = 1.0 / 120.0
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
