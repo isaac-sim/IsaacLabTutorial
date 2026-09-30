@@ -24,7 +24,7 @@ from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionP
 from isaaclab_tasks.utils import PresetCfg
 from pxr import Gf
 
-from so101_place_vial.tasks.place_vial import mdp
+from isaaclab_tutorial.tasks.place_vial import mdp
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)

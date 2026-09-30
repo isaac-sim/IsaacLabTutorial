@@ -2,8 +2,8 @@ import importlib
 
 import gymnasium as gym
 
-import so101_place_vial.tasks  # noqa: F401
-from so101_place_vial.tasks.place_vial.config.so101.env_cfg import SO101VialEnvCfg
+import isaaclab_tutorial.tasks  # noqa: F401
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialEnvCfg
 
 
 def test_scene_has_only_the_assets_introduced_so_far():
