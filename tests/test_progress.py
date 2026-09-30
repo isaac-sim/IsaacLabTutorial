@@ -1,6 +1,6 @@
 import torch
 
-from so101_place_vial.tasks.place_vial.mdp.progress import PlacementProgress
+from isaaclab_tutorial.tasks.place_vial.mdp.progress import PlacementProgress
 
 T = torch.tensor([True])
 F = torch.tensor([False])

@@ -9,8 +9,8 @@ from pathlib import Path
 
 import torch
 
-from so101_place_vial.assets import RESET_DATASET
-from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
+from isaaclab_tutorial.assets import RESET_DATASET
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     GRASP_GRIPPER_POSITION,
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
@@ -18,7 +18,7 @@ from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
     TABLETOP_VIAL_POSITION,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
-from so101_place_vial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 TABLETOP_VIAL_POSITION_HALF_RANGE = (0.030, 0.040)
 
@@ -31,7 +31,7 @@ _RACK_XY_BOUNDS = (-0.031, 0.091, -0.031, 0.091)
 
 def _rack_clearance_violation(env) -> torch.Tensor:
     """Return unsafe rack-overflight states: a held vial below the rim anywhere except the target opening."""
-    from so101_place_vial.tasks.place_vial.mdp.terms import (
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
         RACK_CLEARANCE_HEIGHT,
         _placement_values,
         bilateral_contact,
@@ -48,7 +48,7 @@ def _rack_clearance_violation(env) -> torch.Tensor:
 
 def _undesired_rack_contact(env) -> torch.Tensor:
     """Return a soft vial/rack force cost, reduced inside the intended insertion corridor."""
-    from so101_place_vial.tasks.place_vial.mdp.terms import (
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
         HARD_RACK_IMPACT_FORCE,
         _contact_magnitude,
         _placement_values,
@@ -62,7 +62,7 @@ def _undesired_rack_contact(env) -> torch.Tensor:
 
 def _held_insertion_ready(env) -> torch.Tensor:
     """Whether a held vial is centred, upright, slow, and engaged with the target opening above its seat."""
-    from so101_place_vial.tasks.place_vial.mdp.terms import (
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
         RACK_RIM_HEIGHT,
         _placement_values,
         vial_lowest_height_in_rack,
@@ -209,8 +209,8 @@ def _represented_lift(
     represented_grasp: torch.Tensor,
 ) -> torch.Tensor:
     """Seed lift history only after the vial physically cleared the rack."""
-    from so101_place_vial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset, quat_rotate_xyzw
-    from so101_place_vial.tasks.place_vial.mdp.terms import (
+    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset, quat_rotate_xyzw
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
         RACK_CLEARANCE_HEIGHT,
         VIAL_AXIS_MAX,
         VIAL_AXIS_MIN,
@@ -292,7 +292,7 @@ class _Generator:
         """
         from isaaclab.utils.math import quat_apply_inverse
 
-        from so101_place_vial.tasks.place_vial.mdp.terms import grasp_center_w
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import grasp_center_w
 
         position = _tensor(self.robot.data.body_pos_w)[:, self.gripper_body_id].squeeze(1)
         quaternion = _tensor(self.robot.data.body_quat_w)[:, self.gripper_body_id].squeeze(1)
@@ -426,8 +426,8 @@ class _Generator:
         """
         from isaaclab.utils.math import quat_apply, quat_from_angle_axis, quat_mul
 
-        from so101_place_vial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from so101_place_vial.tasks.place_vial.mdp.terms import bilateral_contact
+        from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
         start_pose = torch.cat(
             (
@@ -552,8 +552,8 @@ class _Generator:
             quat_mul,
         )
 
-        from so101_place_vial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset
-        from so101_place_vial.tasks.place_vial.mdp.terms import (
+        from isaaclab_tutorial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
             VIAL_AXIS_MAX,
             VIAL_AXIS_MIN,
             VIAL_RADIUS,
@@ -634,8 +634,8 @@ class _Generator:
                 self.candidate_diagnostics[f"{label}_ik_rate"] = float(waypoint_valid[terminal].float().mean())
                 self.candidate_diagnostics[f"{label}_reached_rate"] = float(reached_waypoint[terminal].float().mean())
         if bool(terminal.any()):
-            from so101_place_vial.tasks.place_vial.mdp.geometry import vertical_alignment
-            from so101_place_vial.tasks.place_vial.mdp.terms import bilateral_contact
+            from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
+            from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
             self.candidate_diagnostics["pivot_terminal_ik_rate"] = float(reached_waypoint[terminal].float().mean())
             self.candidate_diagnostics["pivot_terminal_alignment_mean"] = float(
@@ -846,8 +846,8 @@ class _Generator:
         stop_when_upright: bool = False,
     ) -> torch.Tensor:
         """Translate a loaded grasp through measured Cartesian waypoints."""
-        from so101_place_vial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from so101_place_vial.tasks.place_vial.mdp.terms import grasp_center_w, vial_grasp_point_w
+        from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import grasp_center_w, vial_grasp_point_w
 
         if move_mask is None:
             move_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
@@ -902,7 +902,7 @@ class _Generator:
         import warp as wp
         from isaaclab.utils.math import combine_frame_transforms, quat_apply, quat_from_matrix
 
-        from so101_place_vial.tasks.place_vial.mdp.terms import VIAL_GRASP_OFFSET
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import VIAL_GRASP_OFFSET
 
         offset = vial_pose.new_tensor(VIAL_GRASP_OFFSET).expand(self.num_envs, -1)
         target_position = vial_pose[:, :3] + quat_apply(vial_pose[:, 3:7], offset)
@@ -1056,7 +1056,7 @@ class _Generator:
         """
         from isaaclab.utils.math import quat_apply
 
-        from so101_place_vial.tasks.place_vial.mdp.terms import vial_grasp_point_w
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import vial_grasp_point_w
 
         bias = torch.zeros((self.num_envs, 3), device=self.device)
         for _ in range(corrections):
@@ -1151,8 +1151,8 @@ class _Generator:
 
     def _regrasp_upright_vial(self, target: torch.Tensor, terminal: torch.Tensor) -> torch.Tensor:
         """Open and physically regrasp terminal upright pivot candidates."""
-        from so101_place_vial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from so101_place_vial.tasks.place_vial.mdp.terms import bilateral_contact, grasp_center_w, vial_grasp_point_w
+        from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact, grasp_center_w, vial_grasp_point_w
 
         alignment = vertical_alignment(_tensor(self.vial.data.root_quat_w))
         speed = torch.linalg.vector_norm(_tensor(self.vial.data.root_lin_vel_w), dim=-1)
@@ -1212,7 +1212,7 @@ class _Generator:
             self.env.sim.step()
             self.env.scene.update(self.env.physics_dt)
             if self._track_safety:
-                from so101_place_vial.tasks.place_vial.mdp.terms import unsafe_rack_contact
+                from isaaclab_tutorial.tasks.place_vial.mdp.terms import unsafe_rack_contact
 
                 # Endpoint validation is insufficient: a candidate can hit a
                 # rail, rebound, and look calm after settling. Preserve every
@@ -1226,7 +1226,7 @@ class _Generator:
         """Record finite measurements for IK-valid grasp candidates only."""
         from isaaclab.utils.math import quat_apply
 
-        from so101_place_vial.tasks.place_vial.mdp.terms import (
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
             contact_state,
             fingertip_positions_w,
             grasp_center_w,
@@ -1551,7 +1551,7 @@ class _Generator:
             target = self._center_open_gripper(target, self._last_pregrasp_quaternion.clone())
             from isaaclab.utils.math import quat_apply
 
-            from so101_place_vial.tasks.place_vial.mdp.terms import vial_grasp_point_w
+            from isaaclab_tutorial.tasks.place_vial.mdp.terms import vial_grasp_point_w
 
             gripper_position = _tensor(self.robot.data.body_pos_w)[:, self.gripper_body_id].squeeze(1)
             gripper_quaternion = _tensor(self.robot.data.body_quat_w)[:, self.gripper_body_id].squeeze(1)
@@ -1624,7 +1624,7 @@ class _Generator:
         return valid, target, local_pose, initial_world_position
 
     def _valid(self, phase: int, initial_vial_position: torch.Tensor) -> torch.Tensor:
-        from so101_place_vial.tasks.place_vial.mdp.terms import (
+        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
             VIAL_REST_HEIGHT,
             _placement_values,
             bilateral_contact,
@@ -2084,7 +2084,7 @@ class _Generator:
                 self.last_diagnostics["connected_valid_count"] = float(connected_valid.sum())
                 self.last_diagnostics["restore_valid_count"] = float(restore_valid.sum())
                 if bool(connected_valid.any()):
-                    from so101_place_vial.tasks.place_vial.mdp.terms import (
+                    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
                         bilateral_contact,
                         grasp_center_w,
                         vial_grasp_point_w,
@@ -2118,7 +2118,7 @@ class _Generator:
                     # Intermediate reorientation rows may legitimately lag
                     # the command. Only near-upright endpoints may seed
                     # transport; later segments preserve this orientation.
-                    from so101_place_vial.tasks.place_vial.mdp.geometry import vertical_alignment
+                    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
 
                     terminal &= vertical_alignment(_tensor(self.vial.data.root_quat_w)) > _HELD_INSERTION_ALIGNMENT
                 self._append_seed_bank(seed_name, terminal, target)
@@ -2251,7 +2251,7 @@ class _Generator:
                 rows["vial_pose"].append(vial_pose)
                 rows["phase"].append(torch.full((count,), phase, device=self.device, dtype=torch.long))
                 rows["difficulty"].append(self.candidate_difficulty[take].detach().clone())
-                from so101_place_vial.tasks.place_vial.mdp.terms import bilateral_contact
+                from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
                 live_grasp = bilateral_contact(self.env)[take]
                 represented_grasp = live_grasp | (phase >= 3)
@@ -2294,7 +2294,7 @@ def generate_main(argv: list[str] | None = None) -> int:
 
     from isaaclab.envs import ManagerBasedRLEnv
 
-    from so101_place_vial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
 
     cfg = GeneratorCfg(
         poses_per_phase=args.poses_per_phase,
@@ -2343,7 +2343,7 @@ def view_main(argv: list[str] | None = None) -> int:
 
     from isaaclab.envs import ManagerBasedRLEnv
 
-    from so101_place_vial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
 
     env_cfg = SO101VialGeneratorEnvCfg()
     env_cfg.scene.num_envs = 1

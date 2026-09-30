@@ -2,7 +2,7 @@ import importlib
 
 import gymnasium as gym
 
-import so101_place_vial.tasks  # noqa: F401
+import isaaclab_tutorial.tasks  # noqa: F401
 
 
 def test_only_state_task_is_registered_and_entry_points_resolve():

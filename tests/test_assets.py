@@ -1,6 +1,6 @@
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
-from so101_place_vial.assets import (
+from isaaclab_tutorial.assets import (
     MAT_USD,
     RACK_USD,
     VIAL_RACK_ASSET_DIR,

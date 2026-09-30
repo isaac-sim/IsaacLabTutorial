@@ -6,8 +6,8 @@ from importlib import import_module
 def __getattr__(name: str):
     """Resolve task terms first, then Isaac Lab's standard MDP terms."""
     for module_name in (
-        "so101_place_vial.tasks.place_vial.mdp.terms",
-        "so101_place_vial.tasks.place_vial.mdp.events",
+        "isaaclab_tutorial.tasks.place_vial.mdp.terms",
+        "isaaclab_tutorial.tasks.place_vial.mdp.events",
     ):
         task_module = import_module(module_name)
         if hasattr(task_module, name):
