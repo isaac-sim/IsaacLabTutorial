@@ -2,7 +2,7 @@
 
 import gymnasium as gym
 
-_PACKAGE = "so101_place_vial.tasks.place_vial.config.so101"
+_PACKAGE = "isaaclab_tutorial.tasks.place_vial.config.so101"
 
 gym.register(
     id="IsaacTutorial-Place-Vial-SO101",

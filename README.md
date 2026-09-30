@@ -123,7 +123,7 @@ per environment. The callback stops play after exactly 1,024 episodes and prints
 ```bash
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 \
   --num_envs 1024 --checkpoint latest --deterministic \
-  --external_callback so101_place_vial.utils.evaluation.install_episode_counter \
+  --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   presets=newton_mjwarp
 ```
 
@@ -192,7 +192,7 @@ and play use only the home-pose starts. Milestones already true in a loaded stat
 ## Layout
 
 ```text
-src/so101_place_vial/
+src/isaaclab_tutorial/
   assets/                         workshop USD assets and the reset dataset
   tasks/place_vial/
     mdp/                          actions, reset events, observations, rewards, milestones, terminations

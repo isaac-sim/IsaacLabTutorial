@@ -30,9 +30,9 @@ from pxr import Gf
 from isaaclab.envs.utils.video_recorder_cfg import VideoRecorderCfg
 from isaaclab_tasks.utils import preset
 
-from so101_place_vial.assets import MAT_USD, RACK_USD, VIAL_USD
-from so101_place_vial.tasks.place_vial import mdp
-from so101_place_vial.tasks.place_vial.mdp.actions import SoftLimitRelativeGripperActionCfg
+from isaaclab_tutorial.assets import MAT_USD, RACK_USD, VIAL_USD
+from isaaclab_tutorial.tasks.place_vial import mdp
+from isaaclab_tutorial.tasks.place_vial.mdp.actions import SoftLimitRelativeGripperActionCfg
 
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
