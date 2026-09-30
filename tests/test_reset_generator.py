@@ -1,15 +1,15 @@
 import pytest
 import torch
 
-from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     GRASP_GRIPPER_POSITION,
     PREGRASP_GRIPPER_POSITION,
     RELEASE_GRIPPER_POSITION,
     TABLETOP_VIAL_HEADING_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
-from so101_place_vial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
-from so101_place_vial.tasks.place_vial.reset.generator import (
+from isaaclab_tutorial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
+from isaaclab_tutorial.tasks.place_vial.reset.generator import (
     PREGRASP_PROOF_DIFFICULTY,
     TABLETOP_VIAL_POSITION_HALF_RANGE,
     WORKSHOP_PREGRASP_JOINT_POSITION,

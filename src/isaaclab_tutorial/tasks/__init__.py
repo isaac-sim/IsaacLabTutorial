@@ -2,4 +2,4 @@
 
 from isaaclab_tasks.utils import import_packages
 
-import_packages(__name__, ["so101_place_vial.tasks.place_vial.mdp"])
+import_packages(__name__, ["isaaclab_tutorial.tasks.place_vial.mdp"])

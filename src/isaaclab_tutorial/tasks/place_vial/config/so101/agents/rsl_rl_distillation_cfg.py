@@ -8,7 +8,7 @@ from isaaclab_rl.rsl_rl import (
     RslRlMLPModelCfg,
 )
 
-from so101_place_vial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
     WRIST_CAMERA_CNN_CFG,
     BoundedGaussianDistributionCfg,
 )
@@ -41,7 +41,7 @@ class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
         distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
     )
     algorithm = RslRlDistillationAlgorithmCfg(
-        class_name="so101_place_vial.tasks.place_vial.config.so101.agents.distillation:BoundedTeacherDistillation",
+        class_name="isaaclab_tutorial.tasks.place_vial.config.so101.agents.distillation:BoundedTeacherDistillation",
         num_learning_epochs=4,
         learning_rate=5.0e-4,
         gradient_length=1,

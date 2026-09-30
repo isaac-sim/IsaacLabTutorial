@@ -5,12 +5,12 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from so101_place_vial.assets import RESET_DATASET
-from so101_place_vial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
-from so101_place_vial.tasks.place_vial.mdp.events import _ids, _phase_balanced_row_weights
-from so101_place_vial.tasks.place_vial.reset import dataset as reset_dataset
-from so101_place_vial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
-from so101_place_vial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
+from isaaclab_tutorial.assets import RESET_DATASET
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
+from isaaclab_tutorial.tasks.place_vial.mdp.events import _ids, _phase_balanced_row_weights
+from isaaclab_tutorial.tasks.place_vial.reset import dataset as reset_dataset
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 
 def _states(rows: int = 8) -> dict[str, torch.Tensor]:

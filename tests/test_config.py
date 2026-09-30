@@ -3,18 +3,18 @@
 import pytest
 from isaaclab_assets.robots.so101 import SO101_CFG
 
-from so101_place_vial.tasks.place_vial.config.so101.agents.rsl_rl_distillation_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_distillation_cfg import (
     SO101CameraDistillationRunnerCfg,
 )
-from so101_place_vial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
     SO101CameraPPORunnerCfg,
     SO101StatePPORunnerCfg,
 )
-from so101_place_vial.tasks.place_vial.config.so101.camera_env_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import (
     SO101VialCameraDistillationEnvCfg,
     SO101VialCameraEnvCfg,
 )
-from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     ARM_JOINTS,
     JOINTS,
     PREGRASP_GRIPPER_POSITION,
@@ -22,8 +22,8 @@ from so101_place_vial.tasks.place_vial.config.so101.env_cfg import (
     WORKSHOP_INITIAL_JOINT_POSITION,
     SO101VialEnvCfg,
 )
-from so101_place_vial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
-from so101_place_vial.utils import evaluation
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+from isaaclab_tutorial.utils import evaluation
 
 
 def test_state_task_control_and_physics_contract():

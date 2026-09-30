@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-import so101_place_vial.tasks.place_vial.mdp.terms as terms
-from so101_place_vial.tasks.place_vial.mdp.terms import (
+import isaaclab_tutorial.tasks.place_vial.mdp.terms as terms
+from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
     GRASP_PROOF_LIFT,
     HARD_RACK_IMPACT_FORCE,
     HELD_INSERTION_TARGET,
@@ -57,7 +57,7 @@ def test_rack_guidance_is_not_classified_as_a_hard_impact():
 
 
 def test_approach_progress_pays_distance_covered_and_stops_after_the_grasp(monkeypatch):
-    from so101_place_vial.tasks.place_vial.mdp.terms import ApproachProgressReward
+    from isaaclab_tutorial.tasks.place_vial.mdp.terms import ApproachProgressReward
 
     reward = ApproachProgressReward.__new__(ApproachProgressReward)
     reward._previous_distance = torch.zeros(2)
