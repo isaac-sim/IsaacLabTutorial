@@ -13,6 +13,9 @@ dependencies = [
     "isaaclab[ovrtx]",
 ]
 
+[project.optional-dependencies]
+wandb = ["wandb>=0.13.11,<0.29"]
+
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"
 
