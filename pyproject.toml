@@ -11,6 +11,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "isaaclab[ovrtx]",
+    "moviepy<2",
 ]
 
 [project.optional-dependencies]
