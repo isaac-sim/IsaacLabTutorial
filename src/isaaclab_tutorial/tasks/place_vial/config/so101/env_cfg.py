@@ -342,9 +342,9 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
             default=[],
             record_video=[
                 VideoRecorderCfg(
-                    source="visualizer:newton",
+                    source="visualizer:newton_rtx",
                     output_dir="videos/simple_agents",
-                    video_length=150,
+                    video_length=700,
                     fps=30,
                 )
             ],
