@@ -52,3 +52,35 @@ def test_rack_uses_detailed_visuals_and_a_primitive_four_hole_collider():
     assert "double3 xformOp:scale = (0.108, 0.012, 0.012)" in wrapper
     for marker in ("top_01", "top_02", "top_03", "top_04"):
         assert f'def Xform "{marker}"' in source
+
+
+def test_vial_legacy_mesh_does_not_contribute_implicit_mass():
+    from pxr import Usd, UsdPhysics
+
+    stage = Usd.Stage.Open(str(VIAL_USD))
+    legacy = stage.GetPrimAtPath("/Vial/collider")
+    assert legacy.IsActive()  # Preserve the render mesh and its material binding.
+    assert not legacy.HasAPI(UsdPhysics.CollisionAPI)
+    colliders = {str(prim.GetPath()) for prim in stage.Traverse() if prim.HasAPI(UsdPhysics.CollisionAPI)}
+    assert colliders == {"/Vial/body_collider", "/Vial/cap_collider"}
+
+
+def test_success_hole_centers_match_the_physical_rack_openings():
+    import torch
+    from pxr import Usd, UsdGeom
+
+    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import RACK_HOLE_CENTERS
+
+    stage = Usd.Stage.Open(str(RACK_USD))
+    bounds = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["guide"], False, True)
+
+    def interval(name, axis):
+        box = bounds.ComputeWorldBound(stage.GetPrimAtPath(f"/Rack/Collision/{name}")).ComputeAlignedRange()
+        return box.GetMin()[axis], box.GetMax()[axis]
+
+    left, center_x, right = (interval(name, 0) for name in ("TopRailLeft", "TopRailCenterX", "TopRailRight"))
+    front, center_y, back = (interval(name, 1) for name in ("TopRailFront", "TopRailCenterY", "TopRailBack"))
+    xs = ((left[1] + center_x[0]) / 2, (center_x[1] + right[0]) / 2)
+    ys = ((front[1] + center_y[0]) / 2, (center_y[1] + back[0]) / 2)
+    actual = torch.tensor([(xs[0], ys[0], 0), (xs[1], ys[0], 0), (xs[1], ys[1], 0), (xs[0], ys[1], 0)])
+    torch.testing.assert_close(torch.tensor(RACK_HOLE_CENTERS), actual, atol=0.0005, rtol=0)

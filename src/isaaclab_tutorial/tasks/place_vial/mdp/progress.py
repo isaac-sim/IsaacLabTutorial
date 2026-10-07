@@ -12,7 +12,7 @@ class PlacementProgress:
 
     * ``grasped``: both jaws touch the vial while it is held off the mat,
     * ``lifted``: the vial's lowest point has cleared the top of the rack,
-    * ``inserted``: the vial's tip is inside the target rack opening.
+    * ``inserted``: the vial's tip is inside any rack opening.
 
     ``success`` latches after the released vial rests upright inside the opening for ``stable_steps`` consecutive
     control steps. Success is a purely physical outcome; it does not depend on which milestones were observed.

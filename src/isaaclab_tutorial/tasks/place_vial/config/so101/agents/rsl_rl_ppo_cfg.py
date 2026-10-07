@@ -64,6 +64,14 @@ class SO101StatePPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 @configclass
+class SO101StateFineTuneRunnerCfg(SO101StatePPORunnerCfg):
+    """Conservative PPO updates for fine-tuning a trained state policy under domain randomization."""
+
+    save_interval = 25
+    algorithm = PPO_ALGORITHM_CFG.replace(learning_rate=3.0e-5, schedule="fixed", entropy_coef=0.001)
+
+
+@configclass
 class SO101CameraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     """Visual policy trained from scratch: wrist RGB and proprioception actor, privileged state critic."""
 

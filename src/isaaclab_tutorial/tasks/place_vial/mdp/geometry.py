@@ -2,6 +2,15 @@
 
 import torch
 
+# Rack-local centers of the four open cells in workshop/rack.usda, in top_01..top_04 order.
+# The original opening remains the rack-frame origin; the collision lattice has a 60 mm pitch.
+RACK_HOLE_CENTERS = ((0.0, 0.0, 0.0), (0.060, 0.0, 0.0), (0.060, 0.060, 0.0), (0.0, 0.060, 0.0))
+
+
+def hole_relative_positions(rack_position: torch.Tensor) -> torch.Tensor:
+    """Return offsets to all four openings, preserving rack-local height: (..., 4, 3)."""
+    return rack_position.unsqueeze(-2) - rack_position.new_tensor(RACK_HOLE_CENTERS)
+
 
 def quat_conjugate_xyzw(quat: torch.Tensor) -> torch.Tensor:
     """Return the conjugate of an XYZW quaternion."""

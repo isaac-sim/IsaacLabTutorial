@@ -1,84 +1,36 @@
-"""SO-101 vial-placement task registrations."""
+"""Public SO-101 state, wrist-camera, and randomized training tasks."""
 
 import gymnasium as gym
 
-from isaaclab_tutorial.tasks.place_vial.config.so101 import agents
-
 _PACKAGE = "isaaclab_tutorial.tasks.place_vial.config.so101"
 
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.env_cfg:SO101VialEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-Camera-Distillation",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.camera_env_cfg:SO101VialCameraDistillationEnvCfg",
-        "rsl_rl_cfg_entry_point": (f"{agents.__name__}.rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg"),
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-Camera",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.camera_env_cfg:SO101VialCameraEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-Record",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.record_env_cfg:SO101VialRecordEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-DR",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDREnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-DR-Wide",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDRWideEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
-
-gym.register(
-    id="IsaacTutorial-Place-Vial-SO101-DR-Contact",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{_PACKAGE}.dr_env_cfg:SO101VialDRContactEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:SO101StatePPORunnerCfg",
-        "default_agent": "rsl_rl",
-    },
-)
+for suffix, environment, runner in (
+    ("", "env_cfg:SO101VialEnvCfg", "rsl_rl_ppo_cfg:SO101StatePPORunnerCfg"),
+    ("-Camera", "camera_env_cfg:SO101VialCameraEnvCfg", "rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg"),
+    (
+        "-Camera-Distillation",
+        "camera_env_cfg:SO101VialCameraDistillationEnvCfg",
+        "rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg",
+    ),
+    ("-Sim2Real", "sim2real_env_cfg:SO101VialSim2RealEnvCfg", "rsl_rl_ppo_cfg:SO101StateFineTuneRunnerCfg"),
+    (
+        "-Camera-Sim2Real",
+        "sim2real_env_cfg:SO101VialCameraSim2RealEnvCfg",
+        "rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg",
+    ),
+):
+    gym.register(
+        id=f"IsaacTutorial-Place-Vial-SO101{suffix}",
+        entry_point="isaaclab.envs:ManagerBasedRLEnv",
+        disable_env_checker=True,
+        kwargs={
+            "env_cfg_entry_point": f"{_PACKAGE}.{environment}",
+            "rsl_rl_cfg_entry_point": f"{_PACKAGE}.agents.{runner}",
+            **(
+                {"rsl_rl_ppo_cfg_entry_point": f"{_PACKAGE}.agents.rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg"}
+                if suffix == "-Camera-Sim2Real"
+                else {}
+            ),
+            "default_agent": "rsl_rl",
+        },
+    )

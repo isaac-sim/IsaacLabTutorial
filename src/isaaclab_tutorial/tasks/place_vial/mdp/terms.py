@@ -11,6 +11,7 @@ from isaaclab.utils.math import quat_apply, quat_apply_inverse, subtract_frame_t
 
 from isaaclab_tutorial.tasks.place_vial.mdp.geometry import (
     cylinder_lowest_offset,
+    hole_relative_positions,
     inside_bounds,
     rack_local_position,
     symmetric_axial_keypoint_error,
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Task geometry (metres). All rack quantities are expressed in the rack frame, whose origin is the target opening.
+# Task geometry (metres). All rack quantities use the rack frame, whose origin is the first opening.
 # ---------------------------------------------------------------------------------------------------------------------
 
 # The mat is centred at 32 mm and is 6 mm thick; the horizontal vial has a 17 mm collision radius.
@@ -38,7 +39,7 @@ HELD_INSERTION_TARGET = (0.0, 0.0, 0.060)
 RACK_RIM_HEIGHT = 0.073
 RACK_CLEARANCE_HEIGHT = RACK_RIM_HEIGHT + 0.008
 # The 48 mm opening leaves the 34 mm vial about 7 mm of play per axis. A tip below the rim within this radius is in
-# the target opening; the neighbouring openings are 60 mm away.
+# an opening; the neighbouring openings are 60 mm away.
 INSERTION_RADIUS = 0.012
 # Cosine of the vial axis with vertical; 0.9 is about 26 degrees of tilt.
 UPRIGHT_ALIGNMENT = 0.90
@@ -174,19 +175,19 @@ def _placement_values(env: ManagerBasedRLEnv):
     angular_speed = _finite_error(torch.linalg.vector_norm(_tensor(vial.data.root_ang_vel_w), dim=-1))
     touching = _contact(env, "fixed_jaw_contact") | _contact(env, "moving_jaw_contact")
     released = ~touching & (_gripper_openness(env) > 0.20)
-    placed = inside_bounds(local, RACK_LOWER, RACK_UPPER)
+    placed = inside_bounds(hole_relative_positions(local), RACK_LOWER, RACK_UPPER).any(dim=-1)
     return local, alignment, linear_speed, angular_speed, released, placed
 
 
 def vial_inserted(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Whether the vial's tip is inside the target rack opening with the vial upright.
+    """Whether the vial's tip is inside any rack opening with the vial upright.
 
     The uprightness condition (the same one success uses) matters for the teacher's release: without it the state
     policy learns to let a tilted vial drop in from above, which works with perfect state but is a knife edge for a
     camera student to imitate.
     """
     local, alignment, *_ = _placement_values(env)
-    centred = torch.linalg.vector_norm(local[:, :2], dim=-1) < INSERTION_RADIUS
+    centred = torch.linalg.vector_norm(hole_relative_positions(local)[..., :2], dim=-1).amin(dim=-1) < INSERTION_RADIUS
     return centred & (vial_lowest_height_in_rack(env) < RACK_RIM_HEIGHT) & (alignment > UPRIGHT_ALIGNMENT)
 
 
@@ -207,7 +208,7 @@ def _history(env: ManagerBasedRLEnv) -> PlacementProgress:
 class PlacementHistoryTerm(ManagerTermBase):
     """Latch physical milestones each step and terminate on confirmed placement success.
 
-    Success requires the released vial to rest upright inside the target opening for ten consecutive control steps.
+    Success requires the released vial to rest upright inside any opening for ten consecutive control steps.
     Milestones seeded by downstream resets are restored on reset so they are never rewarded merely for being loaded.
     """
 
@@ -268,6 +269,8 @@ class PlacementHistoryTerm(ManagerTermBase):
         ).clone()
         env._so101_terminal_max_rack_force = self._max_rack_force.clone()
         env._so101_terminal_time_to_success_s = self.progress.time_to_success.clone().float() * env.step_dt
+        nearest_hole = hole_relative_positions(local)[..., :2].square().sum(dim=-1).argmin(dim=-1)
+        env._so101_terminal_hole = torch.where(success, nearest_hole, -1)
         return success
 
 
@@ -299,7 +302,7 @@ def unstable_robot(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def held_object_goal_error(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Return the symmetry-aware vial pose error to the held insertion pose [m]."""
+    """Return the minimum symmetry-aware insertion-pose error over the four openings [m]."""
     vial: RigidObject = env.scene["vial"]
     rack: RigidObject = env.scene["rack"]
     rack_quat = _tensor(rack.data.root_quat_w)
@@ -308,14 +311,14 @@ def held_object_goal_error(env: ManagerBasedRLEnv) -> torch.Tensor:
         _tensor(vial.data.root_quat_w), vial_position.new_tensor((0.0, 0.0, 1.0)).expand_as(vial_position)
     )
     error = symmetric_axial_keypoint_error(
-        vial_position,
-        quat_apply_inverse(rack_quat, vial_axis_w),
-        vial_position.new_tensor(HELD_INSERTION_TARGET).expand_as(vial_position),
-        vial_position.new_tensor((0.0, 0.0, 1.0)).expand_as(vial_position),
+        hole_relative_positions(vial_position),
+        quat_apply_inverse(rack_quat, vial_axis_w).unsqueeze(1),
+        vial_position.new_tensor(HELD_INSERTION_TARGET),
+        vial_position.new_tensor((0.0, 0.0, 1.0)),
         VIAL_AXIS_MIN,
         VIAL_AXIS_MAX,
     )
-    return _finite_error(error)
+    return _finite_error(error).amin(dim=-1)
 
 
 class ApproachProgressReward(ManagerTermBase):
@@ -345,7 +348,7 @@ class ApproachProgressReward(ManagerTermBase):
 
 
 def held_goal_reward(env: ManagerBasedRLEnv, goal_std: float = 0.10) -> torch.Tensor:
-    """Dense shaping that brings the held vial to the insertion pose.
+    """Dense shaping that brings the held vial to the closest valid insertion pose.
 
     Active only while the vial is grasped and its tip is not yet in the opening, so opening the jaws is the only
     profitable continuation after insertion. There is deliberately no equivalent bump around the vial before the grasp:
@@ -490,21 +493,23 @@ def rigid_object_state(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> tor
 
 
 def rack_relative_target(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Return the vial position in the rack frame [m]."""
+    """Return absolute rack-local vial position [m], preserving the pose observation across all holes."""
     return _finite(_placement_values(env)[0]).clamp(-1.0, 1.0)
 
 
 def placement_features(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Return the nonlinear insertion geometry a compact actor would otherwise have to derive from raw poses."""
     local, alignment, linear_speed, _, _, _ = _placement_values(env)
-    xy_distance = torch.linalg.vector_norm(local[:, :2], dim=-1)
+    xy_distance = torch.linalg.vector_norm(hole_relative_positions(local)[..., :2], dim=-1).amin(dim=-1)
     return torch.stack((xy_distance, vial_lowest_height_in_rack(env), alignment, linear_speed), dim=-1).clamp(-1, 1)
 
 
 class DomainRandomizedCameraImage(ManagerTermBase):
-    """Read normalized wrist RGB with episode-consistent exposure, contrast, white-balance, and brightness variation.
+    """Read wrist RGB with episode-consistent photometric augmentation.
 
-    Isaac Lab's play mode disables observation corruption, in which case this term returns the rendered image.
+    ``rgb`` is converted from uint8 to [0, 1]; ``rgb_hdr`` is already scene-linear floating-point color.
+    Optional chromaticity normalization divides by each pixel's brightest channel in both training and evaluation.
+    Play mode disables exposure, contrast, white-balance, brightness, and gamma augmentation.
     """
 
     def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
@@ -515,11 +520,33 @@ class DomainRandomizedCameraImage(ManagerTermBase):
             "white_balance_range", cfg.params["white_balance_range"], positive=True
         )
         self._brightness_range = self._validate_range("brightness_range", cfg.params["brightness_range"])
+        self._gamma_range = self._validate_range(
+            "gamma_range", cfg.params.get("gamma_range", (1.0, 1.0)), positive=True
+        )
+        self._shift_pixels = int(cfg.params.get("shift_pixels", 0))
+        self._blur_range = self._validate_range("blur_range", cfg.params.get("blur_range", (0.0, 0.0)))
+        if not 0.0 <= self._blur_range[0] <= self._blur_range[1] <= 1.0:
+            raise ValueError("blur_range must be within [0, 1]")
+        if self._shift_pixels < 0:
+            raise ValueError("shift_pixels must be nonnegative")
+        self._image_shift = torch.zeros((self.num_envs, 2), dtype=torch.long, device=self.device)
+        self._history_length = int(cfg.params.get("history_length", 1))
+        if self._history_length < 1:
+            raise ValueError("history_length must be positive")
+        self._dropout_probability = float(cfg.params.get("dropout_probability", 0.0))
+        if not 0.0 <= self._dropout_probability <= 1.0:
+            raise ValueError("dropout_probability must be within [0, 1]")
+        self._image_history = None
+        self._history_step = None
+        self._history_valid = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         shape = (self.num_envs, 1, 1, 1)
         self._exposure = torch.ones(shape, device=self.device)
         self._contrast = torch.ones(shape, device=self.device)
         self._white_balance = torch.ones((self.num_envs, 3, 1, 1), device=self.device)
         self._brightness = torch.zeros(shape, device=self.device)
+        self._gamma = torch.ones(shape, device=self.device)
+        self._blur = torch.zeros(shape, device=self.device)
+        self._image_keep = torch.ones(shape, device=self.device)
         self.reset()
 
     @staticmethod
@@ -538,10 +565,24 @@ class DomainRandomizedCameraImage(ManagerTermBase):
             tensor[env_ids] = torch.empty_like(tensor[env_ids]).uniform_(*value_range)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        self._history_valid[slice(None) if env_ids is None else env_ids] = False
         self._resample(self._exposure, env_ids, self._exposure_range)
         self._resample(self._contrast, env_ids, self._contrast_range)
         self._resample(self._white_balance, env_ids, self._white_balance_range)
         self._resample(self._brightness, env_ids, self._brightness_range)
+        self._resample(self._gamma, env_ids, self._gamma_range)
+        self._resample(self._blur, env_ids, self._blur_range)
+        if self._dropout_probability:
+            ids = slice(None) if env_ids is None else env_ids
+            self._image_keep[ids] = (torch.rand_like(self._image_keep[ids]) >= self._dropout_probability).float()
+        if self._shift_pixels:
+            ids = slice(None) if env_ids is None else env_ids
+            self._image_shift[ids] = torch.randint(
+                -self._shift_pixels,
+                self._shift_pixels + 1,
+                self._image_shift[ids].shape,
+                device=self.device,
+            )
 
     def __call__(
         self,
@@ -551,11 +592,54 @@ class DomainRandomizedCameraImage(ManagerTermBase):
         contrast_range: tuple[float, float],
         white_balance_range: tuple[float, float],
         brightness_range: tuple[float, float],
+        gamma_range: tuple[float, float] = (1.0, 1.0),
+        normalize_intensity: bool = False,
+        data_type: str = "rgb",
+        encode_srgb: bool = False,
+        shift_pixels: int = 0,
+        blur_range: tuple[float, float] = (0.0, 0.0),
+        history_length: int = 1,
+        observation_group: str = "wrist_rgb",
+        dropout_probability: float = 0.0,
     ) -> torch.Tensor:
         camera: Camera = env.scene.sensors[sensor_cfg.name]
-        image = _tensor(camera.data.output["rgb"])[..., :3]
-        image = image.permute(0, 3, 1, 2).contiguous().float().div(255.0)
-        if env.cfg.observations.wrist_rgb.enable_corruption:
+        image = _tensor(camera.data.output[data_type])[..., :3]
+        image = image.permute(0, 3, 1, 2).contiguous().float()
+        if data_type == "rgb":
+            image = image / 255.0
+        if normalize_intensity:
+            # RGB chromaticity removes scalar illumination without using object masks or target statistics.
+            image = image / image.amax(dim=1, keepdim=True).clamp_min(1.0e-6)
+        if encode_srgb:
+            image = image.clamp_min(0.0)
+            image = torch.where(image <= 0.0031308, 12.92 * image, 1.055 * image.pow(1.0 / 2.4) - 0.055)
+        if getattr(env.cfg.observations, observation_group).enable_corruption:
+            if self._blur_range[1] > 0.0:
+                blurred = torch.nn.functional.avg_pool2d(image, 3, stride=1, padding=1, count_include_pad=False)
+                image = image.lerp(blurred, self._blur)
+            if self._shift_pixels:
+                n, channels, height, width = image.shape
+                rows = torch.arange(height, device=image.device)[None, :, None]
+                cols = torch.arange(width, device=image.device)[None, None, :]
+                rows = (rows + self._image_shift[:, 0, None, None]).clamp(0, height - 1)
+                cols = (cols + self._image_shift[:, 1, None, None]).clamp(0, width - 1)
+                indices = (rows * width + cols).flatten(1)[:, None].expand(-1, channels, -1)
+                image = image.flatten(2).gather(2, indices).reshape(n, channels, height, width)
+            image = image.pow(self._gamma)
             image = (image - 0.5) * self._contrast + 0.5
             image = (image * self._exposure * self._white_balance + self._brightness).clamp(0.0, 1.0)
-        return image
+            # Keep the same mask for the complete source-training episode; play mode never drops images.
+            image = image * self._image_keep
+        if self._history_length == 1:
+            return image
+        if self._image_history is None:
+            self._image_history = image[:, None].expand(-1, self._history_length, -1, -1, -1).clone()
+        if self._history_step != env.common_step_counter:
+            self._image_history = self._image_history.roll(-1, dims=1)
+            self._history_step = env.common_step_counter
+        self._image_history[:, -1] = image
+        invalid = ~self._history_valid
+        self._image_history[invalid] = image[invalid, None]
+        self._history_valid.fill_(True)
+        # Storage may retain this observation across a reset or another compute call.
+        return self._image_history.flatten(1, 2).clone()

@@ -11,4 +11,4 @@ RESET_DATASET = ASSET_ROOT / "reset_poses.pt"
 
 def validate_assets() -> list[str]:
     """Return missing local asset dependencies without requiring a USD runtime."""
-    return [str(path) for path in (VIAL_USD, RACK_USD, MAT_USD) if not path.is_file()]
+    return [str(path) for path in (VIAL_USD, RACK_USD, MAT_USD, RESET_DATASET) if not path.is_file()]

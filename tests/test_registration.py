@@ -10,6 +10,8 @@ def test_task_registrations_are_module_qualified_and_use_rsl_rl():
         "IsaacTutorial-Place-Vial-SO101": "SO101VialEnvCfg",
         "IsaacTutorial-Place-Vial-SO101-Camera": "SO101VialCameraEnvCfg",
         "IsaacTutorial-Place-Vial-SO101-Camera-Distillation": "SO101VialCameraDistillationEnvCfg",
+        "IsaacTutorial-Place-Vial-SO101-Sim2Real": "SO101VialSim2RealEnvCfg",
+        "IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real": "SO101VialCameraSim2RealEnvCfg",
     }
     for task_id, cfg_name in expected.items():
         spec = gym.spec(task_id)
@@ -25,10 +27,8 @@ def test_only_tutorial_tasks_are_registered():
         "IsaacTutorial-Place-Vial-SO101",
         "IsaacTutorial-Place-Vial-SO101-Camera",
         "IsaacTutorial-Place-Vial-SO101-Camera-Distillation",
-        "IsaacTutorial-Place-Vial-SO101-Record",
-        "IsaacTutorial-Place-Vial-SO101-DR",
-        "IsaacTutorial-Place-Vial-SO101-DR-Wide",
-        "IsaacTutorial-Place-Vial-SO101-DR-Contact",
+        "IsaacTutorial-Place-Vial-SO101-Sim2Real",
+        "IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real",
     }
 
 

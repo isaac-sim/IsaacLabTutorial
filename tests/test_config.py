@@ -24,7 +24,10 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     WORKSHOP_INITIAL_JOINT_POSITION,
     SO101VialEnvCfg,
 )
-from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import (
+    ALL_PHASES,
+    CANONICAL_START,
+)
 from isaaclab_tutorial.utils import evaluation
 
 
@@ -88,6 +91,7 @@ def test_state_task_control_and_physics_contract():
     material = so101_env_cfg.WORKSHOP_CONTACT_MATERIAL
     assert material.compliant_contact_stiffness == pytest.approx(1.57e5)
     assert material.compliant_contact_damping == pytest.approx(1.12e3)
+    assert material.compliant_contact_acceleration_spring is True
     assert material.friction_combine_mode == "max"
     assert material.static_friction == material.dynamic_friction == pytest.approx(0.7)
 
@@ -105,6 +109,10 @@ def test_training_samples_every_phase_and_play_uses_canonical_starts(monkeypatch
     assert play["sequential"] is True
     assert play["phase_weights"] == CANONICAL_START
     assert cfg.scene.num_envs == 16
+    assert cfg.events.vial_material.params["static_friction_range"] == (0.7, 0.7)
+    assert cfg.events.vial_material.params["dynamic_friction_range"] == (0.7, 0.7)
+    assert cfg.events.vial_material.params["restitution_range"] == (0.0, 0.0)
+    assert cfg.events.vial_mass.params["mass_distribution_params"] == (0.020, 0.020)
 
 
 def test_exact_evaluation_retains_requested_batch(monkeypatch):
@@ -124,11 +132,13 @@ def test_camera_actor_observation_boundary():
 
     assert cfg.scene.num_envs == 1024
     assert (cfg.scene.wrist_camera.width, cfg.scene.wrist_camera.height) == (64, 48)
-    assert cfg.scene.wrist_camera.prim_path == "{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera"
-    assert cfg.scene.wrist_camera.spawn is None
+    assert cfg.scene.wrist_camera.prim_path == "{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera/pinhole"
+    assert cfg.scene.wrist_camera.spawn.distortion is None
+    assert cfg.scene.wrist_camera.spawn.focal_length == pytest.approx(13.6)
+    assert cfg.scene.wrist_camera.spawn.horizontal_aperture == pytest.approx(20.955)
     assert cfg.scene.wrist_camera.offset.pos == (0.0, 0.0, 0.0)
     assert cfg.scene.wrist_camera.offset.rot == (0.0, 0.0, 0.0, 1.0)
-    assert cfg.scene.wrist_camera.offset.convention == "ros"
+    assert cfg.scene.wrist_camera.offset.convention == "opengl"
     assert cfg.scene.wrist_camera.data_types == ["rgb"]
     assert cfg.scene.wrist_camera.update_period == pytest.approx(1.0 / 30.0)
     assert cfg.scene.wrist_camera.update_latest_camera_pose is True
@@ -174,50 +184,3 @@ def test_agent_configs_match_task_observation_groups():
     # The student and the from-scratch visual actor share one encoder definition.
     assert distillation.student.cnn_cfg == camera.actor.cnn_cfg
     assert camera.actor.obs_normalization is True
-
-
-def test_record_task_keeps_state_observations():
-    import gymnasium as gym
-
-    from isaaclab_tutorial.tasks.place_vial.config.so101.record_env_cfg import (
-        RECORD_CAMERA_EYE,
-        RECORD_CAMERA_TARGET,
-        SO101VialRecordEnvCfg,
-        look_at_quaternion,
-    )
-
-    assert "IsaacTutorial-Place-Vial-SO101-Record" in gym.registry
-    cfg = SO101VialRecordEnvCfg()
-    assert cfg.scene.record_camera.width == 320 and cfg.scene.record_camera.height == 240
-    assert cfg.observations.policy.__class__ is SO101VialEnvCfg().observations.policy.__class__
-    q = look_at_quaternion(RECORD_CAMERA_EYE, RECORD_CAMERA_TARGET)
-    assert sum(v * v for v in q) == pytest.approx(1.0)
-    x, y, z, w = q
-    forward = (1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w))
-    direction = [t - e for t, e in zip(RECORD_CAMERA_TARGET, RECORD_CAMERA_EYE, strict=True)]
-    norm = math.sqrt(sum(v * v for v in direction))
-    assert all(abs(f - d / norm) < 1e-6 for f, d in zip(forward, direction, strict=True))
-
-
-def test_domain_randomization_variants():
-    from isaaclab_tutorial.tasks.place_vial.config.so101.dr_env_cfg import (
-        JOINT_FRICTION_SCALE_RANGE,
-        JOINT_VISCOUS_SCALE_RANGE,
-        SO101VialDREnvCfg,
-        SO101VialDRWideEnvCfg,
-    )
-
-    narrow = SO101VialDREnvCfg()
-    assert narrow.events.robot_joint_parameters.params["friction_distribution_params"] == JOINT_FRICTION_SCALE_RANGE
-    assert narrow.events.robot_joint_parameters.params["operation"] == "scale"
-    assert narrow.events.robot_viscous_friction.params["scale_range"] == JOINT_VISCOUS_SCALE_RANGE
-    assert narrow.events.robot_viscous_friction.mode == "reset"
-    # The randomized ranges bracket the measured Newton -> OV PhysX actuator gap (friction x1.5-2, viscous x1.5-3).
-    assert JOINT_FRICTION_SCALE_RANGE[0] < 1.0 < 2.0 <= JOINT_FRICTION_SCALE_RANGE[1]
-    assert JOINT_VISCOUS_SCALE_RANGE[0] < 1.0 < 3.0 <= JOINT_VISCOUS_SCALE_RANGE[1]
-    wide = SO101VialDRWideEnvCfg()
-    assert wide.events.gripper_gains.params["asset_cfg"].joint_names == ["gripper"]
-    assert wide.events.vial_scale.mode == "usd"
-    # Observations and actions are untouched: any DR checkpoint plays on the plain task and vice versa.
-    assert type(wide.observations) is type(SO101VialEnvCfg().observations)
-    assert type(wide.actions) is type(SO101VialEnvCfg().actions)

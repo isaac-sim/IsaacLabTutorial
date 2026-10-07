@@ -63,7 +63,7 @@ _FRICTION = 0.7
 _ROLLING_FRICTION = 0.05
 _TORSIONAL_FRICTION = 0.005
 # MuJoCo contact dimensionality. Newton's default is 3 (sliding only), which silently ignores the torsional and rolling
-# coefficients above (see SIM2SIM_ISAACLAB_ISSUES.md, issue 13). 4 would honour torsional friction; a policy trained
+# coefficients above (see docs/ISAACLAB_CHANGES.md). 4 would honour torsional friction; a policy trained
 # with 4 transferred worse to OV PhysX (36 % vs 55 %), so the shipped task keeps the default.
 _CONDIM = 3
 _SOLIMP = (0.7, 0.95, 0.0001, 0.5, 2.0)
@@ -84,6 +84,7 @@ WORKSHOP_CONTACT_MATERIAL = PhysxRigidBodyMaterialCfg(
     friction_combine_mode="max",
     compliant_contact_stiffness=_CONTACT_STIFFNESS,
     compliant_contact_damping=_CONTACT_DAMPING,
+    compliant_contact_acceleration_spring=True,
 )
 
 
@@ -160,7 +161,7 @@ SYS_ID_JOINT_FRICTION = {
 
 # OV PhysX interprets the joint friction/viscous values differently from Newton: with the sys-ID numbers above, the
 # open-loop response of every joint is faster on PhysX, and under the extended-arm load the shoulder moves 2.4x
-# faster per commanded step (see SIM2SIM_ISAACLAB_ISSUES.md (issue 3)). The per-joint multipliers below were fitted
+# faster per commanded step (see docs/ISAACLAB_CHANGES.md). The per-joint multipliers below were fitted
 # on OV PhysX against Newton's step and sinusoid responses (folded arm for pan/roll/gripper/elbow, transport-pose load
 # for shoulder_lift and wrist_flex) and bring the traces to 0.001-0.005 rad RMSE (0.016-0.14 before). They make the
 # PhysX actuators behave like Newton's, which is what a Newton-trained policy expects.
@@ -345,7 +346,7 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
     # The fixed jaw is part of the ``gripper`` link. Its sensor is deliberately unfiltered (net contact force):
     # OV PhysX fails to build a filtered contact view for this link when the scene is cloned, see
-    # SIM2SIM_ISAACLAB_ISSUES.md (issue 4). The moving-jaw sensor is filtered to the vial, so bilateral contact
+    # docs/ISAACLAB_CHANGES.md. The moving-jaw sensor is filtered to the vial, so bilateral contact
     # still requires the vial to be between the jaws.
     fixed_jaw_contact = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/gripper", history_length=4)
     moving_jaw_contact = ContactSensorCfg(
@@ -362,7 +363,13 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
     light = AssetBaseCfg(
         prim_path="/World/Light",
-        spawn=sim_utils.DomeLightCfg(intensity=1200.0, color=(0.9, 0.9, 0.9)),
+        spawn=sim_utils.DomeLightCfg(intensity=300.0, color=(0.9, 0.9, 0.9)),
+    )
+
+    key_light = AssetBaseCfg(
+        prim_path="/World/KeyLight",
+        spawn=sim_utils.DistantLightCfg(intensity=500.0, color=(0.9, 0.9, 0.9), angle=10.0),
+        init_state=AssetBaseCfg.InitialStateCfg(rot=(0.32505758, 0.32505758, 0.0, 0.88807383)),
     )
 
 
@@ -466,7 +473,12 @@ class DatasetEventsCfg:
     reset_from_dataset = EventTerm(
         func=mdp.ResetFromDataset,
         mode="reset",
-        params={"dataset_path": str(RESET_DATASET), "sequential": False, "phase_weights": ALL_PHASES},
+        params={
+            "dataset_path": str(RESET_DATASET),
+            "sequential": False,
+            "phase_weights": ALL_PHASES,
+            "home_position_noise": 0.0,
+        },
     )
 
 
@@ -606,6 +618,14 @@ class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.num_envs = min(self.scene.num_envs, 16)
         self.events.reset_from_dataset.params["sequential"] = True
         self.events.reset_from_dataset.params["phase_weights"] = CANONICAL_START
+        # Evaluate the same physical vial in either engine. Training randomization must not
+        # silently change the benchmark (or the material when a renderer is attached).
+        self.events.vial_material.params.update(
+            static_friction_range=(0.7, 0.7),
+            dynamic_friction_range=(0.7, 0.7),
+            restitution_range=(0.0, 0.0),
+        )
+        self.events.vial_mass.params["mass_distribution_params"] = (0.020, 0.020)
 
 
 @configclass

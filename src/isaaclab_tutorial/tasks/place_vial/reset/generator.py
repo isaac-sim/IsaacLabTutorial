@@ -116,7 +116,7 @@ WORKSHOP_TASK_WAYPOINTS = {
 
 
 def _is_finite_number(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
 
 
 @dataclass(frozen=True)

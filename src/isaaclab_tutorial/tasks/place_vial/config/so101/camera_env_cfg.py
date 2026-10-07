@@ -4,9 +4,9 @@ from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import CameraCfg
+from isaaclab.sim import PinholeCameraCfg
 from isaaclab.utils.configclass import configclass
 from isaaclab.utils.noise import UniformNoiseCfg
-from isaaclab_tasks.utils.presets import MultiBackendRendererCfg
 
 from isaaclab_tutorial.tasks.place_vial import mdp
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
@@ -15,21 +15,28 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     SO101SceneCfg,
     SO101VialEnvCfg,
 )
+from isaaclab_tutorial.tasks.place_vial.config.so101.visuals import (
+    CAMERA_BACKGROUND_COLOR,
+    workshop_camera_renderer_cfg,
+)
 
 
 @configclass
 class SO101CameraSceneCfg(SO101SceneCfg):
-    """SO-101 scene reading the wrist camera authored in the robot asset."""
+    """SO-101 scene with the same rectified pinhole wrist camera on every renderer."""
 
     wrist_camera = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera",
-        spawn=None,
+        # Inherit the asset's camera pose, but not its RTX-only calibrated lens model.
+        prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera/pinhole",
+        spawn=PinholeCameraCfg(focal_length=13.6, horizontal_aperture=20.955),
+        offset=CameraCfg.OffsetCfg(convention="opengl"),
         data_types=["rgb"],
         width=64,
         height=48,
         update_period=1.0 / 30.0,
         update_latest_camera_pose=True,
-        renderer_cfg=MultiBackendRendererCfg(),
+        renderer_cfg=workshop_camera_renderer_cfg(),
+        background_color=CAMERA_BACKGROUND_COLOR,
     )
 
 
@@ -45,6 +52,14 @@ class WristImageCfg(ObsGroup):
             "contrast_range": (0.85, 1.15),
             "white_balance_range": (0.90, 1.10),
             "brightness_range": (-0.05, 0.05),
+            "gamma_range": (1.0, 1.0),
+            "normalize_intensity": False,
+            "data_type": "rgb",
+            "encode_srgb": False,
+            "shift_pixels": 0,
+            "blur_range": (0.0, 0.0),
+            "history_length": 1,
+            "dropout_probability": 0.0,
         },
         noise=UniformNoiseCfg(n_min=-0.025, n_max=0.025),
     )

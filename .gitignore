@@ -95,10 +95,9 @@ benchmark_*.json
 *.bak
 /datasets/
 
-# Keep tracked task assets and curated artifacts visible to Git. In
-# particular, do not ignore *.usd, *.pt, *.png, or *.mp4: required assets,
-# reset datasets, accepted checkpoints, and tutorial media use Git LFS.
-
-# probe/recording artefacts
+# Generated policies stay outside source control; retain the required reset dataset.
 *.pt
-!logs/**
+*.onnx
+*.onnx.data
+*.jit
+!src/isaaclab_tutorial/assets/reset_poses.pt

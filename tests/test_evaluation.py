@@ -1,6 +1,7 @@
 """Behavioral tests for exact batched rollout accounting."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -42,15 +43,28 @@ class _FakeWrapper:
 
 def test_install_episode_counter_uses_the_acceptance_contract(monkeypatch):
     monkeypatch.setattr(evaluation, "_install_episode_counter", lambda target: target)
-    assert evaluation.install_episode_counter() == evaluation.EVALUATION_EPISODES == 1024
+    assert evaluation.install_episode_counter() == evaluation.EVALUATION_EPISODES
+    assert evaluation.DEFAULT_EVALUATION_EPISODES == 1024
 
 
-def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch, capsys):
+def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(rsl_rl, "RslRlVecEnvWrapper", _FakeWrapper)
     monkeypatch.setattr(evaluation, "EXACT_EVALUATION_ACTIVE", False)
+    output = tmp_path / "audit.json"
+    monkeypatch.setenv("SO101_EVALUATION_OUTPUT", str(output))
+    monkeypatch.setattr(evaluation.sys, "argv", ["play", "--checkpoint", "source.pt"])
     _install_episode_counter(target=2)
+    monkeypatch.setattr(evaluation.sys, "argv", ["play", "presets=physx"])
     assert evaluation.EXACT_EVALUATION_ACTIVE is True
     wrapper = _FakeWrapper()
+    wrapper.cfg = SimpleNamespace(
+        episode_length_s=30.0,
+        is_finite_horizon=False,
+        observations=SimpleNamespace(wrist_rgb=SimpleNamespace(enable_corruption=True)),
+        events=SimpleNamespace(
+            vial_mass=SimpleNamespace(params={"mass_distribution_params": (0.012, 0.030), "asset_cfg": object()})
+        ),
+    )
     actions = torch.zeros((2, 6))
 
     wrapper.step(actions)
@@ -72,6 +86,14 @@ def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch
     assert result["mean_peak_rack_contact_force_n"] == pytest.approx(16.0)
     assert result["max_rack_contact_force_n"] == pytest.approx(30.0)
     assert result["mean_time_to_success_s"] == pytest.approx(8.5)
+    saved = json.loads(output.read_text())
+    assert saved["summary"] == result
+    assert saved["argv"] == ["--checkpoint", "source.pt"]
+    assert saved["runtime"]["episode_length_s"] == 30.0
+    assert saved["runtime"]["observation_corruption"] == {"wrist_rgb": True}
+    assert saved["runtime"]["event_parameters"]["vial_mass"] == {"mass_distribution_params": [0.012, 0.030]}
+    assert [episode["env_id"] for episode in saved["episodes"]] == [0, 1]
+    assert [episode["success"] for episode in saved["episodes"]] == [True, False]
 
 
 def test_episode_counter_rejects_a_mismatched_batch(monkeypatch):

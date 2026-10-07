@@ -101,6 +101,7 @@ class ResetFromDataset(ManagerTermBase):
         self.states = artifact["states"]
         self.row_count = int(artifact["row_count"])
         self._cursor = 0
+        self._noise_generator = torch.Generator(device=env.device).manual_seed(env.cfg.seed or 0)
         phase_weights = cfg.params.get("phase_weights")
         self.row_weights = None
         if phase_weights is not None:
@@ -118,8 +119,9 @@ class ResetFromDataset(ManagerTermBase):
         dataset_path: str,
         sequential: bool = False,
         phase_weights: tuple[float, ...] | None = None,
+        home_position_noise: float = 0.0,
     ) -> None:
-        """Write selected joint and vial states into the requested worlds."""
+        """Write reset states, optionally perturbing home-start vial XY by ``home_position_noise`` [m]."""
         del dataset_path, phase_weights
         ids = _ids(env, env_ids)
         if ids.numel() == 0:
@@ -135,6 +137,10 @@ class ResetFromDataset(ManagerTermBase):
         else:
             rows = torch.multinomial(self.row_weights, ids.numel(), replacement=True)
 
+        if not hasattr(env, "_so101_reset_row"):
+            env._so101_reset_row = torch.zeros(env.num_envs, dtype=torch.long, device=env.device)
+        env._so101_reset_row[ids] = rows
+
         robot = env.scene["robot"]
         joint_position = self.states["joint_position"][rows]
         joint_target = self.states["joint_target"][rows]
@@ -149,6 +155,17 @@ class ResetFromDataset(ManagerTermBase):
         _reset_controller_seed(env, ids, joint_target)
 
         vial_pose = self.states["vial_pose"][rows].clone()
+        if home_position_noise < 0:
+            raise ValueError("home_position_noise must be nonnegative [m]")
+        if home_position_noise:
+            home = self.states["phase"][rows] == 0
+            noise = torch.empty((ids.numel(), 2), device=env.device).uniform_(
+                -home_position_noise, home_position_noise, generator=self._noise_generator
+            )
+            vial_pose[:, :2] += noise * home[:, None]
+        if not hasattr(env, "_so101_reset_vial_pose"):
+            env._so101_reset_vial_pose = torch.zeros((env.num_envs, 7), device=env.device)
+        env._so101_reset_vial_pose[ids] = vial_pose
         vial_pose[:, :3] += env.scene.env_origins[ids]
         vial = env.scene["vial"]
         vial.write_root_pose_to_sim_index(root_pose=vial_pose, env_ids=ids)
