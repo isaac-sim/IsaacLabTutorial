@@ -28,7 +28,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
 
@@ -94,8 +93,11 @@ class VisualPolicy:
         # The nominal projection is a 4:3 image. Reject accidental widescreen stretching.
         if abs(rgb.shape[1] / rgb.shape[0] - 4 / 3) > 0.01:
             raise ValueError("Camera capture must have 4:3 aspect ratio")
-        frame = torch.from_numpy(np.ascontiguousarray(rgb)).permute(2, 0, 1).unsqueeze(0).float() / 255
-        frame = F.interpolate(frame, size=(48, 64), mode="area")
+        import cv2
+
+        # Downsample before tensor conversion to keep the 120 Hz feedback budget available for the bus.
+        resized = cv2.resize(rgb, (64, 48), interpolation=cv2.INTER_AREA)
+        frame = torch.from_numpy(resized).permute(2, 0, 1).unsqueeze(0).float() / 255
         if self.preprocessing == "RGB_float_divided_by_pixel_max_channel_min_1e-6":
             frame = frame / frame.amax(dim=1, keepdim=True).clamp_min(1e-6)
         if not self.history:
@@ -246,7 +248,9 @@ def main():
                     target = mapping.positions(robot.bus.sync_read("Goal_Position"))
                 policy.infer(camera.frame(), measured, velocity, target)
                 inference_ms.append(1000 * (time.monotonic() - start))
-                next_policy = tick + 1 / 30
+                next_policy += 1 / 30
+                if next_policy <= tick:
+                    next_policy = tick + 1 / 30
             if time.monotonic() - tick > 0.1:
                 raise RuntimeError("Joint-feedback step exceeded 100 ms; refusing a stale command")
             target = policy.target(measured)

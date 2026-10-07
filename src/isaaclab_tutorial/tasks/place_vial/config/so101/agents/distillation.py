@@ -22,6 +22,17 @@ class BoundedTeacherDistillation(Distillation):
             raise ValueError("teacher_rollout_steps must be nonnegative")
         self.teacher_rollout_steps = teacher_rollout_steps
 
+    def save(self) -> dict:
+        saved = super().save()
+        saved["teacher_rollout_updates"] = self.num_updates
+        return saved
+
+    def load(self, loaded_dict: dict, load_cfg: dict | None, strict: bool) -> bool:
+        resume = super().load(loaded_dict, load_cfg, strict)
+        if resume:
+            self.num_updates = loaded_dict.get("teacher_rollout_updates", loaded_dict.get("iter", 0))
+        return resume
+
     def act(self, obs: TensorDict) -> torch.Tensor:
         actions = super().act(obs)
         self.transition.privileged_actions = self.transition.privileged_actions.clamp(-1.0, 1.0)

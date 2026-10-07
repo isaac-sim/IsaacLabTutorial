@@ -7,7 +7,7 @@ from typing import Any
 
 import isaaclab.sim as sim_utils
 import newton
-from isaaclab.assets import AssetBaseCfg, RigidObjectCfg, VisualMaterialCfg
+from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -352,10 +352,6 @@ class SO101SceneCfg(InteractiveSceneCfg):
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
         ),
     )
-
-    robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
-    desk_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Desk/Looks/Wood", spawn=None)
-    rack_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Rack/WorkshopVisual/Looks/OmniPBR", spawn=None)
 
     # The fixed jaw is part of the ``gripper`` link. Its sensor is deliberately unfiltered (net contact force):
     # OV PhysX fails to build a filtered contact view for this link when the scene is cloned, see

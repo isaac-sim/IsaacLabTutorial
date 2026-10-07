@@ -150,6 +150,18 @@ mix teacher actions into rollouts, with probability decreasing linearly from one
 iterations. This changes data collection, not the task or inference policy. All use the full camera,
 material and physical variation. Teacher-assisted training metrics are not student acceptance scores;
 independent home-start audits are required.
+Checkpoint-200 audits on the corrected scene (256 first home-start episodes, seed 3901) scored
+9.77% for ordinary-RGB slow warm-up, 16.80% for fast warm-up, 15.23% for normalized warm-up, and
+31.25% for ordinary-RGB student-only DAgger. These are interim results, not qualified models.
+At iteration 400, the same four runs scored **41.41%, 32.03%, 42.19%, and 34.38%**, respectively.
+Distillation was stopped after this comparison. Four PPO refinements now start from the best
+normalized and ordinary-RGB students, each with mixed-stage versus home-only starts. They use
+learning rate 1e-4, gamma 0.999, entropy coefficient 0.001 and 1,024 environments. Each 200-update
+block is followed by a separate 256-home-start audit; candidates above 92% receive a fresh
+1,024-episode audit on a different seed. No current-scene vision checkpoint is qualified yet.
+The frozen state teacher scored **969/1,024 (94.63%)** on the corrected desk scene, seed 2203.
+It retained full physical randomization and used the same 30-second any-hole criterion.
+
 Raw evidence and checkpoints live outside Git in the `camera_randomization_20261007` artifact directory.
 
 ## Explicit visual LEAPP bundle

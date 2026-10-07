@@ -88,3 +88,36 @@ calls. Bundle loading took **46.0 ms**, the first inference **20.7 ms**, and ste
 camera capture, image preprocessing and robot I/O. Four GPU training jobs were active on the host.
 These measurements show that this actor is inexpensive on this CPU; they do not measure the
 camera-to-action latency or establish 120 Hz serial-bus throughput on the deployment machine.
+
+
+## Corrected orange-robot / desk scene and full camera variation
+
+Fresh measurements on 2026-10-07 use the corrected desk scene, 80×60 Newton rendering,
+64×48 two-frame policy observations, full mount/projection/photometric variation and per-episode
+material colors. Training was paused. State and vision benchmarks ran simultaneously on separate
+GPUs, sharing the host CPU. Each row is the median of three 500-step runs after 50 warm-up steps.
+
+| Workload | Environments | Environment creation | Instrumented startup | Vector step | Transitions/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| State, Newton | 4,096 | 5.87 s | 8.06 s | 57.11 ms | 71,720 |
+| Vision, Newton + Newton renderer | 1,024 | 4.87 s | 7.00 s | 46.99 ms | 21,791 |
+
+The first launches were slower: environment creation 28.74 s state / 30.24 s vision; subsequent
+runs were 5.85–5.87 s / 4.86–4.87 s. These are observed launch variations, not guaranteed cold-start
+bounds. GPU-memory totals are omitted because paused training processes retained allocations.
+The benchmark includes simulation and observation construction, but not actor inference or updates.
+Raw reports live under the external `camera_randomization_20261007/performance/` directory.
+
+The isolated deployment runtime uses Torch 2.10 CPU, separate from Torch 2.13 training. Eight
+input pairs through the real LEAPP bundle matched the training runtime with zero absolute error.
+This checks export execution, not camera capture latency, serial throughput or real-robot success.
+
+The isolated CPU controller's image preprocessing, history/proprioception assembly, LEAPP inference
+and relative-target calculation were also timed with a 640×480 synthetic RGB frame (one CPU thread,
+30 warm-up calls, 1,000 measured calls): median **0.445 ms**, p95 **0.468 ms**.
+Bundle/controller construction took 12.9 ms after imports; the first preprocessing/inference
+call took 56.3 ms. USB capture, motor-bus operations and process
+imports are excluded. These timings were measured while four training processes shared the CPU.
+
+Resizing the byte image with OpenCV before tensor conversion reduced the same controller benchmark
+from 4.90 ms to 0.445 ms median; the actor-only timing and USB/bus exclusions still apply.

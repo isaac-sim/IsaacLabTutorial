@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 import torch
 
-from isaaclab_tutorial.utils.deploy import JOINTS, JointMap, VisualPolicy
+pytest.importorskip("cv2")
+
+from isaaclab_tutorial.utils.deploy import JOINTS, JointMap, VisualPolicy  # noqa: E402
 
 
 def mapping():

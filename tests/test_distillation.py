@@ -27,3 +27,16 @@ def test_teacher_warmup_returns_control_to_student():
     assert torch.equal(algorithm.act(torch.zeros(3, 1)), torch.ones(3, 2))
     algorithm.num_updates = 100
     assert torch.equal(algorithm.act(torch.zeros(3, 1)), torch.full((3, 2), 0.25))
+
+
+def test_teacher_warmup_progress_survives_checkpoint_resume(monkeypatch):
+    from rsl_rl.algorithms import Distillation
+
+    monkeypatch.setattr(Distillation, "save", lambda self: {})
+    monkeypatch.setattr(Distillation, "load", lambda self, loaded_dict, load_cfg, strict: True)
+    algorithm = object.__new__(BoundedTeacherDistillation)
+    algorithm.num_updates = 123
+    saved = algorithm.save()
+    algorithm.num_updates = 0
+    assert algorithm.load(saved, None, True)
+    assert algorithm.num_updates == 123

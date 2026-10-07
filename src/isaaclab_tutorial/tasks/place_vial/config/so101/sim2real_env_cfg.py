@@ -2,6 +2,7 @@
 
 import math
 
+from isaaclab.assets import VisualMaterialCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.configclass import configclass
@@ -9,7 +10,7 @@ from isaaclab.utils.configclass import configclass
 from isaaclab_tutorial.tasks.place_vial import mdp
 
 from ...mdp.camera import RandomizeWristCameraMount
-from .camera_env_cfg import SO101VialCameraDistillationEnvCfg
+from .camera_env_cfg import SO101CameraSceneCfg, SO101VialCameraDistillationEnvCfg
 from .env_cfg import ARM_JOINTS, DatasetEventsCfg, SO101VialEnvCfg
 
 
@@ -138,7 +139,17 @@ class CameraSim2RealEventsCfg(Sim2RealEventsCfg):
 
 
 @configclass
+class CameraSim2RealSceneCfg(SO101CameraSceneCfg):
+    """Runtime material handles are needed only by the randomized camera task."""
+
+    robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
+    desk_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Desk/Looks/Wood", spawn=None)
+    rack_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Rack/WorkshopVisual/Looks/OmniPBR", spawn=None)
+
+
+@configclass
 class SO101VialCameraSim2RealEnvCfg(RandomizedEvaluationMixin, SO101VialCameraDistillationEnvCfg):
+    scene: CameraSim2RealSceneCfg = CameraSim2RealSceneCfg(num_envs=1024, env_spacing=0.9, replicate_physics=True)
     events: CameraSim2RealEventsCfg = CameraSim2RealEventsCfg()
 
     def __post_init__(self):

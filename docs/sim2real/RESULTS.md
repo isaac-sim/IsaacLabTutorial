@@ -2,6 +2,10 @@
 > material variation. The historical vision scores below were measured on the earlier yellow/green
 > workshop scene. Camera-only overrides do not reproduce those historical images on the current tree;
 > use the recorded historical commit for reproduction. Current-scene student qualification is pending.
+>
+> Current-scene state audit: **969/1,024 (94.63%)**, seed 2203, same frozen selected state checkpoint
+> and full physical randomization. The corrected-scene vision audits reach at most 42.19%
+> at iteration 400; see the [randomization assessment](DOMAIN_RANDOMIZATION.md).
 
 # Sim2real training and any-hole placement — 2026-10-07
 
