@@ -15,6 +15,13 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg impor
 
 
 @configclass
+class BoundedTeacherDistillationCfg(RslRlDistillationAlgorithmCfg):
+    """Optional teacher rollout warm-up, measured in training iterations."""
+
+    teacher_rollout_steps: int = 0
+
+
+@configclass
 class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
     """DAgger-style distillation: the student acts, the loaded state teacher labels every visited state."""
 
@@ -40,7 +47,7 @@ class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
         obs_normalization=True,
         distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
     )
-    algorithm = RslRlDistillationAlgorithmCfg(
+    algorithm = BoundedTeacherDistillationCfg(
         class_name="isaaclab_tutorial.tasks.place_vial.config.so101.agents.distillation:BoundedTeacherDistillation",
         num_learning_epochs=4,
         learning_rate=5.0e-4,

@@ -1,3 +1,8 @@
+> **Scene revision:** the current scene restores the user's orange robot and brown desk and adds
+> material variation. The historical vision scores below were measured on the earlier yellow/green
+> workshop scene. Camera-only overrides do not reproduce those historical images on the current tree;
+> use the recorded historical commit for reproduction. Current-scene student qualification is pending.
+
 # Sim2real training and any-hole placement — 2026-10-07
 
 **Camera profile update:** the current Camera-Sim2Real configuration additionally randomizes camera

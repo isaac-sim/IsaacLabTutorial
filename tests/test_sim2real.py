@@ -27,7 +27,8 @@ def test_home_audit_retains_randomized_physics(config):
 def test_state_and_student_share_physics():
     state, camera = SO101VialSim2RealEnvCfg(), SO101VialCameraSim2RealEnvCfg()
     camera_events = camera.events.to_dict()
-    assert camera_events.pop("camera_mount")["mode"] == "reset"
+    for visual_event in ("camera_mount", "robot_color", "desk_color", "rack_color"):
+        assert camera_events.pop(visual_event)["mode"] == "reset"
     assert state.events.to_dict() == camera_events
     assert not hasattr(camera.observations, "policy")
 

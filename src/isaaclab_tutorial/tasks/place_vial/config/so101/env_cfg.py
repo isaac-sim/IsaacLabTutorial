@@ -7,7 +7,7 @@ from typing import Any
 
 import isaaclab.sim as sim_utils
 import newton
-from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
+from isaaclab.assets import AssetBaseCfg, RigidObjectCfg, VisualMaterialCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -30,9 +30,9 @@ from isaaclab_ov.physics import OvPhysxCfg
 from isaaclab_physx.physics import PhysxCfg
 from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
 from isaaclab_tasks.utils import PresetCfg, preset
-from pxr import Gf
+from pxr import Gf, UsdShade
 
-from isaaclab_tutorial.assets import MAT_USD, RACK_USD, RESET_DATASET, VIAL_USD
+from isaaclab_tutorial.assets import DESK_USD, RACK_USD, RESET_DATASET, VIAL_USD
 from isaaclab_tutorial.tasks.place_vial import mdp
 from isaaclab_tutorial.tasks.place_vial.mdp.actions import (
     SoftLimitRelativeGripperActionCfg,
@@ -123,7 +123,16 @@ def _spawn_so101_with_camera_overrides(
 ):
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
-    _apply_camera_clipping_range(prim.GetStage(), prim_path)
+    stage = prim.GetStage()
+    _apply_camera_clipping_range(stage, prim_path)
+    # Recolor only printed plastic; preserve the black servos and camera housing.
+    material = UsdShade.Material(stage.GetPrimAtPath(f"{prim_path}/Looks/material_a_d_printed"))
+    material.GetPrim().SetInstanceable(False)
+    shader, _, _ = material.ComputeSurfaceSource("mdl")
+    if not shader:
+        shader, _, _ = material.ComputeSurfaceSource()
+    color = shader.GetInput("diffuse_color_constant") or shader.GetInput("diffuseColor")
+    color.Set(Gf.Vec3f(1.0, 0.22, 0.015))
     return prim
 
 
@@ -295,7 +304,7 @@ ARM_JOINTS = JOINTS[:-1]
 
 @configclass
 class SO101SceneCfg(InteractiveSceneCfg):
-    """One SO-101, one vial, one rack, and a collision mat."""
+    """One SO-101, one vial, one rack, and a bare desk surface."""
 
     robot = WORKSHOP_SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
@@ -335,14 +344,18 @@ class SO101SceneCfg(InteractiveSceneCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.18, 0.08, 0.04)),
     )
 
-    mat = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/Mat",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(MAT_USD), func=_spawn_usd_with_contact_material),
+    desk = AssetBaseCfg(
+        prim_path="{ENV_REGEX_NS}/Desk",
+        spawn=sim_utils.UsdFileCfg(usd_path=str(DESK_USD), func=_spawn_usd_with_contact_material),
         init_state=AssetBaseCfg.InitialStateCfg(
             pos=(0.22, 0.0, 0.032),
             rot=(0.0, 0.0, 0.7071068, 0.7071068),
         ),
     )
+
+    robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
+    desk_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Desk/Looks/Wood", spawn=None)
+    rack_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Rack/WorkshopVisual/Looks/OmniPBR", spawn=None)
 
     # The fixed jaw is part of the ``gripper`` link. Its sensor is deliberately unfiltered (net contact force):
     # OV PhysX fails to build a filtered contact view for this link when the scene is cloned, see

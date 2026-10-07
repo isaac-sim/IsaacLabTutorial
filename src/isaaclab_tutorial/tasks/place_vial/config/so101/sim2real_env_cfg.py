@@ -90,6 +90,41 @@ class SO101VialSim2RealEnvCfg(RandomizedEvaluationMixin, SO101VialEnvCfg):
 
 @configclass
 class CameraSim2RealEventsCfg(Sim2RealEventsCfg):
+    robot_color = EventTerm(
+        func=mdp.randomize_visual_material,
+        mode="reset",
+        params={
+            "materials": SceneEntityCfg("robot_visual"),
+            "channels": {"color": ((0.75, 0.14, 0.008), (1.0, 0.30, 0.025))},
+        },
+    )
+    desk_color = EventTerm(
+        func=mdp.randomize_visual_material,
+        mode="reset",
+        params={
+            "materials": SceneEntityCfg("desk_visual"),
+            "channels": {
+                "color": {
+                    "choices": [
+                        (0.25, 0.15, 0.07),
+                        (0.30, 0.18, 0.09),
+                        (0.35, 0.22, 0.12),
+                        (0.40, 0.26, 0.15),
+                        (0.45, 0.30, 0.18),
+                    ]
+                }
+            },
+        },
+    )
+    rack_color = EventTerm(
+        func=mdp.randomize_visual_material,
+        mode="reset",
+        params={
+            "materials": SceneEntityCfg("rack_visual"),
+            "channels": {"color": ((0.75, 0.48, 0.02), (1.0, 0.72, 0.065))},
+        },
+    )
+
     camera_mount = EventTerm(
         func=RandomizeWristCameraMount,
         mode="reset",

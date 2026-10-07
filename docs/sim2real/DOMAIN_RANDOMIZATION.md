@@ -1,9 +1,31 @@
 # Sim2real coverage and the WowRobo wrist camera
 
-The deployment target is the same WowRobo-assembled SO-101 and wrist camera as the workshop asset.
+The deployment target is the user’s **orange WowRobo SO-101, yellow rack and bare wooden desk**,
+with the WowRobo wrist camera. The original workshop’s yellow robot and green mat were incorrect.
 Deployment will use LEAPP with a custom inference script and LeRobot for robot control. Source-simulator
 success is necessary, but does not establish successful transfer: the existing frozen policies already
 lose substantial performance when moved to PhysX. No real-robot success rate has been measured.
+
+## Physical appearance recovered from the earlier branch
+
+The setup description was recovered from `origin/feat/so101-sim2real-multigpu`, whose
+`docs/SO101_SIM2REAL.md` recorded the previously supplied photograph. No new photograph is required.
+The default scene now colors only the printed robot material orange, preserving black servos/camera;
+the rack remains yellow. A brown 0.9144 × 1.00584 m desk replaces the green mat. The support height
+is unchanged to preserve the reset poses; its footprint follows the previous branch and is not a
+new physical measurement. The Newton camera render was visually checked after this correction.
+
+Camera-Sim2Real additionally samples printed-plastic and rack colors within narrow orange/yellow
+ranges each episode. Desk colors are five correlated brown shades, avoiding independently sampled
+RGB extremes that can create green surfaces. These are native per-environment material writes,
+not color masks in the observation. The desk is still **plain colored**: wood grain, local reflections
+and changing shadow directions are not yet modeled. Global photometric augmentation cannot fully
+replace those effects. Historical green-mat scores do not qualify this corrected visual scene.
+
+The old branch also records measured vial dimensions and follower joint calibration changes.
+Those physics/kinematic changes have **not** been silently merged into the trained task: the supplied
+joint-map template remains unverified, and the current simulation dimensions/zeros must be reconciled
+with those measurements before claiming hardware readiness.
 
 ## Camera uncertainty
 
@@ -117,10 +139,17 @@ claimed for the expanded distribution. Four single-GPU PPO continuations compare
 448), matching 256-episode audits scored 49.22%, 48.83%, 50.39%, and 46.88%, respectively. Those runs
 were stopped after this audit; short PPO continuation had not improved camera robustness.
 
-Four teacher-guided distillation continuations then compare 1e-4 and 5e-4 learning rates with the
-same two reset distributions. They start from the original visual actor and qualified state teacher.
-All runs use the complete camera geometry profile, photometric/proprioceptive corruption, the
-existing physical distribution, and Newton rendering.
+The subsequent normalized-image DAgger audits also failed to recover performance: mixed-start
+runs at iteration 400 scored 38.28% (1e-4) and 35.16% (5e-4); home-only runs at iteration 200 scored
+42.58% and 32.81%. Ordinary-RGB mixed-start runs at iteration 200 scored 46.09% and 28.91%.
+These were still on the incorrect workshop appearance and were stopped after the user's correction.
+
+Four fresh corrected-scene runs compare ordinary RGB at learning rates 1e-4/5e-4 with the original
+pixel normalization at 1e-4, plus ordinary-RGB student-only DAgger at 1e-4. The first three optionally
+mix teacher actions into rollouts, with probability decreasing linearly from one to zero over 300
+iterations. This changes data collection, not the task or inference policy. All use the full camera,
+material and physical variation. Teacher-assisted training metrics are not student acceptance scores;
+independent home-start audits are required.
 Raw evidence and checkpoints live outside Git in the `camera_randomization_20261007` artifact directory.
 
 ## Explicit visual LEAPP bundle
@@ -144,8 +173,11 @@ history/preprocessing, joint conventions, action scale and parity error. LEAPP's
 packages the existing model; the separate runtime parity check verifies its behavior. The optional
 `leapp` extra pins the tested version. It is not required for training.
 
-The script will call `InferenceManager.run_policy` with `policy/proprioception` and
+The custom controller calls `InferenceManager.run_policy` with `policy/proprioception` and
 `policy/wrist_rgb`, and receive `policy/action`. This artifact intentionally contains the actor;
-image preprocessing/history and the 120 Hz target loop belong to the custom deployment script.
-It is not an end-to-end hardware controller. Neither a LeRobot hardware rollout nor timing on the
-actual camera/serial bus has been tested here.
+image preprocessing/history and the 120 Hz target loop are implemented in
+`src/isaaclab_tutorial/utils/deploy.py`. Neither a LeRobot hardware rollout nor timing on the actual
+camera/serial bus has been tested here. See [deployment instructions](DEPLOYMENT.md).
+
+Use `--no-normalize-intensity` when packaging an actor trained with ordinary RGB. This flag records
+the preprocessing contract; it does not change the neural network.

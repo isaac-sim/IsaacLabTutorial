@@ -24,7 +24,7 @@ class _FlatVisualActor(torch.nn.Module):
         return self.actor(proprioception, [wrist_rgb])
 
 
-def export_visual_actor(model_path: Path, output: Path, history: int = 2) -> Path:
+def export_visual_actor(model_path: Path, output: Path, history: int = 2, normalize_intensity: bool = True) -> Path:
     """Bundle an RSL-RL visual TorchScript export and verify LEAPP runtime parity on CPU.
 
     Inputs are [1, 24] proprioception and [1, 3 * history, 48, 64] preprocessed RGB.
@@ -48,6 +48,8 @@ def export_visual_actor(model_path: Path, output: Path, history: int = 2) -> Pat
         flat_path = Path(temporary) / "visual_actor.pt"
         flat.save(str(flat_path))
         example_output = flat(*examples[0])
+        if example_output.shape != (1, 6):
+            raise ValueError(f"Expected six SO-101 actions, got {tuple(example_output.shape)}")
         leapp.start(str(output))
         try:
             # The prebuilt backend records the interface and copies the validated model.
@@ -84,7 +86,11 @@ def export_visual_actor(model_path: Path, output: Path, history: int = 2) -> Pat
                 "history_length": history,
                 "history_order": "oldest_first_repeat_initial_frame",
                 "image_shape": [1, 3 * history, 48, 64],
-                "image_preprocessing": "RGB_float_divided_by_pixel_max_channel_min_1e-6",
+                "image_preprocessing": (
+                    "RGB_float_divided_by_pixel_max_channel_min_1e-6"
+                    if normalize_intensity
+                    else "RGB_uint8_divided_by_255"
+                ),
                 "proprioception": ["joint_pos", "joint_vel", "joint_target", "previous_clipped_action"],
                 "joint_order": ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"],
                 "joint_units": "radians",
@@ -109,8 +115,14 @@ def main():
     parser.add_argument("--model", type=Path, required=True, help="RSL-RL exported visual policy.pt, not a checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="New LEAPP bundle directory")
     parser.add_argument("--history", type=int, default=2)
+    parser.add_argument(
+        "--normalize-intensity",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Record the training preprocessing in the deployment contract; this does not change the actor",
+    )
     args = parser.parse_args()
-    print(export_visual_actor(args.model, args.output, args.history))
+    print(export_visual_actor(args.model, args.output, args.history, args.normalize_intensity))
 
 
 if __name__ == "__main__":

@@ -24,6 +24,11 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 ## Physics, assets and rendering
 
+- Restored the real setup recorded on the prior feature branch: orange printed robot parts with
+  black servos, the same yellow rack, and a bare brown desk instead of a green mat. The support
+  plane height is retained. Camera-Sim2Real varies those material colors per environment/episode.
+  Newton rendering was checked; the plain surface does not yet model actual wood grain.
+
 - Added episode-fixed wrist-camera mounting (±3 mm, ±3°) and projection variation (focal length,
   principal point and mild radial distortion), plus gamma variation. A wider Newton render feeds
   the original 64×48 policy image. This needs no new Isaac Lab patch. The old policy's success drops
@@ -31,8 +36,8 @@ already exists on that main revision; replacing older Jetbot examples is not a n
   scores apply to the original camera profile. [The assessment](sim2real/DOMAIN_RANDOMIZATION.md)
   records research, coverage gaps and the LEAPP/LeRobot deployment contract.
 
-- Bundled the workshop vial/rack/mat USD assets and their license, rather than using main's remote
-  workshop paths. This retains the exact training geometry and editable contact/material setup.
+- Bundled the workshop vial/rack USD assets and a local desk asset and their license, rather than using main's remote
+  workshop paths. This retains editable contact/material setup; the desk correction enlarges the support footprint.
   Required assets and the reset dataset remain tracked through Git LFS.
 - Bound a shared workshop contact material to the robot and scene colliders. PhysX receives the
   compliant acceleration-spring material and explicit solver iteration settings; Newton retains
@@ -47,6 +52,13 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 - Kept reset generation compatible with the pinned framework's simulation-launch API.
 
 ## Evaluation and reproducibility
+
+- Added a standalone LEAPP/LeRobot controller with explicit image/history processing, calibrated
+  joint transforms, 30 Hz inference and 120 Hz measured-relative target updates. Default execution
+  is read-only. An isolated CPU runtime avoids conflicting with Isaac Lab dependencies; the real
+  actor matched the training runtime on eight input pairs with zero maximum absolute error.
+- Added optional teacher rollout warm-up to the existing distillation algorithm. Probability
+  decays to zero over a configured number of iterations; default behavior stays student-only.
 
 - Recorded exact first-episode accounting, criterion version, selected hole, reset row/pose,
   effective randomization, observation corruption, runtime details and checkpoint hashes in audits.
@@ -88,7 +100,7 @@ fallback, fresh-optimizer checkpoint loading, external task registration, and li
 The dependency is published as [`efbbde338`](https://github.com/StafaH/IsaacLab/commit/efbbde338f5222eb759cd67397fdc84c088f6c5c).
 Its changed areas and inherited compatibility tests passed **518 tests**, with **6 skips** for
 unsupported/unavailable cases. The repository's full formatter/pre-commit checks passed.
-The tutorial passed **88 base tests**, plus an optional LEAPP export test, after the camera addition.
+The tutorial passed **93 tests**, including optional LEAPP export and deployment-contract tests.
 All three training checks (state PPO, vision PPO, fresh visual distillation) completed 12 iterations.
 After rebuilding from the published pin, all three also passed two-iteration training smoke tests.
 Required asset validation and lockfile consistency checks passed. Pre-fix source failed 43 of the
