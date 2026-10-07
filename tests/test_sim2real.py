@@ -26,5 +26,19 @@ def test_home_audit_retains_randomized_physics(config):
 
 def test_state_and_student_share_physics():
     state, camera = SO101VialSim2RealEnvCfg(), SO101VialCameraSim2RealEnvCfg()
-    assert state.events.to_dict() == camera.events.to_dict()
+    camera_events = camera.events.to_dict()
+    assert camera_events.pop("camera_mount")["mode"] == "reset"
+    assert state.events.to_dict() == camera_events
     assert not hasattr(camera.observations, "policy")
+
+
+def test_camera_geometry_randomization_survives_play_and_preserves_policy_resolution():
+    cfg = SO101VialCameraSim2RealEnvCfg()
+    projection = cfg.observations.wrist_rgb.image.params.copy()
+    mount = cfg.events.camera_mount.params.copy()
+    cfg.play_mode()
+    assert cfg.observations.wrist_rgb.image.params == projection
+    assert cfg.events.camera_mount.params == mount
+    assert (cfg.scene.wrist_camera.height, cfg.scene.wrist_camera.width) == (60, 80)
+    assert projection["projection_size"] == (48, 64)
+    assert projection["focal_scale_range"] == (0.95, 1.05)

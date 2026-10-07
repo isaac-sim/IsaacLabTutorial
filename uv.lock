@@ -539,6 +539,15 @@ wheels = [
 ]
 
 [[package]]
+name = "fast-sugiyama"
+version = "0.5.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/b3/4d23c2a3ac51da42de40e1a59c1a801963274665a98c24503e18ba5e28e4/fast_sugiyama-0.5.3.tar.gz", hash = "sha256:073cba7184418ac2df1dba2f8835ffc10a687db1f130bfa0a1228ab4e6827c4f", size = 798543, upload-time = "2026-03-10T16:51:25.535Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/11/b4c3dfc25ffa9518c9148be9d1f7f1edb92c83fae46c4900249d3798c9cb/fast_sugiyama-0.5.3-cp311-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:79ae9abd9a22398c87b161785c0f3174dfff25bf3d3464b45881a559860c6560", size = 328103, upload-time = "2026-03-10T16:51:20.808Z" },
+]
+
+[[package]]
 name = "fastjsonschema"
 version = "2.22.2"
 source = { registry = "https://pypi.org/simple" }
@@ -571,6 +580,14 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/26/00/35d85dcce6c57fdc871f3867d465d780f302a175ea360f62533f12b27e2b/flask-3.1.3.tar.gz", hash = "sha256:0ef0e52b8a9cd932855379197dd8f94047b359ca0a78695144304cb45f87c9eb", size = 759004, upload-time = "2026-02-19T05:00:57.678Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/9c/34f6962f9b9e9c71f6e5ed806e0d0ff03c9d1b0b2340088a0cf4bce09b18/flask-3.1.3-py3-none-any.whl", hash = "sha256:f4bcbefc124291925f1a26446da31a5178f9483862233b23c0c96a20701f670c", size = 103424, upload-time = "2026-02-19T05:00:56.027Z" },
+]
+
+[[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
 ]
 
 [[package]]
@@ -836,6 +853,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+leapp = [
+    { name = "leapp", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
 ovphysx = [
     { name = "ovphysx", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
@@ -854,10 +874,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "isaaclab", git = "https://github.com/StafaH/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=efbbde338f5222eb759cd67397fdc84c088f6c5c" },
+    { name = "leapp", marker = "extra == 'leapp'", specifier = "==0.7.1" },
     { name = "ovphysx", marker = "extra == 'ovphysx'", index = "https://pypi.nvidia.com/" },
     { name = "ovrtx", marker = "extra == 'ovrtx'", specifier = "==0.4.1.364340", index = "https://pypi.nvidia.com/" },
 ]
-provides-extras = ["ovphysx", "ovrtx"]
+provides-extras = ["ovphysx", "ovrtx", "leapp"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -979,6 +1000,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/49/ac/21a1f8aa3777f5658576777ea76bfb124b702c520bbe90edf4ae9915eafa/lazy_loader-0.5.tar.gz", hash = "sha256:717f9179a0dbed357012ddad50a5ad3d5e4d9a0b8712680d4e687f5e6e6ed9b3", size = 15294, upload-time = "2026-03-06T15:45:09.054Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8a/a1/8d812e53a5da1687abb10445275d41a8b13adb781bbf7196ddbcf8d88505/lazy_loader-0.5-py3-none-any.whl", hash = "sha256:ab0ea149e9c554d4ffeeb21105ac60bed7f3b4fd69b1d2360a4add51b170b005", size = 8044, upload-time = "2026-03-06T15:45:07.668Z" },
+]
+
+[[package]]
+name = "leapp"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fast-sugiyama", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "onnx", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "onnxruntime", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "onnxscript", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "pillow", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "safetensors", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/23/93/00fa03f6a1bc214ee08a2f3b35cf4969d3c2df10f32801b7b417d932d6c9/leapp-0.7.1-py3-none-any.whl", hash = "sha256:11f23de5d9e261bf16a0b5844534db43bb629fb2339b3fc8438eaf1b5a8ee93b", size = 220009, upload-time = "2026-09-15T23:36:51.985Z" },
 ]
 
 [[package]]
@@ -1442,6 +1481,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d6/c2/61194cec0dbc5622273c0ebd592d37cc1dca0d7f1a744f02edd45ac905a3/onnx_ir-1.0.0.tar.gz", hash = "sha256:9e261f25fde8da9612ae5cb43b3b374d5ff469c04af0363cad588b2bb000b812", size = 163121, upload-time = "2026-08-11T14:49:46.895Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/cd/6d1637172eb59c7b18ac90ed089d1f599a11fe0e63b4db2d017f3bb38a32/onnx_ir-1.0.0-py3-none-any.whl", hash = "sha256:e578f0d608d3062866b48223616eb2d10a6d6d01f8b8faac596129034f483cc7", size = 185849, upload-time = "2026-08-11T14:49:45.524Z" },
+]
+
+[[package]]
+name = "onnxruntime"
+version = "1.30.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "packaging", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "protobuf", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/34/35/e7f862dbacbc99fadd9b14a614e49c99bf0f35fd9927a82f096e3de33531/onnxruntime-1.30.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:fa688e7891a6aa206636fe7372e27ee75fd17713289f6b4fc7b190e0a7de9328", size = 23585654, upload-time = "2026-09-10T16:31:26.65Z" },
 ]
 
 [[package]]

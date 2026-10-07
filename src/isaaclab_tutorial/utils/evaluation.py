@@ -89,6 +89,21 @@ def _install_episode_counter(target: int) -> list[str]:
                 }
                 if getattr(cfg, "observations", None) is not None
                 else {},
+                "observation_parameters": {
+                    name: {
+                        term_name: {
+                            key: value
+                            for key, value in term.params.items()
+                            if isinstance(value, str | int | float | bool | list | tuple | type(None))
+                        }
+                        for term_name, term in vars(group).items()
+                        if hasattr(term, "params")
+                    }
+                    for name, group in vars(cfg.observations).items()
+                    if hasattr(group, "enable_corruption")
+                }
+                if getattr(cfg, "observations", None) is not None
+                else {},
                 "event_parameters": {
                     name: {
                         key: value

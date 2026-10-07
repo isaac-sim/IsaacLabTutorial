@@ -74,3 +74,17 @@ to a teacher-only rollout.
 The benchmark/training installation's runtime source was checked against the published dependency;
 only formatting and the wheel builder's asset-directory relocation differed. The final dependency
 was then rebuilt and installed from its Git pin, with policy acceptance audits and two-iteration training smoke tests repeated afterward.
+
+## Camera-profile update and LEAPP inference
+
+The environment/training tables above predate mounting/intrinsic randomization and its 80×60
+overscan. State configuration is unchanged. Do not treat the historical visual throughput as a
+measurement of the expanded camera profile; the commands now exercise the expanded profile.
+
+The explicit LEAPP bundle of the selected visual actor was also measured on the same host CPU,
+with `CUDA_VISIBLE_DEVICES=''`, one PyTorch thread, batch size one, 30 warm-up calls and 1,000 timed
+calls. Bundle loading took **46.0 ms**, the first inference **20.7 ms**, and steady inference
+**0.166 ms median / 0.182 ms p95**. Loading excludes Python/library imports; inference excludes
+camera capture, image preprocessing and robot I/O. Four GPU training jobs were active on the host.
+These measurements show that this actor is inexpensive on this CPU; they do not measure the
+camera-to-action latency or establish 120 Hz serial-bus throughput on the deployment machine.

@@ -529,6 +529,23 @@ class DomainRandomizedCameraImage(ManagerTermBase):
             raise ValueError("blur_range must be within [0, 1]")
         if self._shift_pixels < 0:
             raise ValueError("shift_pixels must be nonnegative")
+        self._projection_size = cfg.params.get("projection_size")
+        self._focal_scale_range = self._validate_range(
+            "focal_scale_range", cfg.params.get("focal_scale_range", (1.0, 1.0)), positive=True
+        )
+        self._principal_point_pixels = float(cfg.params.get("principal_point_pixels", 0.0))
+        self._radial_distortion_range = self._validate_range(
+            "radial_distortion_range", cfg.params.get("radial_distortion_range", (0.0, 0.0))
+        )
+        if not 0 <= self._principal_point_pixels < float("inf"):
+            raise ValueError("principal_point_pixels must be finite and nonnegative")
+        if not -0.1 <= self._radial_distortion_range[0] <= self._radial_distortion_range[1] <= 0.1:
+            raise ValueError("radial_distortion_range must be within [-0.1, 0.1]")
+        self._focal_scale = torch.ones((self.num_envs, 2), device=self.device)
+        self._principal_offset = torch.zeros_like(self._focal_scale)
+        self._radial_distortion = torch.zeros(self.num_envs, device=self.device)
+        self._projection_grid = None
+        self._projection_dirty = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
         self._image_shift = torch.zeros((self.num_envs, 2), dtype=torch.long, device=self.device)
         self._history_length = int(cfg.params.get("history_length", 1))
         if self._history_length < 1:
@@ -565,7 +582,15 @@ class DomainRandomizedCameraImage(ManagerTermBase):
             tensor[env_ids] = torch.empty_like(tensor[env_ids]).uniform_(*value_range)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        self._history_valid[slice(None) if env_ids is None else env_ids] = False
+        ids = slice(None) if env_ids is None else env_ids
+        self._history_valid[ids] = False
+        if self._projection_size is not None:
+            self._resample(self._focal_scale, env_ids, self._focal_scale_range)
+            self._resample(
+                self._principal_offset, env_ids, (-self._principal_point_pixels, self._principal_point_pixels)
+            )
+            self._resample(self._radial_distortion, env_ids, self._radial_distortion_range)
+            self._projection_dirty[ids] = True
         self._resample(self._exposure, env_ids, self._exposure_range)
         self._resample(self._contrast, env_ids, self._contrast_range)
         self._resample(self._white_balance, env_ids, self._white_balance_range)
@@ -601,12 +626,36 @@ class DomainRandomizedCameraImage(ManagerTermBase):
         history_length: int = 1,
         observation_group: str = "wrist_rgb",
         dropout_probability: float = 0.0,
+        projection_size: tuple[int, int] | None = None,
+        focal_length_pixels: float = 1.0,
+        focal_scale_range: tuple[float, float] = (1.0, 1.0),
+        principal_point_pixels: float = 0.0,
+        radial_distortion_range: tuple[float, float] = (0.0, 0.0),
     ) -> torch.Tensor:
         camera: Camera = env.scene.sensors[sensor_cfg.name]
         image = _tensor(camera.data.output[data_type])[..., :3]
         image = image.permute(0, 3, 1, 2).contiguous().float()
         if data_type == "rgb":
             image = image / 255.0
+        if self._projection_size is not None:
+            from .camera import camera_sampling_grid
+
+            ids = self._projection_dirty.nonzero(as_tuple=False).flatten()
+            if self._projection_grid is None:
+                self._projection_grid = torch.empty((self.num_envs, *self._projection_size, 2), device=self.device)
+            if ids.numel():
+                self._projection_grid[ids] = camera_sampling_grid(
+                    self._focal_scale[ids],
+                    self._principal_offset[ids],
+                    self._radial_distortion[ids],
+                    input_size=image.shape[-2:],
+                    output_size=self._projection_size,
+                    focal_length_pixels=focal_length_pixels,
+                )
+                self._projection_dirty[ids] = False
+            image = torch.nn.functional.grid_sample(
+                image, self._projection_grid, mode="bilinear", padding_mode="border", align_corners=False
+            )
         if normalize_intensity:
             # RGB chromaticity removes scalar illumination without using object masks or target statistics.
             image = image / image.amax(dim=1, keepdim=True).clamp_min(1.0e-6)

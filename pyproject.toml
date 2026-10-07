@@ -16,6 +16,7 @@ dependencies = ["isaaclab"]
 # preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
 ovphysx = ["ovphysx"]
 ovrtx = ["ovrtx==0.4.1.364340"]
+leapp = ["leapp==0.7.1"]
 
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"

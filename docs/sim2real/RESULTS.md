@@ -1,5 +1,10 @@
 # Sim2real training and any-hole placement — 2026-10-07
 
+**Camera profile update:** the current Camera-Sim2Real configuration additionally randomizes camera
+mounting and projection. The qualification scores below predate that change and use the original
+camera geometry. See [the camera sensitivity audit](DOMAIN_RANDOMIZATION.md#evidence) for the new
+distribution; the previous visual checkpoint is not qualified under it.
+
 The task accepts a vial placed in any of the rack's four openings. It still requires the vial to be
 upright, released from the jaws, seated at the original depth, nearly motionless, and stable for ten
 control steps. Insertion and held-vial shaping use the nearest opening. No target selector, extra
@@ -124,6 +129,15 @@ CUDA_VISIBLE_DEVICES=1 SO101_EVALUATION_OUTPUT=outputs/vision_recheck.json \
   --visualizer none presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2
 ```
+
+To reproduce the **historical** vision profile, also disable the added camera variation:
+`env.events.camera_mount.params.position_range=0.0 env.events.camera_mount.params.rotation_range=0.0
+env.observations.wrist_rgb.image.params.focal_scale_range=[1.0,1.0]
+env.observations.wrist_rgb.image.params.principal_point_pixels=0.0
+env.observations.wrist_rgb.image.params.radial_distortion_range=[0.0,0.0]`.
+The overscan's identity projection is the original central view. For the historical corruption audit,
+also restore `env.observations.wrist_rgb.image.params.gamma_range=[1.0,1.0]` and
+`env.observations.wrist_rgb.image.params.shift_pixels=1`.
 
 For the visual noise audit, use seed 2204 and append
 `env.observations.wrist_rgb.enable_corruption=True env.observations.proprioception.enable_corruption=True`.

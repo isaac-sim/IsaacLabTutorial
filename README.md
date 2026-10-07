@@ -5,11 +5,15 @@
 This Isaac Lab tutorial trains an SO-101 arm to place a vial in **any of four rack holes**.
 The working training path uses **Newton MJWarp physics and the Newton renderer** for vision.
 State training needs no renderer. The randomized state teacher most recently scored **93.85%** success;
-the distilled, PPO-refined visual policy scored **91.50%** on 1,024 simulated home-start attempts.
+the distilled, PPO-refined visual policy scored **91.50%** on 1,024 simulated home-start attempts
+with the original camera geometry. The expanded camera profile adds mounting and intrinsic
+randomization; those historical vision scores do not qualify the expanded profile.
 See [results and evaluation protocol](docs/sim2real/RESULTS.md),
 [startup and runtime measurements](docs/PERFORMANCE.md),
 [branch changes](docs/CHANGES.md), and [Isaac Lab dependency changes](docs/ISAACLAB_CHANGES.md).
 These simulator results do not establish real-robot performance.
+See the [camera randomization and deployment assessment](docs/sim2real/DOMAIN_RANDOMIZATION.md)
+for measured camera sensitivity, research sources, and the LEAPP/LeRobot control contract.
 
 ## Setup
 
@@ -103,7 +107,7 @@ selected scores. The results document records the selected continuation and audi
 
 ## Evaluation
 
-Sim2Real play mode starts from home and **retains physical randomization**. It disables observation
+Sim2Real play mode starts from home and **retains physical and camera-geometry randomization**. It disables observation
 corruption by default; enable it explicitly for a camera/noise stress audit. An attempt lasts up to
 30 seconds. The callback counts exactly one first episode per environment and saves audit metadata.
 
@@ -130,8 +134,10 @@ checkpoint uses the default distillation runner. Camera history must match the c
 
 ## Task design
 
-At 30 Hz, five actions increment arm-joint targets by up to 0.033 rad and one increments the jaw
-by up to 0.02 rad, relative to measured joint positions. The vial remains a free rigid body.
+The policy produces actions at 30 Hz. At each 120 Hz physics substep, five actions set arm targets
+up to 0.033 rad from measured joint positions and one sets the jaw target up to 0.02 rad away.
+The same policy action is held across four substeps; the measured-position reference is refreshed.
+The vial remains a free rigid body.
 State observations have 60 values. Vision uses 24 proprioceptive values and 48×64 RGB frames;
 the selected model stacks two frames oldest first and uses max-channel intensity normalization.
 Repeat the first frame to initialize history after reset. Exports include learned normalization,
@@ -143,7 +149,8 @@ there is no selected-hole action or extra task stage. Success requires a seated,
 nearly motionless vial for ten consecutive control steps. The original tolerances remain intact.
 
 Both randomized tasks share vial mass/contact and motor variation, plus fresh ±20 mm home-start
-vial offsets. Vision adds episode-consistent color/exposure variation, blur, image shifts and noise.
+vial offsets. Vision adds episode-consistent camera mounting/intrinsic variation, color/exposure/gamma
+variation, blur and noise. Overscanned 80×60 rendering supplies the randomized 64×48 policy view.
 The [results](docs/sim2real/RESULTS.md) list all physical ranges. Training samples the eight-phase
 reset dataset with extra home starts; evaluation uses home starts only.
 

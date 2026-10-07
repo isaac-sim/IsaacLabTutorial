@@ -60,7 +60,12 @@ def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch
     wrapper.cfg = SimpleNamespace(
         episode_length_s=30.0,
         is_finite_horizon=False,
-        observations=SimpleNamespace(wrist_rgb=SimpleNamespace(enable_corruption=True)),
+        observations=SimpleNamespace(
+            wrist_rgb=SimpleNamespace(
+                enable_corruption=True,
+                image=SimpleNamespace(params={"focal_scale_range": (0.95, 1.05), "sensor_cfg": object()}),
+            )
+        ),
         events=SimpleNamespace(
             vial_mass=SimpleNamespace(params={"mass_distribution_params": (0.012, 0.030), "asset_cfg": object()})
         ),
@@ -91,6 +96,7 @@ def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch
     assert saved["argv"] == ["--checkpoint", "source.pt"]
     assert saved["runtime"]["episode_length_s"] == 30.0
     assert saved["runtime"]["observation_corruption"] == {"wrist_rgb": True}
+    assert saved["runtime"]["observation_parameters"]["wrist_rgb"]["image"] == {"focal_scale_range": [0.95, 1.05]}
     assert saved["runtime"]["event_parameters"]["vial_mass"] == {"mass_distribution_params": [0.012, 0.030]}
     assert [episode["env_id"] for episode in saved["episodes"]] == [0, 1]
     assert [episode["success"] for episode in saved["episodes"]] == [True, False]

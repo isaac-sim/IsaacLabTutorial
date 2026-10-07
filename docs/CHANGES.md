@@ -24,6 +24,13 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 ## Physics, assets and rendering
 
+- Added episode-fixed wrist-camera mounting (±3 mm, ±3°) and projection variation (focal length,
+  principal point and mild radial distortion), plus gamma variation. A wider Newton render feeds
+  the original 64×48 policy image. This needs no new Isaac Lab patch. The old policy's success drops
+  to 49.61% under combined camera variation in a 256-episode diagnostic; historical >90% vision
+  scores apply to the original camera profile. [The assessment](sim2real/DOMAIN_RANDOMIZATION.md)
+  records research, coverage gaps and the LEAPP/LeRobot deployment contract.
+
 - Bundled the workshop vial/rack/mat USD assets and their license, rather than using main's remote
   workshop paths. This retains the exact training geometry and editable contact/material setup.
   Required assets and the reset dataset remain tracked through Git LFS.
@@ -43,6 +50,9 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 - Recorded exact first-episode accounting, criterion version, selected hole, reset row/pose,
   effective randomization, observation corruption, runtime details and checkpoint hashes in audits.
+- Extended audits with effective observation parameters, so camera geometry and history settings
+  accompany each result. Added an explicit LEAPP visual-actor packager with changing-image runtime
+  parity checks; the generic environment exporter did not expose this custom camera term as an input.
 - Replaced the machine-local Isaac Lab dependency with a published Git commit and pinned the
   tested Newton revision and numerical runtime versions. Optional standalone PhysX/OVRTX extras
   remain separate from the default Newton installation.
@@ -78,7 +88,7 @@ fallback, fresh-optimizer checkpoint loading, external task registration, and li
 The dependency is published as [`efbbde338`](https://github.com/StafaH/IsaacLab/commit/efbbde338f5222eb759cd67397fdc84c088f6c5c).
 Its changed areas and inherited compatibility tests passed **518 tests**, with **6 skips** for
 unsupported/unavailable cases. The repository's full formatter/pre-commit checks passed.
-The tutorial passed **83 tests** and lint/format checks after installation from the published pin.
+The tutorial passed **88 base tests**, plus an optional LEAPP export test, after the camera addition.
 All three training checks (state PPO, vision PPO, fresh visual distillation) completed 12 iterations.
 After rebuilding from the published pin, all three also passed two-iteration training smoke tests.
 Required asset validation and lockfile consistency checks passed. Pre-fix source failed 43 of the
