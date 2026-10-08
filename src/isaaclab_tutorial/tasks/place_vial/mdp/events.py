@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 from isaaclab.managers import EventTermCfg, ManagerTermBase
 
+from isaaclab_tutorial.tasks.place_vial.mdp.geometry import tabletop_vial_overlaps_rack
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
 
 if TYPE_CHECKING:
@@ -120,6 +121,7 @@ class ResetFromDataset(ManagerTermBase):
         sequential: bool = False,
         phase_weights: tuple[float, ...] | None = None,
         home_position_noise: float = 0.0,
+        home_rack_clearance: float = 0.0,
     ) -> None:
         """Write reset states, optionally perturbing home-start vial XY by ``home_position_noise`` [m]."""
         del dataset_path, phase_weights
@@ -155,14 +157,28 @@ class ResetFromDataset(ManagerTermBase):
         _reset_controller_seed(env, ids, joint_target)
 
         vial_pose = self.states["vial_pose"][rows].clone()
-        if home_position_noise < 0:
-            raise ValueError("home_position_noise must be nonnegative [m]")
+        if home_position_noise < 0 or home_rack_clearance < 0:
+            raise ValueError("Home position noise and rack clearance must be nonnegative [m]")
         if home_position_noise:
             home = self.states["phase"][rows] == 0
             noise = torch.empty((ids.numel(), 2), device=env.device).uniform_(
                 -home_position_noise, home_position_noise, generator=self._noise_generator
             )
             vial_pose[:, :2] += noise * home[:, None]
+            # Jitter must not teleport a validated tabletop pose into the rack's solid lower deck.
+            rack_pose = env.scene["rack"].data.default_root_pose.torch[ids]
+            for _ in range(16):
+                rejected = home & tabletop_vial_overlaps_rack(vial_pose, rack_pose, home_rack_clearance)
+                retry = rejected.nonzero(as_tuple=False).flatten()
+                if retry.numel() == 0:
+                    break
+                offset = torch.empty((len(retry), 2), device=env.device).uniform_(
+                    -home_position_noise, home_position_noise, generator=self._noise_generator
+                )
+                vial_pose[retry, :2] = self.states["vial_pose"][rows[retry], :2] + offset
+            # The rare exhausted draw falls back to its original physics-validated reset pose.
+            rejected = home & tabletop_vial_overlaps_rack(vial_pose, rack_pose, home_rack_clearance)
+            vial_pose[rejected] = self.states["vial_pose"][rows[rejected]]
         if not hasattr(env, "_so101_reset_vial_pose"):
             env._so101_reset_vial_pose = torch.zeros((env.num_envs, 7), device=env.device)
         env._so101_reset_vial_pose[ids] = vial_pose

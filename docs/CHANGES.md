@@ -6,6 +6,11 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 ## Task and training
 
+- Corrected random home resets so XY perturbations cannot place the vial inside the rack. Body/cap
+  footprint checks resample only overlapping home starts within the existing ±20 mm bounds, with
+  1 mm clearance. Non-home curriculum states and placement tolerances are unchanged. Earlier
+  unconstrained-reset scores are distinguished from this corrected profile in the results.
+
 - Accepted placement in any of the four physical rack openings. Insertion, pose shaping and
   placement-distance features use the nearest opening. The rack-coordinate observation frame,
   six actions, milestone structure and release/stability tolerances remain unchanged.
@@ -102,8 +107,8 @@ fallback, fresh-optimizer checkpoint loading, external task registration, and li
 The dependency is published as [`efbbde338`](https://github.com/StafaH/IsaacLab/commit/efbbde338f5222eb759cd67397fdc84c088f6c5c).
 Its changed areas and inherited compatibility tests passed **518 tests**, with **6 skips** for
 unsupported/unavailable cases. The repository's full formatter/pre-commit checks passed.
-The tutorial passed **94 tests** across the training and isolated deployment environments,
-including optional LEAPP export and deployment-contract tests (91 training-environment tests
+The tutorial passed **96 tests** across the training and isolated deployment environments,
+including optional LEAPP export and deployment-contract tests (93 training-environment tests
 and 3 isolated deployment tests).
 All three training checks (state PPO, vision PPO, fresh visual distillation) completed 12 iterations.
 After rebuilding from the published pin, all three also passed two-iteration training smoke tests.

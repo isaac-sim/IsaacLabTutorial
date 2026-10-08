@@ -4,8 +4,8 @@
 > use the recorded historical commit for reproduction. Current-scene student qualification is pending.
 >
 > Current-scene state audit: **969/1,024 (94.63%)**, seed 2203, same frozen selected state checkpoint
-> and full physical randomization. The corrected-scene vision audits reach at most 42.19%
-> at iteration 400; see the [randomization assessment](DOMAIN_RANDOMIZATION.md).
+> and full physical randomization. The corrected-scene vision audits reach at most 72.66%
+> after 600 PPO updates, before the rack-clearance reset fix; see the [randomization assessment](DOMAIN_RANDOMIZATION.md).
 
 # Sim2real training and any-hole placement — 2026-10-07
 

@@ -173,3 +173,37 @@ def test_bundled_canonical_rows_are_exact_unstarted_home_resets():
     heading = torch.atan2(vial_axis_y, vial_axis_x)
     assert heading.amin() <= -0.34
     assert heading.amax() >= 0.34
+
+
+def test_home_jitter_preserves_clearance_and_non_home_rows():
+    from unittest.mock import MagicMock
+
+    from isaaclab.managers import EventTermCfg
+
+    from isaaclab_tutorial.tasks.place_vial.mdp.events import ResetFromDataset
+    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import tabletop_vial_overlaps_rack
+
+    class Scene(dict):
+        pass
+
+    count = 1024
+    rack_pose = torch.tensor([0.18, 0.08, 0.04, 0, 0, 0, 1.0]).repeat(count, 1)
+    rack = MagicMock()
+    rack.data.default_root_pose.torch = rack_pose
+    scene = Scene(robot=MagicMock(), vial=MagicMock(), rack=rack)
+    scene.env_origins = torch.zeros(count, 3)
+    env = SimpleNamespace(
+        num_envs=count, device="cpu", cfg=SimpleNamespace(seed=4101), scene=scene, action_manager=MagicMock()
+    )
+    cfg = EventTermCfg(func=ResetFromDataset, mode="reset", params={"dataset_path": str(RESET_DATASET)})
+    term = ResetFromDataset(cfg, env)
+    for _ in range(4):
+        term(env, None, str(RESET_DATASET), sequential=True, home_position_noise=0.02, home_rack_clearance=0.001)
+        rows = env._so101_reset_row
+        original = term.states["vial_pose"][rows]
+        home = term.states["phase"][rows] == 0
+        actual = env._so101_reset_vial_pose
+        assert not tabletop_vial_overlaps_rack(actual[home], rack_pose[home], 0.001).any()
+        torch.testing.assert_close(actual[~home], original[~home])
+        assert (actual[home, :2] - original[home, :2]).abs().amax() <= 0.020001
+        torch.testing.assert_close(actual[home, 2:], original[home, 2:])

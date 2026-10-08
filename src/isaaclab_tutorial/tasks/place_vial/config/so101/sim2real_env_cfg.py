@@ -65,6 +65,7 @@ class Sim2RealEventsCfg(DatasetEventsCfg):
         self.vial_mass.params["mass_distribution_params"] = (0.012, 0.030)
         self.reset_from_dataset.params.update(
             home_position_noise=0.02,
+            home_rack_clearance=0.001,
             phase_weights=(0.5, 0.1, 0.05, 0.05, 0.05, 0.05, 0.1, 0.1),
         )
 

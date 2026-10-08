@@ -162,6 +162,23 @@ block is followed by a separate 256-home-start audit; candidates above 92% recei
 The frozen state teacher scored **969/1,024 (94.63%)** on the corrected desk scene, seed 2203.
 It retained full physical randomization and used the same 30-second any-hole criterion.
 
+PPO improves the same corrected-scene students: at 600 updates, independent 256-home-start
+success is 68.75% (normalized/home), 69.53% (normalized/mixed), 72.66% (RGB/home), and 66.41%
+(RGB/mixed), seed 4101. These runs retained the full camera and appearance variation.
+
+### Physically valid home perturbations
+
+A geometric audit found that the old unconstrained XY jitter placed 9/256 vials visibly inside
+the rack in the RGB/home 600-update audit. All nine failed. The unperturbed dataset rows were clear.
+The sampler now rejects home perturbations whose projected body/cap rectangles overlap the rack
+base, with 1 mm clearance, and resamples within the same ±20 mm bounds. After 16 unsuccessful
+attempts it retains the original validated pose. Non-home curriculum poses are untouched. This
+uses a conservative separating-axis footprint check; it does not change success or insertion tolerances.
+
+`home_rack_clearance=0.001` in audit metadata identifies this corrected reset profile. Earlier
+scores above predate it and must not be presented as directly matched comparisons. Regression tests
+cover rotated rack frames, repeated home draws, unchanged non-home states, and unchanged XY bounds.
+
 Raw evidence and checkpoints live outside Git in the `camera_randomization_20261007` artifact directory.
 
 ## Explicit visual LEAPP bundle
