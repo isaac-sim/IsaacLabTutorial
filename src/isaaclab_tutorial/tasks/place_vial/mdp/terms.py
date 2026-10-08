@@ -45,9 +45,9 @@ INSERTION_RADIUS = 0.012
 UPRIGHT_ALIGNMENT = 0.90
 VIAL_AXIS_MIN = -0.017
 VIAL_AXIS_MAX = 0.100
-VIAL_RADIUS = 0.017
+VIAL_RADIUS = 0.0177
 # The workshop grasp encloses the enlarged cap and its shoulder, which retains the vial axially.
-VIAL_GRASP_OFFSET = (0.0, 0.0, 0.092)
+VIAL_GRASP_OFFSET = (0.0, 0.0, 0.093145)
 # Both jaws touching a vial that is held this far above its resting height is a load-bearing grasp.
 GRASP_PROOF_LIFT = 0.006
 # Light rack guidance is expected during a real insertion; only much larger forces are counted as impacts.

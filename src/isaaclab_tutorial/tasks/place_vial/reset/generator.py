@@ -119,6 +119,18 @@ def _is_finite_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
 
 
+# Preserve physical waypoint poses after the +6.4 degree elbow coordinate correction.
+WORKSHOP_PREGRASP_JOINT_POSITION = tuple(
+    value + math.radians(6.4) if index == 2 else value for index, value in enumerate(WORKSHOP_PREGRASP_JOINT_POSITION)
+)
+WORKSHOP_TASK_WAYPOINTS = {
+    phase: tuple(
+        tuple(value + math.radians(6.4) if index == 2 else value for index, value in enumerate(pose)) for pose in poses
+    )
+    for phase, poses in WORKSHOP_TASK_WAYPOINTS.items()
+}
+
+
 @dataclass(frozen=True)
 class GeneratorCfg:
     """Reset generator quotas and physical validation settings."""
@@ -310,7 +322,7 @@ class _Generator:
         import warp as wp
         from isaaclab import cloner
         from isaaclab_newton.cloner import copy_newton_clone_source
-        from isaaclab_newton.ik import (
+        from isaaclab_newton.controllers.ik import (
             NewtonIKJointLimitObjectiveCfg,
             NewtonIKPoseObjectiveCfg,
             NewtonIKSolver,
@@ -318,10 +330,14 @@ class _Generator:
         )
 
         plan = sim_utils.SimulationContext.instance().get_clone_plan()
-        resolved = cloner.query.path_to_source(plan, self.robot.cfg.prim_path) if plan is not None else None
-        if resolved is None:
-            raise RuntimeError("Could not resolve the SO-101 clone-plan source for reset IK.")
-        source = copy_newton_clone_source(resolved[0])
+        if plan is None:
+            raise RuntimeError("Reset IK requires a Newton clone plan.")
+        asset_ids = cloner.path.get_asset_prototypes(plan, self.robot.cfg.prim_path)
+        sources = cloner.path.get_asset_prototype_paths(plan)
+        source_paths = [sources[index] for index in asset_ids if sources[index] is not None]
+        if len(source_paths) != 1:
+            raise RuntimeError("Expected exactly one SO-101 clone source for reset IK.")
+        source = copy_newton_clone_source(source_paths[0])
         origin = -self.env.scene.env_origins[0]
         prototype_xform = wp.transform(wp.vec3(*origin.tolist()), wp.quat_identity())
         import newton
@@ -2289,6 +2305,7 @@ def generate_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_attempts_per_phase", type=int, default=32_768)
     parser.add_argument("--branch_seed_count", type=int, default=32)
+    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated backend presets")
     add_launcher_args(parser)
     args = parser.parse_args(argv)
 
@@ -2307,6 +2324,9 @@ def generate_main(argv: list[str] | None = None) -> int:
     env_cfg.scene.num_envs = cfg.batch_size
     env_cfg.sim.device = args.device
     env_cfg.seed = cfg.seed
+    from isaaclab_tasks.utils.hydra import resolve_presets
+
+    env_cfg = resolve_presets(env_cfg, args.presets.split(","))
     with launch_simulation(env_cfg, args):
         env = ManagerBasedRLEnv(env_cfg)
         try:
@@ -2337,6 +2357,7 @@ def view_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dataset", type=Path, default=RESET_DATASET)
     parser.add_argument("--steps_per_pose", type=int, default=45)
     parser.add_argument("--cycles", type=int, default=1)
+    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated backend presets")
     add_launcher_args(parser)
     args = parser.parse_args(argv)
 
@@ -2347,6 +2368,9 @@ def view_main(argv: list[str] | None = None) -> int:
     env_cfg = SO101VialGeneratorEnvCfg()
     env_cfg.scene.num_envs = 1
     env_cfg.sim.device = args.device
+    from isaaclab_tasks.utils.hydra import resolve_presets
+
+    env_cfg = resolve_presets(env_cfg, args.presets.split(","))
     with launch_simulation(env_cfg, args):
         env = ManagerBasedRLEnv(env_cfg)
         try:

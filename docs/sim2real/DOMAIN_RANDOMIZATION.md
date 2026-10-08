@@ -1,5 +1,8 @@
 # Sim2real coverage and the WowRobo wrist camera
 
+> This report describes the multi-GPU source branch. The measured-model consolidation and new
+> qualification status are recorded in [CONSOLIDATION.md](CONSOLIDATION.md).
+
 The deployment target is the user’s **orange WowRobo SO-101, yellow rack and bare wooden desk**,
 with the WowRobo wrist camera. The original workshop’s yellow robot and green mat were incorrect.
 Deployment will use LEAPP with a custom inference script and LeRobot for robot control. Source-simulator

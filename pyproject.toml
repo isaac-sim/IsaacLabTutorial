@@ -17,6 +17,8 @@ dependencies = ["isaaclab"]
 ovphysx = ["ovphysx"]
 ovrtx = ["ovrtx==0.5.0.377615"]
 leapp = ["leapp==0.7.1"]
+# Hardware deployment uses the isolated inline environment in utils/deploy.py.
+sim2real = ["leapp==0.7.1"]
 
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"

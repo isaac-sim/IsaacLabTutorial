@@ -1,5 +1,8 @@
 # Randomized state and vision policies — 2026-10-07
 
+> This report describes the multi-GPU source branch. The measured-model consolidation and new
+> qualification status are recorded in [CONSOLIDATION.md](CONSOLIDATION.md).
+
 > These measurements use the October 7 dependency pin (`efbbde338`). The October 8
 > update to PR #8379 changes the runtime; these are historical results, not new-stack qualification.
 

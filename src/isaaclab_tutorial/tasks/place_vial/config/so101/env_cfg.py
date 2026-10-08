@@ -7,6 +7,7 @@ from typing import Any
 
 import isaaclab.sim as sim_utils
 import newton
+import torch
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
@@ -27,12 +28,13 @@ from isaaclab.visualizers import VisualizerCfg
 from isaaclab_assets.robots.so101 import SO101_CFG
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
 from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
+from isaaclab_newton.sim.schemas import NewtonArticulationCfg
 from isaaclab_ov.physics import OvPhysxCfg
 from isaaclab_physx.physics import PhysxCfg
 from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
 from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
 from isaaclab_tasks.utils import PresetCfg, preset
-from pxr import Gf, UsdShade
+from pxr import Gf, Sdf, UsdShade
 
 from isaaclab_tutorial.assets import DESK_USD, RACK_USD, RESET_DATASET, VIAL_USD
 from isaaclab_tutorial.tasks.place_vial import mdp
@@ -45,15 +47,15 @@ from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANO
 TABLETOP_VIAL_HEADING_RANGE = (-0.35, 0.35)
 TABLETOP_VIAL_POSITION = (0.231, -0.017, 0.06)
 
-# Map workshop commands onto the USD's [-10, 100] degree range.
-PREGRASP_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 22.4)
-GRASP_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 1.0)
-RELEASE_GRIPPER_POSITION = math.radians(-10.0 + 1.1 * 42.7)
+# Retain reference jaw angles; the calibrated travel is authored separately.
+PREGRASP_GRIPPER_POSITION = math.radians(14.64)
+GRASP_GRIPPER_POSITION = math.radians(-8.9)
+RELEASE_GRIPPER_POSITION = math.radians(36.97)
 
 WORKSHOP_INITIAL_JOINT_POSITION = (
     -0.1221070742,
     -0.9066845838,
-    0.1900876486,
+    0.1900876486 + math.radians(6.4),
     1.4797928525,
     -0.8044013083,
     PREGRASP_GRIPPER_POSITION,
@@ -107,7 +109,17 @@ def _spawn_usd_with_contact_material(
     """Spawn a USD asset and bind the workshop contact material to all of its colliders."""
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
+    if getattr(cfg, "randomize_diameters", False):
+        prim.CreateAttribute("tutorial:bodyDiameterRange", Sdf.ValueTypeNames.Float2).Set(Gf.Vec2f(0.0284, 0.0294))
+        prim.CreateAttribute("tutorial:capDiameterRange", Sdf.ValueTypeNames.Float2).Set(Gf.Vec2f(0.0349, 0.0359))
     return prim
+
+
+@configclass
+class MeasuredVialSpawnCfg(sim_utils.UsdFileCfg):
+    """Measured vial; optional per-world diameter variation during Newton construction."""
+
+    randomize_diameters: bool = False
 
 
 def _apply_camera_clipping_range(stage: Any, robot_prim_path: str) -> None:
@@ -126,6 +138,16 @@ def _spawn_so101_with_camera_overrides(
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
     stage = prim.GetStage()
+    # Workshop inclinometer correction: shift the joint coordinate and frame together.
+    elbow = stage.GetPrimAtPath(f"{prim_path}/joints/elbow_flex")
+    elbow.GetAttribute("physics:localRot0").Set(Gf.Quatf(0.7454748, Gf.Vec3f(-6.239807e-16, -2.6585315e-16, 0.6665338)))
+    elbow.GetAttribute("physics:lowerLimit").Set(-90.42986)
+    elbow.GetAttribute("physics:upperLimit").Set(103.22987)
+    elbow.GetAttribute("drive:angular:physics:targetPosition").Set(6.4)
+    gripper = stage.GetPrimAtPath(f"{prim_path}/joints/gripper")
+    # This follower has 1449 calibrated ticks; do not substitute another robot's span.
+    gripper.GetAttribute("physics:lowerLimit").Set(-12.505751884817162)
+    gripper.GetAttribute("physics:upperLimit").Set(-12.505751884817162 + 1449 * 360 / 4095)
     _apply_camera_clipping_range(stage, prim_path)
     # Recolor only printed plastic; preserve the black servos and camera housing.
     material = UsdShade.Material(stage.GetPrimAtPath(f"{prim_path}/Looks/material_a_d_printed"))
@@ -230,6 +252,12 @@ WORKSHOP_SO101_CFG = SO101_CFG.replace(
         func=_spawn_so101_with_camera_overrides,
         # The asset instances its collision meshes; binding the contact material needs real prims.
         make_uninstanceable=True,
+        articulation_props=[
+            properties.replace(self_collision_enabled=True)
+            if isinstance(properties, NewtonArticulationCfg)
+            else properties.replace(enabled_self_collisions=True)
+            for properties in SO101_CFG.spawn.articulation_props
+        ],
         variants={
             "Robot": "robot",
             "Sensor": "sensors",
@@ -262,6 +290,32 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
     """Apply the workshop-validated contact model to every Newton shape."""
     sim = sim_utils.SimulationContext.instance()
     builder = sim.get_or_create_backend(NewtonBuilderCfg(physics_cfg=sim.cfg.physics))
+
+    vial_prim = sim.stage.GetPrimAtPath("/World/envs/env_0/Vial")
+    body_range = vial_prim.GetAttribute("tutorial:bodyDiameterRange").Get()
+    cap_range = vial_prim.GetAttribute("tutorial:capDiameterRange").Get()
+    if body_range is not None and cap_range is not None:
+        samples = {}
+        for index, label in enumerate(builder.shape_label):
+            if "/Vial/" not in label:
+                continue
+            world = builder.shape_world[index]
+            if world not in samples:
+                u, v = torch.rand(2).tolist()
+                samples[world] = (
+                    body_range[0] + u * (body_range[1] - body_range[0]),
+                    cap_range[0] + v * (cap_range[1] - cap_range[0]),
+                )
+            body, cap = samples[world]
+            scale = list(builder.shape_scale[index])
+            name = label.rsplit("/", 1)[-1]
+            if name in ("body_collider", "bottom_collider", "cap_collider"):
+                scale[0] = (cap if name == "cap_collider" else body) / 2
+            elif name in ("Mesh", "Mesh_001", "Mesh_002"):
+                factor = body / 0.0289 if name == "Mesh_002" else cap / 0.0354
+                scale[0] *= factor
+                scale[1] *= factor
+            builder.shape_scale[index] = tuple(scale)
 
     num_shapes = len(builder.shape_body)
     for shape_index in range(num_shapes):
@@ -327,7 +381,7 @@ class SO101SceneCfg(InteractiveSceneCfg):
 
     vial = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Vial",
-        spawn=sim_utils.UsdFileCfg(
+        spawn=MeasuredVialSpawnCfg(
             usd_path=str(VIAL_USD),
             rigid_props=preset(
                 default=None,

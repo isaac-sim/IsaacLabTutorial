@@ -88,6 +88,7 @@ class SO101VialSim2RealEnvCfg(RandomizedEvaluationMixin, SO101VialEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.episode_length_s = 30.0
+        self.scene.vial.spawn.randomize_diameters = True
 
 
 @configclass
@@ -156,6 +157,7 @@ class SO101VialCameraSim2RealEnvCfg(RandomizedEvaluationMixin, SO101VialCameraDi
     def __post_init__(self):
         super().__post_init__()
         self.episode_length_s = 30.0
+        self.scene.vial.spawn.randomize_diameters = True
         camera = self.scene.wrist_camera
         # Render beyond the policy crop so focal/optical-center variation reveals real scene content.
         focal_pixels = camera.width * camera.spawn.focal_length / camera.spawn.horizontal_aperture

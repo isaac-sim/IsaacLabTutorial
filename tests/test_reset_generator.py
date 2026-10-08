@@ -56,7 +56,7 @@ def test_gripper_commands_follow_real_robot_mapping():
     assert len(WORKSHOP_PREGRASP_JOINT_POSITION) == 6
     assert (
         pytest.approx(
-            (-0.1221070742, -0.9066845838, 0.1900876486, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
+            (-0.1221070742, -0.9066845838, 0.30178872072763707, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
         )
         == WORKSHOP_INITIAL_JOINT_POSITION
     )
@@ -77,7 +77,7 @@ def test_real_robot_waypoints_cover_every_loaded_phase():
 def test_generator_lift_history_matches_physical_clearance():
     # Horizontal vials need their root one radius above the required lowest
     # point. The rack frame starts 40 mm above world zero.
-    root_threshold = 0.040 + RACK_CLEARANCE_HEIGHT + 0.017
+    root_threshold = 0.040 + RACK_CLEARANCE_HEIGHT + 0.0177
     vial_pose = torch.tensor(
         [
             [0.0, 0.0, root_threshold - 1.0e-4, 0.0, 2**-0.5, 0.0, 2**-0.5],

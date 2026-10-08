@@ -1,5 +1,9 @@
 # SO-101 vial placement
 
+Local and multi-GPU work is being reconciled on this branch; see the
+[consolidation decisions and fresh-training status](docs/sim2real/CONSOLIDATION.md).
+The historical scores below do not qualify the newly corrected physical model.
+
 <p align="center"><img src="media/demo.gif" alt="Original SO-101 workshop demonstration" width="100%"></p>
 
 The animation shows the original workshop appearance. Current Sim2Real scenes use the orange robot
@@ -201,9 +205,9 @@ To inspect or regenerate a reset dataset without replacing the packaged one:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uv run generate-so101-resets \
-  --output outputs/reset_poses.pt --visualizer none presets=newton_mjwarp
+  --output outputs/reset_poses.pt --visualizer none --presets newton_mjwarp
 CUDA_VISIBLE_DEVICES=0 uv run view-so101-resets \
-  --dataset outputs/reset_poses.pt --visualizer newton presets=newton_mjwarp
+  --dataset outputs/reset_poses.pt --visualizer newton --presets newton_mjwarp
 ```
 
 Optional PhysX/OVRTX transfer diagnostics use `uv sync --extra ovphysx --extra ovrtx` and

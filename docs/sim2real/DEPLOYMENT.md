@@ -1,5 +1,8 @@
 # LEAPP and LeRobot deployment
 
+> This report describes the multi-GPU source branch. The measured-model consolidation and new
+> qualification status are recorded in [CONSOLIDATION.md](CONSOLIDATION.md).
+
 `src/isaaclab_tutorial/utils/deploy.py` runs the explicit visual actor bundle described in
 [DOMAIN_RANDOMIZATION.md](DOMAIN_RANDOMIZATION.md). It consumes real RGB and joint feedback;
 it does not require privileged vial/rack state. It supports both image preprocessing modes and

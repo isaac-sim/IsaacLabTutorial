@@ -12,16 +12,19 @@ def test_all_declared_assets_exist():
     assert validate_assets() == []
 
 
-def test_vial_preserves_visual_mesh_and_cap_shoulder_collision():
-    wrapper = VIAL_USD.read_text()
+def test_vial_preserves_visual_mesh_and_measured_collision_dimensions():
+    import pytest
+    from pxr import Usd, UsdGeom
 
-    assert "@Vial_opaque.usda@</Vial>" in wrapper
-    assert 'over "collider"' in wrapper
-    assert "bool physics:collisionEnabled = false" in wrapper
-    assert 'def Cylinder "body_collider"' in wrapper
-    assert "double radius = 0.015670387" in wrapper
-    assert 'def Cylinder "cap_collider"' in wrapper
-    assert "double radius = 0.016947908" in wrapper
+    stage = Usd.Stage.Open(str(VIAL_USD))
+    body = UsdGeom.Cylinder(stage.GetPrimAtPath("/Vial/body_collider"))
+    cap = UsdGeom.Cylinder(stage.GetPrimAtPath("/Vial/cap_collider"))
+    bottom = UsdGeom.Sphere(stage.GetPrimAtPath("/Vial/bottom_collider"))
+    assert 2 * body.GetRadiusAttr().Get() == pytest.approx(0.0289)
+    assert 2 * cap.GetRadiusAttr().Get() == pytest.approx(0.0354)
+    assert bottom.GetRadiusAttr().Get() == pytest.approx(body.GetRadiusAttr().Get())
+    assert cap.GetHeightAttr().Get() == pytest.approx(0.01277)
+    assert UsdGeom.Mesh(stage.GetPrimAtPath("/Vial/Mesh_002"))
 
 
 def test_text_usd_dependencies_resolve():
@@ -62,7 +65,7 @@ def test_vial_legacy_mesh_does_not_contribute_implicit_mass():
     assert legacy.IsActive()  # Preserve the render mesh and its material binding.
     assert not legacy.HasAPI(UsdPhysics.CollisionAPI)
     colliders = {str(prim.GetPath()) for prim in stage.Traverse() if prim.HasAPI(UsdPhysics.CollisionAPI)}
-    assert colliders == {"/Vial/body_collider", "/Vial/cap_collider"}
+    assert colliders == {"/Vial/body_collider", "/Vial/cap_collider", "/Vial/bottom_collider"}
 
 
 def test_success_hole_centers_match_the_physical_rack_openings():
