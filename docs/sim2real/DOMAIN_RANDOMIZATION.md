@@ -48,6 +48,8 @@ Both randomized tasks retain this physical distribution during evaluation:
 Visual training also corrupts joint position by ±0.01 rad, joint velocity by ±0.02 rad/s, and
 joint target by ±0.005 rad. Clean play disables this observation corruption; noise audits retain it.
 These distributions do not replace physical joint calibration or measured latency characterization.
+Rack pose and object dimensions are fixed in this distribution. The physical rack placement must
+match the modeled workspace, and the recorded vial dimensions must be reconciled with the asset.
 
 ## Camera uncertainty
 

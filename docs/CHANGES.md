@@ -19,7 +19,9 @@ already exists on that main revision; replacing older Jetbot examples is not a n
   home starts. Evaluation retains the physical distribution but always starts at home.
 - Added conservative state PPO continuation defaults. Camera distillation and PPO use the same
   visual inputs, with optional RGB history, intensity normalization, shifts and blur alongside
-  episode-consistent photometric augmentation. The qualified visual policy uses two frames.
+  episode-consistent photometric augmentation. The qualified visual policy uses two frames. Optional
+  HDR/sRGB conversion and episode image blackout remain diagnostic settings; the qualified profile
+  uses RGB without blackout.
 - Added an explicit distillation-to-PPO converter: it preserves the student actor and the state
   teacher's compatible privileged critic, records source hashes, and requires a fresh optimizer.
   RSL-RL does not directly accept a distillation checkpoint in its PPO loader. No historical visual
@@ -34,6 +36,14 @@ already exists on that main revision; replacing older Jetbot examples is not a n
   each over 1,024 attempts. The selected visual actor uses two raw RGB frames and PPO refinement
   after distillation; load it with the PPO runner. [Results](sim2real/RESULTS.md) document the profile,
   training lineage, selection and confirmation audits, and remaining transfer limits.
+
+The cleanup also verified a complete run from random state and visual weights: fresh teachers
+qualified at **92.87% and 92.29%**, and the fresh teacher/student pipeline confirmed **91.31% clean
+and 91.31% noisy vision**, each over 1,024 attempts. The recipe uses 800 base-state updates, 200
+randomized-state updates, 400 distillation updates and 200 PPO updates. The earlier stronger model
+is preserved. The README distinguishes initialization checkpoints from trained checkpoints and uses
+the tested optimizer/preprocessing settings. Detailed lineage, comparison failures and the single
+22.36 N noisy-qualification force outlier are recorded in [RESULTS.md](sim2real/RESULTS.md).
 
 ## Physics, assets and rendering
 
@@ -100,8 +110,9 @@ were compared before and after this refactor and were identical.
 
 Historical run directories, generated videos, exports, checkpoints and diagnostic reports were
 moved to an external artifact archive, preserving the successful models and evidence. Three old
-tracked experiment videos and their recording utility were removed from the final branch tree.
-Original tutorial demonstration media and required task assets remain. This cleanup does not rewrite
+branch-local experiment videos and their recording utility were removed during cleanup; these are
+branch-history cleanup, not additional deletions relative to the current upstream main. Original
+tutorial demonstration media and required task assets remain. This cleanup does not rewrite
 historical Git commits. Ignore rules now exclude generated policies and retain the reset dataset.
 The README presents only supported tasks and executable Newton workflows.
 

@@ -11,7 +11,7 @@ with the pinned Isaac Lab environment. No simulation installation is needed on t
 
 ```bash
 uv run --script src/isaaclab_tutorial/utils/deploy.py \
-  --bundle /absolute/path/to/bundle/bundle.yaml \
+  --bundle /absolute/path/to/bundle/leapp.yaml \
   --joint-map /absolute/path/to/verified_joint_map.json \
   --port /dev/serial/by-id/YOUR_FOLLOWER \
   --camera /dev/v4l/by-id/YOUR_WRIST_CAMERA --duration 30
@@ -44,3 +44,8 @@ The current qualified bundle is `camera_randomization_20261007/selected/vision/l
 in the external artifact directory. Its contract specifies two **raw RGB** frames, without max-channel
 intensity normalization. Fresh simulated audits exceed 94% with and without observation noise;
 physical calibration and real-robot validation remain outstanding.
+
+A second bundle validates the complete fresh-teacher/student pipeline:
+`from_scratch_20261007/selected/vision/leapp/leapp.yaml`. It uses the same two-frame raw-RGB
+contract and confirms 91.31% clean / 91.31% noisy simulated success. Its training and isolated CPU
+runtime parity checks also match exactly; the earlier bundle remains the stronger qualified policy.

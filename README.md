@@ -1,12 +1,16 @@
 # SO-101 vial placement
 
-<p align="center"><img src="media/demo.gif" alt="SO-101 arm placing a vial in a rack" width="100%"></p>
+<p align="center"><img src="media/demo.gif" alt="Original SO-101 workshop demonstration" width="100%"></p>
+
+The animation shows the original workshop appearance. Current Sim2Real scenes use the orange robot
+and bare brown desk.
 
 This Isaac Lab tutorial trains an SO-101 arm to place a vial in **any of four rack holes**.
 The working training path uses **Newton MJWarp physics and the Newton renderer** for vision.
 State training needs no renderer. The state teacher scores **96.78%**. The visual policy scores
 **94.43% clean / 94.04% with observation noise** on fresh 1,024-episode audits, using the orange
-robot, brown desk and full camera/appearance/dynamics randomization.
+robot, brown desk and full camera/appearance/dynamics randomization. A separate end-to-end run
+from random state and visual weights achieves **92.87% state / 91.31% clean and noisy vision**.
 See [results and evaluation protocol](docs/sim2real/RESULTS.md),
 [startup and runtime measurements](docs/PERFORMANCE.md),
 [branch changes](docs/CHANGES.md), and [Isaac Lab dependency changes](docs/ISAACLAB_CHANGES.md).
@@ -27,9 +31,11 @@ uv run pytest -q
 uv run ruff check src tests
 mkdir -p .cache/tmp
 export TMPDIR="$PWD/.cache/tmp"
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PXR_WORK_THREAD_LIMIT=1
 ```
 
 The local temporary directory avoids shared-machine permissions on downloaded assets.
+The worker limits above were used for four simultaneous single-GPU experiments.
 The package registers its tasks through `isaaclab.tasks` and uses Isaac Lab's standard launchers.
 
 | Task suffix after `IsaacTutorial-Place-Vial-SO101` | Inputs | Training |
@@ -54,10 +60,15 @@ CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
 export STATE_CHECKPOINT=/absolute/path/to/state/model.pt
 CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 4096 \
-  --checkpoint "$STATE_CHECKPOINT" --reset_optimizer --max_iterations 400 \
-  --seed 2201 --run_name randomized_state --visualizer none presets=newton_mjwarp
+  --checkpoint "$STATE_CHECKPOINT" --max_iterations 200 \
+  --seed 42 --run_name randomized_state --visualizer none presets=newton_mjwarp \
+  agent.algorithm.learning_rate=3e-4 agent.algorithm.schedule=adaptive \
+  agent.algorithm.gamma=0.999 agent.algorithm.entropy_coef=0.005
 ```
 
+The fresh-state validation reached 92.87% on 1,024 randomized home-start attempts after
+800 bootstrap and 200 randomized updates. Audit after each 200-update block and retain a qualified
+checkpoint; curriculum training success is not a home-start acceptance score.
 Checkpoints and configuration snapshots go to `logs/rsl_rl/`. Each experiment sees one GPU;
 use separate values of `CUDA_VISIBLE_DEVICES` for parallel experiments.
 
@@ -73,7 +84,7 @@ After the randomized-state stage, update `STATE_CHECKPOINT` to its resulting che
 export STATE_CHECKPOINT=/absolute/path/to/randomized_state/model.pt
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real --num_envs 1024 \
-  --checkpoint "$STATE_CHECKPOINT" --max_iterations 1600 --seed 2201 \
+  --checkpoint "$STATE_CHECKPOINT" --max_iterations 400 --seed 46 \
   --run_name randomized_distillation --visualizer none \
   presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2 \
@@ -99,14 +110,14 @@ starts without an optimizer. No pretrained visual PPO checkpoint is required.
 
 ```bash
 export STUDENT_CHECKPOINT=/absolute/path/to/distillation/model.pt
-export VISION_CHECKPOINT=/absolute/path/to/new/visual_ppo_init.pt
+export PPO_INITIALIZATION=/absolute/path/to/new/visual_ppo_init.pt
 uv run python -m isaaclab_tutorial.utils.initialize_ppo \
-  --teacher "$STATE_CHECKPOINT" --student "$STUDENT_CHECKPOINT" --output "$VISION_CHECKPOINT"
+  --teacher "$STATE_CHECKPOINT" --student "$STUDENT_CHECKPOINT" --output "$PPO_INITIALIZATION" --action-std 0.2
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
   --agent rsl_rl_ppo_cfg_entry_point --num_envs 2048 \
-  --checkpoint "$VISION_CHECKPOINT" --reset_optimizer --max_iterations 150 \
-  --seed 2201 --run_name visual_ppo --visualizer none \
+  --checkpoint "$PPO_INITIALIZATION" --reset_optimizer --max_iterations 200 \
+  --seed 46 --run_name visual_ppo --visualizer none \
   presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2 \
   env.observations.wrist_rgb.image.params.normalize_intensity=False \
@@ -115,8 +126,10 @@ CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   env.events.reset_from_dataset.params.phase_weights=[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 ```
 
-These are training recipes, not a guarantee that an arbitrary initialization reproduces the
-selected scores. The results document records the selected continuation and audit conditions.
+This fresh-teacher recipe was validated with 400 distillation and 200 PPO updates, audited in
+200-update distillation and 100-update PPO blocks. It scored 91.31% on both fresh clean and noisy
+1,024-episode confirmations. Audit your resulting checkpoint; arbitrary initializations need not
+reproduce the same score. The earlier selected policy remains stronger at 94.43% / 94.04%.
 
 ## Evaluation
 
@@ -125,9 +138,11 @@ corruption by default; enable it explicitly for a camera/noise stress audit. An 
 30 seconds. The callback counts exactly one first episode per environment and saves audit metadata.
 
 ```bash
+export STATE_CHECKPOINT=/absolute/path/to/trained/randomized_state/model.pt
+export VISION_CHECKPOINT=/absolute/path/to/trained/visual_ppo/model.pt
 CUDA_VISIBLE_DEVICES=0 SO101_EVALUATION_OUTPUT=outputs/state_audit.json \
   uv run isaaclab play --rl_library rsl_rl \
-  --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 1024 --seed 2203 \
+  --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 1024 --seed 7102 \
   --checkpoint "$STATE_CHECKPOINT" --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp
@@ -135,7 +150,7 @@ CUDA_VISIBLE_DEVICES=0 SO101_EVALUATION_OUTPUT=outputs/state_audit.json \
 CUDA_VISIBLE_DEVICES=1 SO101_EVALUATION_OUTPUT=outputs/vision_audit.json \
   uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
-  --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --seed 2203 \
+  --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --seed 7501 \
   --checkpoint "$VISION_CHECKPOINT" --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp,newton_renderer \

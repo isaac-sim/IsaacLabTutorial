@@ -90,3 +90,10 @@ ran while a visual training process was active. It shows that network computatio
 on this CPU; it does not establish end-to-end latency or 120 Hz robot-bus throughput.
 Raw results accompany the selected bundle in `selected/vision/deployment_compute_benchmark.json`.
 See [DEPLOYMENT.md](sim2real/DEPLOYMENT.md) for the 30 Hz policy / 120 Hz target-update contract.
+
+The independently trained fresh-pipeline bundle was checked again with the same isolated CPU
+protocol, with all training GPUs idle. Its eight cross-runtime inputs also matched exactly.
+Preprocessing, inference and target calculation measured **0.390 ms median / 0.404 ms p95**;
+construction took 8.77 ms and the first controller call took 13.61 ms after the parity warm-up.
+These retain the exclusions above. Results are in
+`from_scratch_20261007/selected/vision/deployment_compute_benchmark.json`.

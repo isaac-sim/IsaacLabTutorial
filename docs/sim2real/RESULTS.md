@@ -83,6 +83,75 @@ LEAPP export parity and the separate Torch 2.10 CPU deployment runtime both matc
 training actor with **zero maximum absolute error** on eight varied input pairs. Deployment still
 requires verified robot joint calibration and physical validation; see [DEPLOYMENT.md](DEPLOYMENT.md).
 
+## Training from random initialization
+
+A separate campaign in `from_scratch_20261007` verifies fresh initialization rather than treating
+continuation smoke tests as convergence evidence. Four experiments ran in parallel, each with one
+GPU selected by `CUDA_VISIBLE_DEVICES`. All artifacts and exact command/configuration snapshots
+remain outside the repository.
+
+Two state actors and critics started randomly, without checkpoint arguments. Both used 800 updates
+on the base state task, followed by broader Sim2Real training at learning rate 3e-4, adaptive
+scheduling, gamma 0.999 and entropy coefficient 0.005. Optimizer state was preserved at the transition.
+Development audits ran every 200 updates; the independent qualification seed was 7102.
+
+| Training seed | Bootstrap updates | Randomized updates | Qualification | Mean successful duration |
+| --- | ---: | ---: | ---: | ---: |
+| 42 | 800 | 200 | **951/1,024 (92.87%)** | 14.24 s |
+| 43 | 800 | 400 | **945/1,024 (92.29%)** | 14.49 s |
+
+Neither qualification had an episode above the 20 N rack-contact diagnostic. These are new models,
+separate from the previously selected 96.78% teacher. Training directly with the broad randomized
+task from random weights did not succeed within the initial 400-update comparisons; bootstrapping
+on the base task was materially more effective. Repeated RSL-RL continuation blocks reuse boundary
+iteration labels, so checkpoint labels 995 and 1194 represent 1,000 and 1,200 actual updates here.
+
+The complete fresh pipeline used the seed-42 teacher above and a new random visual network
+(seed 46): **400 DAgger updates at 1,024 environments, then 200 PPO updates at 2,048 environments**.
+DAgger used the default 5e-4 learning rate and no teacher-action warm-up. PPO used home-only starts,
+learning rate 1e-4, fixed scheduling, gamma 0.999, entropy coefficient 0.001 and initial action
+standard deviation 0.2. The actor retained two raw RGB frames and the full training corruption.
+Neither state nor visual initialization used historical policy weights.
+
+| Fresh-pipeline audit | Seed | Successes / attempts | Success | Mean successful duration | Episodes above 20 N |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Clean qualification | 7401 | 927 / 1,024 | **90.53%** | 14.52 s | 0 |
+| Noisy qualification | 7402 | 944 / 1,024 | **92.19%** | 14.97 s | 1 |
+| Fresh clean confirmation | 7501 | 935 / 1,024 | **91.31%** | 14.68 s | 0 |
+| Fresh noisy confirmation | 7502 | 935 / 1,024 | **91.31%** | 14.82 s | 0 |
+
+The noisy qualification's peak rack force was 22.36 N; this outlier is retained, not excluded from
+the score. Confirmation peaks were 13.01 N and 11.41 N. The policy was frozen before the two
+confirmation seeds. This independently validates the end-to-end fresh-training path; it does not
+replace the stronger earlier 94.43% / 94.04% model at the top of this report.
+
+A separate fresh visual actor using the existing 96.78% teacher scored **93.95% clean / 93.07% noisy**
+(962 and 953 successes over 1,024 attempts, seeds 7202/7203), with no episode above 20 N. It used
+200 DAgger updates with a 200-update teacher-action warm-up, then 400 PPO updates. These results
+establish fresh visual learning, but are distinct from the wholly fresh teacher/student chain.
+Ordinary DAgger with that existing teacher peaked at 84.38% in the 600-update development audit
+and fell to 82.03% at 1,000; PPO refinement was useful rather than merely a checkpoint-format test.
+
+The fresh-pipeline artifacts are `from_scratch_20261007/selected/state` and
+`from_scratch_20261007/selected/vision`.
+The visual directory includes TorchScript/ONNX exports, a LEAPP bundle, both qualification audits,
+both confirmation audits, and a manifest with the complete training lineage. Training-runtime and
+isolated Torch 2.10 CPU LEAPP outputs match exactly on eight varied input pairs. Checkpoint hashes:
+
+- Fresh state: `d8a23b2837ae81b6c1c37171d33921ab3a7711c4acb2c354f4e5a0e0d26eaa50`.
+- Fresh vision: `e3e754f2779b8c2df2affe86f8432849e47ae71a289433250106d7922986cb85`.
+
+To replay the fresh visual confirmation, use the visual audit command below with this artifact's
+`VISION_ROOT` and seed 7501; use seed 7502 plus the corruption overrides for noisy confirmation.
+The README now gives this validated fresh-training recipe and separates the PPO initializer from
+the trained checkpoint used for evaluation.
+
+The explicit distillation-to-PPO converter loads the student actor and its teacher's compatible
+63-input critic, records source hashes and initializes a new optimizer. It has passed both the actual
+RSL-RL loader regression test and Newton visual training. A separate 12-update check of the public
+`-Camera` PPO task also completed with randomly initialized actor/critic and no checkpoint; that
+short check establishes execution, not a qualified visual success rate.
+
 ## Reproduce the visual audits
 
 ```bash
