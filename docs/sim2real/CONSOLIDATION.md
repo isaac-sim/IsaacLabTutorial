@@ -112,3 +112,52 @@ calibration registers therefore does not establish a verified map or an executio
 Added an execution-only check that rejects a measured pose outside the intersected limits before
 torque configuration and on each feedback cycle. Read-only checks remain available. No motor writes
 or torque changes were made. Physical zero/sign and home-pose checks remain pending.
+
+### Active fresh campaign and first development audit
+
+The solver-50 bootstrap restarted from random weights in
+`logs/rsl_rl/so101_vial_state/2026-10-08_14-36-10_consolidated_fresh_state_solver50/`.
+Its planned final checkpoint is `model_799.pt`. The local supervisor
+`outputs/consolidation_20261008/continue_training.py` waits for this process, then runs the
+randomized teacher, fresh visual distillation, visual PPO, independent audits and LEAPP export.
+Exact commands, stage status and results are recorded in `campaign.json` beside the supervisor.
+It stops on failed commands or acceptance gates; starting the campaign is not evidence of success.
+
+An early development audit of bootstrap checkpoint 200 on the randomized task scored **0/128**
+complete home-start placements: 83 lost vials and 45 timeouts, with no successful grasps or lifts.
+Peak rack contact was 6.60 N. This checkpoint has not yet received the planned randomized continuation.
+Mixed-stage training metrics must not be interpreted as complete home-start success. The teacher
+must pass a 90% development gate and an independent 1,024-episode qualification before distillation.
+The selected frozen vision actor must pass four separate 1,024-episode clean/noisy audits at 90%
+before export. Export parity and physical mapping/timing checks remain separate requirements.
+
+### Calibration range investigation
+
+The workshop's ten-follower calibration reference has a mean elbow travel of 2,221.7 encoder ticks;
+this follower's saved travel is 2,104 ticks (about 10.35° narrower). Its shoulder-pan range is also
+narrower than that reference population. Together with the live elbow reading outside its saved
+interval, this warrants checking whether the original manual sweep reached both mechanical stops.
+Population statistics do not establish the correct limits for this particular arm. We have not
+replaced calibration values with reference averages or changed motor settings.
+
+The raw comparison is saved in `outputs/consolidation_20261008/calibration_reference_comparison.json`.
+The user was asked whether the elbow calibration sweep covered its full mechanical travel. Any
+recalibration must preserve the original file and be followed by a new measured joint-map check;
+calibration matching alone does not verify physical joint zeros.
+
+The user confirmed that an endpoint may have been missed. The original calibration is backed up at
+`outputs/consolidation_20261008/calibration_before_resweep.json`. The isolated calibration entry point
+was checked with `--help` successfully; no calibration was executed by the agent. From the repo root:
+
+```bash
+sg dialout -c 'uv run --script src/isaaclab_tutorial/utils/calibrate.py --robot.type=so101_follower --robot.port=/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE6079843-if00 --robot.id=wowrobo_follower'
+```
+
+Support the arm before running this: calibration disables torque. Type `c` at the existing-file prompt
+to perform a new calibration. At the midpoint prompt, match the workshop's
+`../sim-to-real-so-101-workshop/docs/images/calibration_pose.jpg` and `wrist_center.jpg` references.
+Then follow LeRobot's instructions: sweep each joint **except wrist_roll** through its full mechanical
+travel, one at a time. Ensure cables or nearby objects do not create false endpoints; do not force a
+joint past its stop. Include the gripper's full range. Press Enter after all ranges are recorded.
+Only the follower needs this check now. Afterward re-read calibration and physical pose, compare the
+old/new spans and centers, and revalidate the deployment mapping before any policy execution.
