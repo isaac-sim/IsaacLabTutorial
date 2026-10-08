@@ -15,7 +15,7 @@ dependencies = ["isaaclab"]
 # Standalone PhysX runtime for the `physx` physics preset and the standalone RTX renderer for the `rtx` renderer
 # preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
 ovphysx = ["ovphysx"]
-ovrtx = ["ovrtx==0.4.1.364340"]
+ovrtx = ["ovrtx==0.5.0.377615"]
 leapp = ["leapp==0.7.1"]
 
 [project.entry-points."isaaclab.tasks"]
@@ -34,18 +34,18 @@ url = "https://pypi.nvidia.com"
 explicit = true
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/StafaH/IsaacLab.git", rev = "efbbde338f5222eb759cd67397fdc84c088f6c5c", subdirectory = "tools/wheel_builder" }
+isaaclab = { git = "https://github.com/StafaH/IsaacLab.git", rev = "a5edcec21741e98c5918f4c8ae88341fcd357a5f", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 
 [tool.uv]
-# Preserve the numerical stack used for the qualified Newton policies.
+# Match the numerical stack required by the pinned Isaac Lab revision.
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 override-dependencies = [
-  "mujoco~=3.11.0",
-  "mujoco-warp~=3.11.0",
-  "newton[sim] @ git+https://github.com/newton-physics/newton.git@2cb4cd0260d8de90f96847c04915a758b2e7cc65",
-  "newton-usd-schemas>=0.4.1",
+  "mujoco~=3.12.0",
+  "mujoco-warp~=3.12.0",
+  "newton[sim]==1.6.1",
+  "newton-usd-schemas>=0.5.0",
   "torch==2.13.0",
   "torchvision==0.28.0",
 ]

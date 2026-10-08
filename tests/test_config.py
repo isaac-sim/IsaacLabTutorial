@@ -78,11 +78,10 @@ def test_state_task_control_and_physics_contract():
 
     iterations = so101_env_cfg.PHYSX_SOLVER_POSITION_ITERATIONS
     assert iterations >= 128
-    ovphysx = cfg.sim.physics.physx.ovphysx
-    assert ovphysx.rigid_body_position_iteration_count == iterations
-    assert ovphysx.articulation_position_iteration_count == iterations
-    assert cfg.scene.vial.spawn.rigid_props is None
-    assert cfg.scene.robot.spawn.articulation_props.solver_position_iteration_count == 8
+    assert cfg.sim.physics.physx.ovphysx.enable_external_forces_every_iteration is False
+    assert cfg.scene.vial.spawn.rigid_props.physx.solver_position_iteration_count == iterations
+    assert cfg.scene.vial.spawn.rigid_props.default is None
+    assert cfg.scene.robot.spawn.articulation_props[0].solver_position_iteration_count == 8
     # The shared contact material carries Newton's contact stiffness/damping as a PhysX compliant contact.
     friction = cfg.events.vial_material.params["static_friction_range"]
     assert friction.default == so101_env_cfg.VIAL_FRICTION_RANGE == (0.7, 1.3)

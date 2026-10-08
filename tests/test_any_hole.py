@@ -42,7 +42,8 @@ def _environment(monkeypatch, positions):
     return env
 
 
-def test_every_hole_succeeds_only_after_ten_stable_released_steps(monkeypatch):
+@pytest.mark.parametrize("reset_ids", [[1], slice(1, 2)])
+def test_every_hole_succeeds_only_after_ten_stable_released_steps(monkeypatch, reset_ids):
     positions = [(x, y, 0.031) for x, y, _ in RACK_HOLE_CENTERS]
     env = _environment(monkeypatch, positions)
     term = terms.PlacementHistoryTerm(TerminationTermCfg(func=terms.PlacementHistoryTerm), env)
@@ -55,7 +56,7 @@ def test_every_hole_succeeds_only_after_ten_stable_released_steps(monkeypatch):
     env.episode_length_buf += 1
     assert term(env).all()
     assert env._so101_terminal_hole.tolist() == [0, 1, 2, 3]
-    term.reset([1])
+    term.reset(reset_ids)
     assert term.progress.stable_count.tolist() == [10, 0, 10, 10]
 
 

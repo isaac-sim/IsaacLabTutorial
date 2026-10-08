@@ -1,5 +1,8 @@
 # Startup and runtime — 2026-10-07
 
+> These measurements use the October 7 dependency pin (`efbbde338`). The October 8
+> update to PR #8379 changes the runtime; these are historical results, not new-stack qualification.
+
 The latest measurements use the final orange-robot/brown-desk scene, collision-free home sampling,
 full randomization and the camera housing/cache fixes. Each process sees one **RTX 6000 Ada (48 GB)**
 through `CUDA_VISIBLE_DEVICES`; the shared host is a Threadripper PRO 7965WX with 24 cores.

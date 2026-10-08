@@ -42,7 +42,8 @@ class SO101CameraSceneCfg(SO101SceneCfg):
     """SO-101 scene with the same rectified pinhole wrist camera on every renderer."""
 
     wrist_camera = CameraCfg(
-        # Inherit the asset's camera pose, but not its RTX-only calibrated lens model.
+        # Inherit the asset pose and use an explicit nominal pinhole. Sim2Real samples
+        # per-environment projection in the image term; native Newton distortion is shared.
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera/pinhole",
         spawn=PinholeCameraCfg(focal_length=13.6, horizontal_aperture=20.955),
         offset=CameraCfg.OffsetCfg(convention="opengl"),

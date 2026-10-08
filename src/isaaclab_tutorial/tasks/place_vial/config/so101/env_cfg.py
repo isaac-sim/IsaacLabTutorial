@@ -26,8 +26,10 @@ from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
 from isaaclab_assets.robots.so101 import SO101_CFG
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
+from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
 from isaaclab_ov.physics import OvPhysxCfg
 from isaaclab_physx.physics import PhysxCfg
+from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
 from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
 from isaaclab_tasks.utils import PresetCfg, preset
 from pxr import Gf, UsdShade
@@ -218,9 +220,9 @@ PHYSX_GRIPPER_STIFFNESS_SCALE = 0.6
 PHYSX_GRIPPER_STIFFNESS = SO101_GRIPPER_USD_STIFFNESS * PHYSX_GRIPPER_STIFFNESS_SCALE
 
 # PhysX under-converges the jaw/vial pinch at its default iteration counts (4 for rigid bodies): the vial is
-# squeezed out along the pads regardless of friction. 128 position iterations on the vial and the articulation hold
-# the pinch like Newton's 100-iteration MJWarp solve; 64 is not enough. Applied scene-wide through ``OvPhysxCfg``
-# (see ``PhysicsCfg.physx``); prims that author their own iteration count keep it. Newton ignores these.
+# squeezed out along the pads regardless of friction. Preserve the 128-iteration vial budget through
+# asset properties; newer OVPhysX versions no longer expose scene-wide body defaults. The robot
+# retains its explicitly authored articulation budget. Newton keeps the asset defaults.
 PHYSX_SOLVER_POSITION_ITERATIONS = 128
 
 WORKSHOP_SO101_CFG = SO101_CFG.replace(
@@ -258,9 +260,8 @@ WORKSHOP_SO101_CFG = SO101_CFG.replace(
 
 def _initialize_contacts(_event: PhysicsEvent) -> None:
     """Apply the workshop-validated contact model to every Newton shape."""
-    builder = NewtonManager._builder
-    if builder is None:
-        return
+    sim = sim_utils.SimulationContext.instance()
+    builder = sim.get_or_create_backend(NewtonBuilderCfg(physics_cfg=sim.cfg.physics))
 
     num_shapes = len(builder.shape_body)
     for shape_index in range(num_shapes):
@@ -328,6 +329,10 @@ class SO101SceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Vial",
         spawn=sim_utils.UsdFileCfg(
             usd_path=str(VIAL_USD),
+            rigid_props=preset(
+                default=None,
+                physx=PhysxRigidBodyCfg(solver_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS),
+            ),
             activate_contact_sensors=True,
             func=_spawn_usd_with_contact_material,
         ),
@@ -586,10 +591,7 @@ class PhysicsCfg(PresetCfg):
     # Isaac Sim PhysX when Isaac Sim is installed, otherwise the standalone OV PhysX runtime.
     physx = PhysxAutoCfg(
         isaacsim_physx=PhysxCfg(bounce_threshold_velocity=0.01),
-        ovphysx=OvPhysxCfg(
-            rigid_body_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS,
-            articulation_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS,
-        ),
+        ovphysx=OvPhysxCfg(enable_external_forces_every_iteration=False),
     )
     default = newton_mjwarp
 

@@ -14,7 +14,10 @@ from random state and visual weights achieves **92.87% state / 91.31% clean and 
 See [results and evaluation protocol](docs/sim2real/RESULTS.md),
 [startup and runtime measurements](docs/PERFORMANCE.md),
 [branch changes](docs/CHANGES.md), and [Isaac Lab dependency changes](docs/ISAACLAB_CHANGES.md).
-These simulator results do not establish real-robot performance.
+These results were measured on the October 7 dependency pin. The October 8 update to PR #8379
+changes the physics/runtime stack; a preliminary 256-episode audit scored **84.38%** with the
+previously qualified fresh visual policy. See the dependency report for compatibility checks. These
+simulator results do not establish real-robot performance.
 See the [camera randomization and deployment assessment](docs/sim2real/DOMAIN_RANDOMIZATION.md)
 for measured camera sensitivity, research sources, and the LEAPP/LeRobot control contract.
 
@@ -143,7 +146,7 @@ export VISION_CHECKPOINT=/absolute/path/to/trained/visual_ppo/model.pt
 CUDA_VISIBLE_DEVICES=0 SO101_EVALUATION_OUTPUT=outputs/state_audit.json \
   uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 1024 --seed 7102 \
-  --checkpoint "$STATE_CHECKPOINT" --deterministic \
+  --checkpoint "$STATE_CHECKPOINT" \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp
 
@@ -151,12 +154,16 @@ CUDA_VISIBLE_DEVICES=1 SO101_EVALUATION_OUTPUT=outputs/vision_audit.json \
   uv run isaaclab play --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
   --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --seed 7501 \
-  --checkpoint "$VISION_CHECKPOINT" --deterministic \
+  --checkpoint "$VISION_CHECKPOINT" \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2 \
   env.observations.wrist_rgb.image.params.normalize_intensity=False
 ```
+
+RSL-RL playback uses deterministic policy actions. Do not add `--deterministic` on this pin:
+that also enables Warp-wide deterministic physics, which currently overflows a collision-kernel
+counter buffer for this scene. GPU physics is not guaranteed bitwise reproducible.
 
 Use the PPO agent entry point for the selected PPO-refined visual checkpoint. A distillation
 checkpoint uses the default distillation runner. Camera history must match the checkpoint.

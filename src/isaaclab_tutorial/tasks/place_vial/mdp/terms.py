@@ -219,11 +219,7 @@ class PlacementHistoryTerm(ManagerTermBase):
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         self.progress.reset(env_ids)
-        ids = (
-            torch.arange(self.num_envs, device=self.device)
-            if env_ids is None
-            else torch.as_tensor(env_ids, device=self.device, dtype=torch.long)
-        )
+        ids = slice(None) if env_ids is None else env_ids
         self._max_rack_force[ids] = 0.0
         grasped = getattr(self._env, "_so101_reset_grasped", None)
         lifted = getattr(self._env, "_so101_reset_lifted", None)

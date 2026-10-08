@@ -69,8 +69,10 @@ tolerances**. The mount stays fixed relative to the moving gripper during an epi
 from the original mount, so perturbations cannot accumulate. Camera geometry remains randomized in
 play mode even when photometric corruption is disabled.
 
-Newton's current renderer caches shared camera rays from one focal length. Changing each camera's
-intrinsic matrix alone would therefore not generate the desired per-environment images. The task
+The updated Newton renderer supports a fixed OpenCV distortion model via `spawn.distortion`, but
+still shares its ray field across environments and rejects differing per-environment intrinsics.
+It does not read lens coefficients directly from USD assets. Native distortion therefore does not
+replace our independently sampled per-episode camera geometry. The task
 instead renders 80×60 with a wider aperture and the original pixel focal length, then projects into
 48×64 with an inverse pinhole/Brown warp. Overscan provides rendered scene pixels at the boundaries;
 identity projection is the original central crop. Mount changes use actual 3D camera poses. No

@@ -1,5 +1,8 @@
 # Randomized state and vision policies — 2026-10-07
 
+> These measurements use the October 7 dependency pin (`efbbde338`). The October 8
+> update to PR #8379 changes the runtime; these are historical results, not new-stack qualification.
+
 The current **Newton MJWarp + Newton renderer** vision policy exceeds 90% on both clean and
 corrupted observations. The scene uses the orange robot, yellow rack and bare brown desk, with the
 full camera mounting, projection, appearance and dynamics randomization. Attempts last 30 seconds;
