@@ -43,3 +43,5 @@ def test_camera_geometry_randomization_survives_play_and_preserves_policy_resolu
     assert (cfg.scene.wrist_camera.height, cfg.scene.wrist_camera.width) == (60, 80)
     assert projection["projection_size"] == (48, 64)
     assert projection["focal_scale_range"] == (0.95, 1.05)
+    assert projection["normalize_intensity"] is False
+    assert projection["history_length"] == 2

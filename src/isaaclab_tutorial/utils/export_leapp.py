@@ -24,7 +24,7 @@ class _FlatVisualActor(torch.nn.Module):
         return self.actor(proprioception, [wrist_rgb])
 
 
-def export_visual_actor(model_path: Path, output: Path, history: int = 2, normalize_intensity: bool = True) -> Path:
+def export_visual_actor(model_path: Path, output: Path, history: int = 2, normalize_intensity: bool = False) -> Path:
     """Bundle an RSL-RL visual TorchScript export and verify LEAPP runtime parity on CPU.
 
     Inputs are [1, 24] proprioception and [1, 3 * history, 48, 64] preprocessed RGB.
@@ -118,8 +118,8 @@ def main():
     parser.add_argument(
         "--normalize-intensity",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Record the training preprocessing in the deployment contract; this does not change the actor",
+        default=False,
+        help="Record max-channel normalization instead of the default raw RGB; this does not change the actor",
     )
     args = parser.parse_args()
     print(export_visual_actor(args.model, args.output, args.history, args.normalize_intensity))

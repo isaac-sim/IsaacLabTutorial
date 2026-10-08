@@ -58,8 +58,8 @@ the moving-jaw sensor is filtered to the vial.
 
 Newton uses `condim=3`; authored rolling/torsional friction coefficients are therefore inactive.
 PhysX uses explicit motor/contact calibration to approximate Newton but is not dynamically
-identical. The current broad-randomization transfer scores remain below target (see
-[results](sim2real/RESULTS.md)); none of these fixes establish real-robot success.
+identical. Historical broad-randomization transfer scores were below target; the current visual
+policy has not been qualified on PhysX or the real robot (see [results](sim2real/RESULTS.md)).
 
 The dependency includes regression tests and per-package release notes for these changes.
 Validation results and the published commit are recorded in the [branch report](CHANGES.md).

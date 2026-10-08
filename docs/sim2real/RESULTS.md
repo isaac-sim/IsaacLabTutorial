@@ -108,7 +108,7 @@ Run it with task `IsaacTutorial-Place-Vial-SO101-Sim2Real` and `presets=newton_m
 
 ## Validation and transfer limits
 
-The main suite passes **94 tests**; its deployment module is skipped because OpenCV is absent from
+The main suite passes **99 tests**; its deployment module is skipped because OpenCV is absent from
 the simulation environment. The isolated LeRobot environment runs the three deployment tests.
 Tests cover any-hole geometry and termination, bounded teacher actions, image history/projection,
 mount reset behavior, housing visibility scope, checkpoint initialization and exact episode accounting.

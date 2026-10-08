@@ -44,6 +44,7 @@ The package registers its tasks through `isaaclab.tasks` and uses Isaac Lab's st
 
 Bootstrap a teacher, then continue under broader randomization. Set `STATE_CHECKPOINT` to the
 checkpoint you want to continue; paths below are placeholders, not bundled trained models.
+The first command has no checkpoint argument: it initializes random actor and critic weights.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 uv run isaaclab train --rl_library rsl_rl \
@@ -64,9 +65,12 @@ use separate values of `CUDA_VISIBLE_DEVICES` for parallel experiments.
 
 Distill the randomized teacher using RSL-RL's DAgger runner. The student acts; the frozen teacher
 labels visited states. Labels are clipped to the same `[-1, 1]` range as executed actions.
+This initializes a **new random visual student** and loads only the frozen state teacher.
 Do **not** pass `--reset_optimizer` when initializing a new student directly from a PPO teacher.
+After the randomized-state stage, update `STATE_CHECKPOINT` to its resulting checkpoint.
 
 ```bash
+export STATE_CHECKPOINT=/absolute/path/to/randomized_state/model.pt
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real --num_envs 1024 \
   --checkpoint "$STATE_CHECKPOINT" --max_iterations 1600 --seed 2201 \
@@ -89,10 +93,15 @@ uv run python -m isaaclab_tutorial.utils.initialize_distillation \
 The current selected visual model uses raw RGB, two-frame history and home-start PPO refinement
 at learning rate `1e-4` and discount `0.999`. It exceeds 94% on fresh clean and noisy
 1,024-episode Newton audits; see the exact profile in [RESULTS.md](docs/sim2real/RESULTS.md).
-The PPO runner can load a distilled student; privileged state is used only by its critic.
+Convert the distillation checkpoint before starting PPO. The converter copies the student actor
+and the state teacher's privileged critic, records source hashes, resets the iteration count and
+starts without an optimizer. No pretrained visual PPO checkpoint is required.
 
 ```bash
-export VISION_CHECKPOINT=/absolute/path/to/visual/model.pt
+export STUDENT_CHECKPOINT=/absolute/path/to/distillation/model.pt
+export VISION_CHECKPOINT=/absolute/path/to/new/visual_ppo_init.pt
+uv run python -m isaaclab_tutorial.utils.initialize_ppo \
+  --teacher "$STATE_CHECKPOINT" --student "$STUDENT_CHECKPOINT" --output "$VISION_CHECKPOINT"
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
   --agent rsl_rl_ppo_cfg_entry_point --num_envs 2048 \
@@ -136,6 +145,8 @@ CUDA_VISIBLE_DEVICES=1 SO101_EVALUATION_OUTPUT=outputs/vision_audit.json \
 
 Use the PPO agent entry point for the selected PPO-refined visual checkpoint. A distillation
 checkpoint uses the default distillation runner. Camera history must match the checkpoint.
+The randomized camera task now defaults to the selected two-frame raw-RGB preprocessing; older
+single-frame or intensity-normalized checkpoints require explicit matching overrides.
 
 ## Task design
 
@@ -156,7 +167,7 @@ nearly motionless vial for ten consecutive control steps. The original tolerance
 Both randomized tasks share vial mass/contact and motor variation, plus fresh ±20 mm home-start
 vial offsets. Vision adds episode-consistent camera mounting/intrinsic variation, color/exposure/gamma
 variation, blur and noise. Overscanned 80×60 rendering supplies the randomized 64×48 policy view.
-The [results](docs/sim2real/RESULTS.md) list all physical ranges. Training samples the eight-phase
+The [randomization assessment](docs/sim2real/DOMAIN_RANDOMIZATION.md) lists all physical ranges. Training samples the eight-phase
 reset dataset with extra home starts; evaluation uses home starts only.
 
 The source lives in `src/isaaclab_tutorial/tasks/place_vial/`: shared MDP terms, reset handling,

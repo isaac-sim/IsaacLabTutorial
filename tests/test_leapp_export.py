@@ -31,5 +31,6 @@ def test_leapp_bundle_responds_to_new_images_and_joint_inputs(tmp_path):
     contract = json.loads((path.parent / "contract.json").read_text())
     assert contract["max_absolute_error"] <= 1e-6
     assert contract["image_shape"] == [1, 6, 48, 64]
+    assert contract["image_preprocessing"] == "RGB_uint8_divided_by_255"
     with pytest.raises(FileExistsError):
         export_visual_actor(source, path.parent)

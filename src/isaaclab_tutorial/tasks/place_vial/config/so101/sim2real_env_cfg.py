@@ -162,7 +162,8 @@ class SO101VialCameraSim2RealEnvCfg(RandomizedEvaluationMixin, SO101VialCameraDi
         camera.spawn.horizontal_aperture *= 80 / camera.width
         camera.width, camera.height = 80, 60
         self.observations.wrist_rgb.image.params.update(
-            normalize_intensity=True,
+            normalize_intensity=False,
+            history_length=2,
             shift_pixels=0,
             blur_range=(0.0, 0.5),
             projection_size=(48, 64),

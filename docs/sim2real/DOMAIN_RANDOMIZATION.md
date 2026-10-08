@@ -5,6 +5,8 @@ with the WowRobo wrist camera. The original workshop’s yellow robot and green 
 Deployment will use LEAPP with a custom inference script and LeRobot for robot control. Source-simulator
 success is necessary, but does not establish successful transfer: historical frozen policies
 lost substantial performance when moved to PhysX. No real-robot success rate has been measured.
+The current selected visual policy passes fresh-seed Newton audits at **94.43% clean / 94.04% noisy**;
+see [RESULTS.md](RESULTS.md). Earlier camera diagnostics below predate the self-occlusion fix.
 
 ## Physical appearance recovered from the earlier branch
 
@@ -26,6 +28,26 @@ The old branch also records measured vial dimensions and follower joint calibrat
 Those physics/kinematic changes have **not** been silently merged into the trained task: the supplied
 joint-map template remains unverified, and the current simulation dimensions/zeros must be reconciled
 with those measurements before claiming hardware readiness.
+
+## Physical and proprioceptive variation
+
+Both randomized tasks retain this physical distribution during evaluation:
+
+| Quantity | Episode-level range |
+| --- | --- |
+| Vial mass | 12–30 g |
+| Vial static/dynamic friction | 0.2–1.3 |
+| Vial restitution | 0–0.02 |
+| Arm joint friction | ×0.6–2.5 |
+| Arm viscous friction | ×0.6–3.5 |
+| Armature | ×0.7–1.5 |
+| Arm stiffness / damping | ×0.85–1.15 / ×0.7–1.5 |
+| Gripper stiffness | ×0.6–1.7 |
+| Home-start vial XY jitter | ±20 mm, rejecting rack overlap with 1 mm clearance |
+
+Visual training also corrupts joint position by ±0.01 rad, joint velocity by ±0.02 rad/s, and
+joint target by ±0.005 rad. Clean play disables this observation corruption; noise audits retain it.
+These distributions do not replace physical joint calibration or measured latency characterization.
 
 ## Camera uncertainty
 
@@ -54,8 +76,8 @@ additional camera, policy input, reward, or placement criterion is introduced.
 
 Existing exposure (0.75–1.25), contrast (0.85–1.15), per-channel white balance (0.90–1.10), brightness
 (±0.05), blur (0–0.5 blend), and pixel noise (±0.025) remain. The principal-point variation replaces
-the former one-pixel image shift. Geometry is applied before intensity normalization and photometric
-augmentation. History is oldest-first and repeats the initial frame at reset.
+the former one-pixel image shift. Geometry is applied before photometric augmentation;
+max-channel intensity normalization is optional and disabled for the selected raw-RGB policy. History is oldest-first and repeats the initial frame at reset.
 
 This avoids requiring *exact* mounting/intrinsics within the trained distribution. It does not make
 camera orientation, field of view, image aspect ratio, or lens characteristics arbitrary. Compare a
@@ -74,8 +96,8 @@ ranges or imply that an arbitrary collection of augmentations guarantees transfe
 The [NVIDIA SO-101 workshop](https://docs.nvidia.com/learning/physical-ai/sim-to-real-so-101/latest/09-strategy1-dr-teleop.html)
 uses camera extrinsics, lighting, robot/mat appearance and object placement variation. Global color
 augmentation is not equivalent to changing local material colors, shadows or backgrounds. Our current
-pipeline covers global photometric changes and blur; local material/texture and scene-light
-randomization remain a coverage gap, especially if the real mat, rack, vial or surroundings differ.
+pipeline covers global photometric changes, blur and per-episode material colors. Wood-grain
+textures, local reflections and changing light/shadow directions remain coverage gaps.
 
 [Peng et al.](https://arxiv.org/abs/1710.06537) motivate varying physical dynamics for transfer.
 The task already varies vial mass/contact properties, arm friction/viscous friction/armature,
@@ -96,8 +118,8 @@ mode, not a universal SO-101 tolerance specification.
 Owning the inference script lets us make preprocessing and action interpretation explicit. It does
 not remove capture, computation or serial-bus latency. The deployment integration must preserve:
 
-- RGB ordering, the intended 4:3 field of view, 64×48 policy images, per-pixel maximum-channel
-  normalization, and two-frame history for the selected visual policy. Simulation overscan and
+- RGB ordering, the intended 4:3 field of view, 64×48 policy images, raw bytes scaled to [0, 1],
+  and two-frame history for the selected visual policy. Do not apply max-channel normalization. Simulation overscan and
   randomized projection are training operations, not distortions to add to real camera frames.
 - Joint order and radians, measured joint velocity, the last target actually sent, and the previous
   clipped action. The visual actor has 24 proprioceptive inputs. Learned normalization belongs in
@@ -116,7 +138,7 @@ export validation alone would not demonstrate parity with this task's substep fe
 Validate the chosen export and custom loop against simulation trajectories, including reset/history
 behavior, before connecting the robot. LEAPP and LeRobot do not themselves compensate for domain gaps.
 
-## Evidence
+## Historical diagnostics and subsequent fixes
 
 A real Newton/renderer probe confirmed 80×60 rendering, 64×48 observations, mount attachment while
 moving, and isolation when resetting one environment. Projection tests cover the original central
@@ -144,7 +166,7 @@ runs at iteration 400 scored 38.28% (1e-4) and 35.16% (5e-4); home-only runs at 
 42.58% and 32.81%. Ordinary-RGB mixed-start runs at iteration 200 scored 46.09% and 28.91%.
 These were still on the incorrect workshop appearance and were stopped after the user's correction.
 
-Four fresh corrected-scene runs compare ordinary RGB at learning rates 1e-4/5e-4 with the original
+Four corrected-scene continuation runs compared ordinary RGB at learning rates 1e-4/5e-4 with the original
 pixel normalization at 1e-4, plus ordinary-RGB student-only DAgger at 1e-4. The first three optionally
 mix teacher actions into rollouts, with probability decreasing linearly from one to zero over 300
 iterations. This changes data collection, not the task or inference policy. All use the full camera,
@@ -247,10 +269,11 @@ packages the existing model; the separate runtime parity check verifies its beha
 `leapp` extra pins the tested version. It is not required for training.
 
 The custom controller calls `InferenceManager.run_policy` with `policy/proprioception` and
-`policy/wrist_rgb`, and receive `policy/action`. This artifact intentionally contains the actor;
+`policy/wrist_rgb`, and receives `policy/action`. This artifact intentionally contains the actor;
 image preprocessing/history and the 120 Hz target loop are implemented in
 `src/isaaclab_tutorial/utils/deploy.py`. Neither a LeRobot hardware rollout nor timing on the actual
 camera/serial bus has been tested here. See [deployment instructions](DEPLOYMENT.md).
 
-Use `--no-normalize-intensity` when packaging an actor trained with ordinary RGB. This flag records
-the preprocessing contract; it does not change the neural network.
+Raw RGB is the export default. Use `--normalize-intensity` only for an actor trained with
+max-channel normalization. This flag records the preprocessing contract; it does not change the
+neural network.

@@ -20,6 +20,12 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 - Added conservative state PPO continuation defaults. Camera distillation and PPO use the same
   visual inputs, with optional RGB history, intensity normalization, shifts and blur alongside
   episode-consistent photometric augmentation. The qualified visual policy uses two frames.
+- Added an explicit distillation-to-PPO converter: it preserves the student actor and the state
+  teacher's compatible privileged critic, records source hashes, and requires a fresh optimizer.
+  RSL-RL does not directly accept a distillation checkpoint in its PPO loader. No historical visual
+  checkpoint is needed for this handoff.
+- Made the randomized camera task and LEAPP export default to two raw-RGB frames, matching the
+  qualified policy. Older checkpoints can request their original preprocessing explicitly.
 - Added a small checkpoint initializer that retains a visual encoder while replacing its frozen
   state teacher and can expand one-frame convolution weights to a repeated-frame history.
   Saved metadata records both source hashes. Standard RSL-RL runners perform training.
@@ -48,7 +54,7 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 - Bundled the workshop vial/rack USD assets and a local desk asset and their license, rather than using main's remote
   workshop paths. This retains editable contact/material setup; the desk correction enlarges the support footprint.
-  Required assets and the reset dataset remain tracked through Git LFS.
+  USD assets use Git LFS; the small required reset dataset is an ordinary Git blob.
 - Bound a shared workshop contact material to the robot and scene colliders. PhysX receives the
   compliant acceleration-spring material and explicit solver iteration settings; Newton retains
   its MJWarp soft-contact parameters and `condim=3`.
@@ -110,8 +116,8 @@ fallback, fresh-optimizer checkpoint loading, external task registration, and li
 The dependency is published as [`efbbde338`](https://github.com/StafaH/IsaacLab/commit/efbbde338f5222eb759cd67397fdc84c088f6c5c).
 Its changed areas and inherited compatibility tests passed **518 tests**, with **6 skips** for
 unsupported/unavailable cases. The repository's full formatter/pre-commit checks passed.
-The tutorial passed **97 tests** across the training and isolated deployment environments,
-including optional LEAPP export and deployment-contract tests (94 training-environment tests
+The tutorial passed **102 tests** across the training and isolated deployment environments,
+including optional LEAPP export and deployment-contract tests (99 training-environment tests
 and 3 isolated deployment tests).
 All three training checks (state PPO, vision PPO, fresh visual distillation) completed 12 iterations.
 After rebuilding from the published pin, all three also passed two-iteration training smoke tests.
