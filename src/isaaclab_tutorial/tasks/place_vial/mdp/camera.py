@@ -48,6 +48,9 @@ class RandomizeWristCameraMount(ManagerTermBase):
             carrier_position[ids], carrier_orientation[ids], local_position, local_orientation
         )
         camera.set_world_poses(position, orientation, env_ids=ids, convention="ros")
+        # Reading camera.data above may have rendered the old pose already. Invalidate those
+        # images so the first observation of the new episode uses the sampled mount as well.
+        camera.reset(env_ids=ids)
 
 
 def camera_sampling_grid(

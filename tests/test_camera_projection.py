@@ -86,7 +86,12 @@ def test_mount_offsets_follow_carrier_and_do_not_accumulate():
         data.pos_w.torch[env_ids] = position
         data.quat_w_ros.torch[env_ids] = orientation
 
-    camera = SimpleNamespace(data=data, set_world_poses=set_world_poses)
+    invalidated = []
+    camera = SimpleNamespace(
+        data=data,
+        set_world_poses=set_world_poses,
+        reset=lambda env_ids: invalidated.append(env_ids.clone()),
+    )
 
     class Scene(dict):
         sensors = {"camera": camera}
@@ -103,11 +108,13 @@ def test_mount_offsets_follow_carrier_and_do_not_accumulate():
     )
     term = RandomizeWristCameraMount(EventTermCfg(func=RandomizeWristCameraMount, params=params), env)
     term(env, None, **params)
+    assert invalidated[-1].tolist() == [0, 1, 2, 3]
     unchanged = data.pos_w.torch[1:].clone()
     for _ in range(50):
         term(env, torch.tensor([0]), **params)
         assert (data.pos_w.torch[0] - base_p[0]).abs().max() <= 0.003001
     torch.testing.assert_close(data.pos_w.torch[1:], unchanged)
+    assert all(ids.tolist() == [0] for ids in invalidated[1:])
     carrier_p[0] = torch.tensor([0.4, -0.3, 0.2])
     carrier_q[0, 0] = quat_from_euler_xyz(torch.tensor(0.2), torch.tensor(-0.3), torch.tensor(0.4))
     term(env, torch.tensor([0]), **(params | dict(position_range=0.0, rotation_range=0.0)))

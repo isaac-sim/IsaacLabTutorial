@@ -4,10 +4,9 @@
 
 This Isaac Lab tutorial trains an SO-101 arm to place a vial in **any of four rack holes**.
 The working training path uses **Newton MJWarp physics and the Newton renderer** for vision.
-State training needs no renderer. The randomized state teacher most recently scored **93.85%** success;
-the distilled, PPO-refined visual policy scored **91.50%** on 1,024 simulated home-start attempts
-with the original camera geometry. The expanded camera profile adds mounting and intrinsic
-randomization; those historical vision scores do not qualify the expanded profile.
+State training needs no renderer. The state teacher scores **96.78%**. The visual policy scores
+**94.43% clean / 94.04% with observation noise** on fresh 1,024-episode audits, using the orange
+robot, brown desk and full camera/appearance/dynamics randomization.
 See [results and evaluation protocol](docs/sim2real/RESULTS.md),
 [startup and runtime measurements](docs/PERFORMANCE.md),
 [branch changes](docs/CHANGES.md), and [Isaac Lab dependency changes](docs/ISAACLAB_CHANGES.md).
@@ -73,7 +72,8 @@ CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --checkpoint "$STATE_CHECKPOINT" --max_iterations 1600 --seed 2201 \
   --run_name randomized_distillation --visualizer none \
   presets=newton_mjwarp,newton_renderer \
-  env.observations.wrist_rgb.image.params.history_length=2
+  env.observations.wrist_rgb.image.params.history_length=2 \
+  env.observations.wrist_rgb.image.params.normalize_intensity=False
 ```
 
 To reuse a visual encoder with a new teacher, create a distillation checkpoint. This also supports
@@ -86,20 +86,24 @@ uv run python -m isaaclab_tutorial.utils.initialize_distillation \
   --output outputs/student_init.pt --history 2
 ```
 
-The selected visual model was further refined with PPO at learning rate `3e-5` and discount `0.999`.
+The current selected visual model uses raw RGB, two-frame history and home-start PPO refinement
+at learning rate `1e-4` and discount `0.999`. It exceeds 94% on fresh clean and noisy
+1,024-episode Newton audits; see the exact profile in [RESULTS.md](docs/sim2real/RESULTS.md).
 The PPO runner can load a distilled student; privileged state is used only by its critic.
 
 ```bash
 export VISION_CHECKPOINT=/absolute/path/to/visual/model.pt
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
-  --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 \
+  --agent rsl_rl_ppo_cfg_entry_point --num_envs 2048 \
   --checkpoint "$VISION_CHECKPOINT" --reset_optimizer --max_iterations 150 \
   --seed 2201 --run_name visual_ppo --visualizer none \
   presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2 \
-  agent.algorithm.learning_rate=3e-5 agent.algorithm.schedule=fixed \
-  agent.algorithm.gamma=0.999 agent.algorithm.entropy_coef=0.001
+  env.observations.wrist_rgb.image.params.normalize_intensity=False \
+  agent.algorithm.learning_rate=1e-4 agent.algorithm.schedule=fixed \
+  agent.algorithm.gamma=0.999 agent.algorithm.entropy_coef=0.001 \
+  env.events.reset_from_dataset.params.phase_weights=[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 ```
 
 These are training recipes, not a guarantee that an arbitrary initialization reproduces the
@@ -126,7 +130,8 @@ CUDA_VISIBLE_DEVICES=1 SO101_EVALUATION_OUTPUT=outputs/vision_audit.json \
   --checkpoint "$VISION_CHECKPOINT" --deterministic \
   --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
   --visualizer none presets=newton_mjwarp,newton_renderer \
-  env.observations.wrist_rgb.image.params.history_length=2
+  env.observations.wrist_rgb.image.params.history_length=2 \
+  env.observations.wrist_rgb.image.params.normalize_intensity=False
 ```
 
 Use the PPO agent entry point for the selected PPO-refined visual checkpoint. A distillation
@@ -139,7 +144,7 @@ up to 0.033 rad from measured joint positions and one sets the jaw target up to 
 The same policy action is held across four substeps; the measured-position reference is refreshed.
 The vial remains a free rigid body.
 State observations have 60 values. Vision uses 24 proprioceptive values and 48×64 RGB frames;
-the selected model stacks two frames oldest first and uses max-channel intensity normalization.
+the selected model stacks two raw RGB frames oldest first, scaled from bytes to [0, 1].
 Repeat the first frame to initialize history after reset. Exports include learned normalization,
 but the robot controller still needs action clipping and joint-target integration.
 
@@ -169,4 +174,4 @@ CUDA_VISIBLE_DEVICES=0 uv run view-so101-resets \
 ```
 
 Optional PhysX/OVRTX transfer diagnostics use `uv sync --extra ovphysx --extra ovrtx` and
-`presets=physx,ovrtx`. They are not the qualified training backend; current transfer remains below target.
+`presets=physx,ovrtx`. They are not the qualified training backend; historical transfer was below target and the current visual policy has not been qualified on them.

@@ -40,4 +40,7 @@ Offline tests cover image/history ordering, proprioception, action clipping, cha
 targets, signed joint transforms and invalid inputs. The isolated runtime imported LeRobot and ran the
 actual selected visual actor. Eight varied input pairs matched the Torch 2.13 training runtime exactly
 (maximum absolute error zero). **No motor connection or physical policy trial was performed.**
-The expanded visual distribution still needs a qualified policy before real deployment.
+The current qualified bundle is `camera_randomization_20261007/selected/vision/leapp/leapp.yaml`
+in the external artifact directory. Its contract specifies two **raw RGB** frames, without max-channel
+intensity normalization. Fresh simulated audits exceed 94% with and without observation noise;
+physical calibration and real-robot validation remain outstanding.

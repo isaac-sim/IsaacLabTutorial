@@ -23,11 +23,11 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 - Added a small checkpoint initializer that retains a visual encoder while replacing its frozen
   state teacher and can expand one-frame convolution weights to a repeated-frame history.
   Saved metadata records both source hashes. Standard RSL-RL runners perform training.
-- Qualified state and historical visual policies above 90% in randomized Newton simulation. The
-  corrected desk scene retains 94.63% state success; vision is not yet qualified with the expanded
-  camera/appearance distribution. The historical visual checkpoint includes PPO refinement after
-  distillation and must be loaded with the PPO runner.
-  [Results](sim2real/RESULTS.md) document selection, audit conditions and the remaining transfer gap.
+- Qualified the current state and visual policies above 90% in randomized Newton simulation.
+  The corrected scene achieves **96.78% state** and fresh-seed **94.43% vision / 94.04% noisy vision**,
+  each over 1,024 attempts. The selected visual actor uses two raw RGB frames and PPO refinement
+  after distillation; load it with the PPO runner. [Results](sim2real/RESULTS.md) document the profile,
+  training lineage, selection and confirmation audits, and remaining transfer limits.
 
 ## Physics, assets and rendering
 
@@ -38,10 +38,13 @@ already exists on that main revision; replacing older Jetbot examples is not a n
 
 - Added episode-fixed wrist-camera mounting (±3 mm, ±3°) and projection variation (focal length,
   principal point and mild radial distortion), plus gamma variation. A wider Newton render feeds
-  the original 64×48 policy image. This needs no new Isaac Lab patch. The old policy's success drops
-  to 49.61% under combined camera variation in a 256-episode diagnostic; historical >90% vision
-  scores apply to the original camera profile. [The assessment](sim2real/DOMAIN_RANDOMIZATION.md)
-  records research, coverage gaps and the LEAPP/LeRobot deployment contract.
+  the original 64×48 policy image. [The assessment](sim2real/DOMAIN_RANDOMIZATION.md) records
+  research, coverage gaps, intermediate experiments and the LEAPP/LeRobot deployment contract.
+- Fixed artificial wrist-camera self-occlusion: optical mount perturbations could place the camera
+  inside its own rendered housing, which Newton's unenforced near plane did not remove. Camera
+  tasks now hide only that visual assembly, preserving jaws and collision meshes. Mount reset also
+  invalidates the image cache so the first observation uses the sampled pose. This is a tutorial-only
+  fix; the published Isaac Lab pin is unchanged. Earlier camera sensitivity scores included this bug.
 
 - Bundled the workshop vial/rack USD assets and a local desk asset and their license, rather than using main's remote
   workshop paths. This retains editable contact/material setup; the desk correction enlarges the support footprint.
@@ -107,15 +110,16 @@ fallback, fresh-optimizer checkpoint loading, external task registration, and li
 The dependency is published as [`efbbde338`](https://github.com/StafaH/IsaacLab/commit/efbbde338f5222eb759cd67397fdc84c088f6c5c).
 Its changed areas and inherited compatibility tests passed **518 tests**, with **6 skips** for
 unsupported/unavailable cases. The repository's full formatter/pre-commit checks passed.
-The tutorial passed **96 tests** across the training and isolated deployment environments,
-including optional LEAPP export and deployment-contract tests (93 training-environment tests
+The tutorial passed **97 tests** across the training and isolated deployment environments,
+including optional LEAPP export and deployment-contract tests (94 training-environment tests
 and 3 isolated deployment tests).
 All three training checks (state PPO, vision PPO, fresh visual distillation) completed 12 iterations.
 After rebuilding from the published pin, all three also passed two-iteration training smoke tests.
 Required asset validation and lockfile consistency checks passed. Pre-fix source failed 43 of the
 new regression cases; the patched source passed them (one case remained skipped).
-After rebuilding from the published dependency, the same selected policies scored **93.85% state**,
-**91.50% vision**, and **90.92% vision with observation corruption**, each over 1,024 attempts.
+Those historical rechecks scored 93.85% state, 91.50% vision, and 90.92% noisy vision on the earlier
+profile. The current results are in the table linked above. A separate 20-update, 2,048-environment
+PPO check completed successfully on the final camera scene with Newton physics and renderer.
 
 The lock deliberately preserves the tested Linux x86-64 numerical stack (PyTorch 2.13/CUDA 13,
 MuJoCo/MJWarp 3.11), rather than adopting main's newer MuJoCo stack or its separate multi-platform

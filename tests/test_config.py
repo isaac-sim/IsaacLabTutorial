@@ -184,3 +184,23 @@ def test_agent_configs_match_task_observation_groups():
     # The student and the from-scratch visual actor share one encoder definition.
     assert distillation.student.cnn_cfg == camera.actor.cnn_cfg
     assert camera.actor.obs_normalization is True
+
+
+def test_wrist_camera_hides_only_its_visual_housing(monkeypatch):
+    from pxr import Usd, UsdGeom
+
+    from isaaclab_tutorial.tasks.place_vial.config.so101 import camera_env_cfg
+
+    stage = Usd.Stage.CreateInMemory()
+    robot = UsdGeom.Xform.Define(stage, "/Robot").GetPrim()
+    UsdGeom.Xform.Define(stage, "/Robot/gripper/visuals/camera_mount")
+    housing = UsdGeom.Cube.Define(stage, "/Robot/gripper/visuals/camera_mount/lens")
+    collision = UsdGeom.Cube.Define(stage, "/Robot/gripper/collisions/camera_mount")
+    jaw = UsdGeom.Cube.Define(stage, "/Robot/gripper/visuals/jaw")
+    monkeypatch.setattr(camera_env_cfg, "_spawn_so101_with_camera_overrides", lambda *args, **kwargs: robot)
+    camera_env_cfg._spawn_so101_for_wrist_camera.__wrapped__("/Robot", None)
+    assert housing.ComputeVisibility() == UsdGeom.Tokens.invisible
+    assert collision.ComputeVisibility() == UsdGeom.Tokens.inherited
+    assert jaw.ComputeVisibility() == UsdGeom.Tokens.inherited
+    assert SO101VialCameraEnvCfg().scene.robot.spawn.func is camera_env_cfg._spawn_so101_for_wrist_camera
+    assert SO101VialEnvCfg().scene.robot.spawn.func is not camera_env_cfg._spawn_so101_for_wrist_camera

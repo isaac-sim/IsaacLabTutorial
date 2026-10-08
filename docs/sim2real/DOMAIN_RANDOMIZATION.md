@@ -3,8 +3,8 @@
 The deployment target is the user’s **orange WowRobo SO-101, yellow rack and bare wooden desk**,
 with the WowRobo wrist camera. The original workshop’s yellow robot and green mat were incorrect.
 Deployment will use LEAPP with a custom inference script and LeRobot for robot control. Source-simulator
-success is necessary, but does not establish successful transfer: the existing frozen policies already
-lose substantial performance when moved to PhysX. No real-robot success rate has been measured.
+success is necessary, but does not establish successful transfer: historical frozen policies
+lost substantial performance when moved to PhysX. No real-robot success rate has been measured.
 
 ## Physical appearance recovered from the earlier branch
 
@@ -154,11 +154,11 @@ Checkpoint-200 audits on the corrected scene (256 first home-start episodes, see
 9.77% for ordinary-RGB slow warm-up, 16.80% for fast warm-up, 15.23% for normalized warm-up, and
 31.25% for ordinary-RGB student-only DAgger. These are interim results, not qualified models.
 At iteration 400, the same four runs scored **41.41%, 32.03%, 42.19%, and 34.38%**, respectively.
-Distillation was stopped after this comparison. Four PPO refinements now start from the best
+Distillation was stopped after this comparison. Four PPO refinements started from the best
 normalized and ordinary-RGB students, each with mixed-stage versus home-only starts. They use
 learning rate 1e-4, gamma 0.999, entropy coefficient 0.001 and 1,024 environments. Each 200-update
 block is followed by a separate 256-home-start audit; candidates above 92% receive a fresh
-1,024-episode audit on a different seed. No current-scene vision checkpoint is qualified yet.
+1,024-episode audit on a different seed. These intermediate runs preceded the camera housing fix below.
 The frozen state teacher scored **969/1,024 (94.63%)** on the corrected desk scene, seed 2203.
 It retained full physical randomization and used the same 30-second any-hole criterion.
 
@@ -179,6 +179,50 @@ uses a conservative separating-axis footprint check; it does not change success 
 scores above predate it and must not be presented as directly matched comparisons. Regression tests
 cover rotated rack frames, repeated home draws, unchanged non-home states, and unchanged XY bounds.
 
+With the corrected sampler, the frozen state teacher scores **991/1,024 (96.78%)** on seed 2203,
+with 13.82 s mean successful duration and no episode exceeding the 20 N rack-contact diagnostic.
+The earlier 94.63% state result used unconstrained reset jitter; the improvement is not a policy update.
+
+After 1,000 PPO updates, the four visual development audits (256 episodes, seed 4101) score:
+
+| Preprocessing | Home starts | Mixed-stage starts |
+| --- | ---: | ---: |
+| Per-pixel intensity normalization | 211/256 (82.42%) | 199/256 (77.73%) |
+| Ordinary RGB | 212/256 (82.81%) | 198/256 (77.34%) |
+
+The 800-update audits and final 200-update training block use the corrected sampler; earlier blocks
+predate the fix. Camera mounting, projection, material and physical variation remain enabled in these
+clean-observation audits. Training additionally includes image/proprioception corruption.
+
+Four continuations use 2,048 environments each, home-only starts, and the best corrected-sampler
+checkpoint for each preprocessing choice. For each, standard exploration (inherited standard deviation,
+learning rate 1e-4, entropy coefficient 0.001) is compared with low-noise refinement (initial standard
+deviation 0.02, bounds 0.01–0.05, learning rate 5e-5, no entropy bonus). Gamma remains 0.999. Each
+200-update block receives a development audit; candidates above 90% receive a separate 1,024-episode
+qualification on seed 4201. After 200 updates, standard exploration scored 83.20% normalized /
+83.98% raw RGB; low-noise refinement scored 77.34% / 82.03%. The low-noise runs were stopped.
+Two additional RGB learning-rate comparisons were started but stopped when the rendering problem
+below was discovered; no outcome is claimed for those incomplete comparisons.
+
+### Camera housing obstruction and final qualification
+
+Depth/RGB recordings revealed that the randomized optical frame could sit inside the fixed camera
+housing mesh. Blocked views hit geometry only 0.01–0.4 mm away; Newton does not enforce the near
+clipping plane. Consequently, the earlier camera sensitivity and training results include artificial
+self-occlusion and must not be interpreted solely as calibration sensitivity or inadequate learning.
+
+Camera tasks now hide the camera assembly's visual subtree, while preserving all jaw visuals,
+collision shapes and randomization ranges. State-task visuals are unchanged. Mount reset invalidates
+the image buffer so the first observation uses the new pose. Backface culling alone did not remove
+all blocked views and was not selected as the fix.
+
+The frozen raw-RGB PPO checkpoint then scored **971/1,024 (94.82%)** on seed 4201 and
+**958/1,024 (93.55%)** with observation noise on seed 4202. Independent confirmation seeds 4301
+and 4302 scored **94.43% clean / 94.04% noisy**, with no episode above the 20 N rack-force diagnostic.
+The normalized candidate scored 92.58% in the initial clean comparison. The selected policy uses
+raw RGB with two-frame history. No success criterion, camera range or physics distribution was
+relaxed. See [RESULTS.md](RESULTS.md) for artifacts and exact reproduction commands.
+
 Raw evidence and checkpoints live outside Git in the `camera_randomization_20261007` artifact directory.
 
 ## Explicit visual LEAPP bundle
@@ -192,7 +236,7 @@ independently varying input pairs:
 ```bash
 CUDA_VISIBLE_DEVICES='' uv run --extra leapp python -m isaaclab_tutorial.utils.export_leapp \
   --model /absolute/path/to/exported/policy.pt \
-  --output /absolute/path/to/new/leapp_bundle --history 2
+  --output /absolute/path/to/new/leapp_bundle --history 2 --no-normalize-intensity
 ```
 
 This takes the **TorchScript policy export**, not a training checkpoint. It copies a flat-signature

@@ -5,8 +5,10 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import CameraCfg
 from isaaclab.sim import PinholeCameraCfg
+from isaaclab.sim.utils import clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.utils.noise import UniformNoiseCfg
+from pxr import UsdGeom
 
 from isaaclab_tutorial.tasks.place_vial import mdp
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
@@ -14,11 +16,25 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     PolicyStateGroupCfg,
     SO101SceneCfg,
     SO101VialEnvCfg,
+    _spawn_so101_with_camera_overrides,
 )
 from isaaclab_tutorial.tasks.place_vial.config.so101.visuals import (
     CAMERA_BACKGROUND_COLOR,
     workshop_camera_renderer_cfg,
 )
+
+
+@clone
+def _spawn_so101_for_wrist_camera(prim_path, cfg, translation=None, orientation=None, **kwargs):
+    prim = _spawn_so101_with_camera_overrides(
+        prim_path, cfg, translation=translation, orientation=orientation, **kwargs
+    )
+    # Mount randomization moves the optical frame, not the housing mesh. The camera cannot
+    # see its own housing in reality; exclude only its visual assembly, retaining collisions
+    # and both gripper jaws. Newton ray tracing does not apply the camera's near clipping plane.
+    housing = prim.GetStage().GetPrimAtPath(f"{prim_path}/gripper/visuals/camera_mount")
+    UsdGeom.Imageable(housing).MakeInvisible()
+    return prim
 
 
 @configclass
@@ -38,6 +54,9 @@ class SO101CameraSceneCfg(SO101SceneCfg):
         renderer_cfg=workshop_camera_renderer_cfg(),
         background_color=CAMERA_BACKGROUND_COLOR,
     )
+
+    def __post_init__(self):
+        self.robot.spawn.func = _spawn_so101_for_wrist_camera
 
 
 @configclass
