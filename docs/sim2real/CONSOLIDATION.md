@@ -161,3 +161,33 @@ travel, one at a time. Ensure cables or nearby objects do not create false endpo
 joint past its stop. Include the gripper's full range. Press Enter after all ranges are recorded.
 Only the follower needs this check now. Afterward re-read calibration and physical pose, compare the
 old/new spans and centers, and revalidate the deployment mapping before any policy execution.
+
+### Completed follower resweep
+
+The user completed recalibration. A subsequent read-only check confirms the saved calibration matches
+the motor registers. Elbow travel increased from 2,104 to **2,211 ticks** (184.97° to **194.37°**),
+recovering 9.41° of previously unrecorded travel. Its current reading is 23.87°, within the new ±97.19°
+calibrated interval. Joint read latency is 1.41/1.67/1.72 ms at p50/p95/p99. No motion commands were
+sent during this verification.
+
+| Joint | Previous span, ticks | New span, ticks |
+| --- | ---: | ---: |
+| Shoulder pan | 2664 | 2635 |
+| Shoulder lift | 2344 | 2347 |
+| Elbow | 2104 | 2211 |
+| Wrist flex | 2294 | 2288 |
+| Wrist roll | 4095 | 4095 |
+| Gripper | 1449 | 1442 |
+
+Saved the new calibration, comparison, bus report and camera image as `calibration_after_resweep.json`,
+`calibration_resweep_comparison.json`, `hardware_after_resweep.json` and `real_camera_after_resweep.png`
+in the campaign artifact directory. The shoulder-pan span remains narrower than the workshop reference;
+the new sweep does not establish physical zero/sign correctness for any joint.
+
+Prepared `joint_map_after_resweep.unverified.json` with gripper scale based on **1,442 ticks / 126.77°**.
+It deliberately retains `verified: false` and the provisional gripper zero. The active training process
+retains its original 1,449-tick simulated gripper span; changing source physics during a campaign would
+mix training/evaluation models. The 0.615° upper-travel discrepancy must be included in deployment
+qualification. Physical reference-pose checks, gripper zero verification and inference/control timing
+remain outstanding. A fully closed resting gripper can also be outside the simulation's soft limits;
+do not treat a valid calibration as authorization to bypass the initial-pose guard.
