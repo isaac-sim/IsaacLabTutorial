@@ -82,3 +82,14 @@ def test_rejects_wrong_camera_shape_and_nonfinite_actor_output():
     p.runtime.run_policy = lambda inputs: {"policy/action": torch.full((1, 6), float("nan"))}
     with pytest.raises(ValueError, match="invalid actions"):
         p.infer(np.zeros((48, 64, 3), np.uint8), q, q, q)
+
+
+def test_execution_rejects_pose_outside_common_travel_before_clipping():
+    m = mapping()
+    m.require_in_limits(np.zeros(6))
+    measured = np.zeros(6)
+    measured[2] = 1.2
+    with pytest.raises(ValueError, match="elbow_flex"):
+        m.require_in_limits(measured)
+    with pytest.raises(ValueError, match="Measured pose"):
+        m.require_in_limits(np.full(6, np.nan))

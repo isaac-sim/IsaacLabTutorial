@@ -56,6 +56,13 @@ class JointMap:
             raise ValueError("Non-finite measured joint position")
         return values
 
+    def require_in_limits(self, measured: np.ndarray) -> None:
+        """Reject a starting pose that clipping could turn into a large first movement."""
+        outside = (measured < self.limits[:, 0]) | (measured > self.limits[:, 1])
+        if not np.isfinite(measured).all() or outside.any():
+            names = [name for name, invalid in zip(JOINTS, outside, strict=True) if invalid]
+            raise ValueError(f"Measured pose is outside the verified simulation/hardware limits: {names}")
+
     def commands(self, target: np.ndarray) -> dict:
         if target.shape != (6,) or not np.isfinite(target).all():
             raise ValueError("Expected six finite joint targets")
@@ -228,6 +235,8 @@ def main():
         native = robot.bus.sync_read("Present_Position")
         previous = mapping.positions(native)
         target = previous.copy()
+        if args.execute:
+            mapping.require_in_limits(previous)
         policy.infer(camera.frame(), previous, np.zeros(6), target)
         if args.execute:
             robot.bus.disable_torque()
@@ -241,6 +250,8 @@ def main():
         while time.monotonic() < end:
             tick = time.monotonic()
             measured = mapping.positions(robot.bus.sync_read("Present_Position"))
+            if args.execute:
+                mapping.require_in_limits(measured)
             velocity = (measured - previous) / max(tick - previous_time, 1e-6)
             if tick >= next_policy:
                 start = time.monotonic()

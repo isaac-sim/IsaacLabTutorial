@@ -90,3 +90,25 @@ uv run --no-sync isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101 --num_envs 4096 --max_iterations 800 \
   --seed 42 --run_name consolidated_fresh_state --visualizer none presets=newton_mjwarp
 ```
+
+### Solver and hardware checks
+
+The new MuJoCo stack exhausted the inherited 15-iteration line-search budget frequently. A matched
+64-environment/two-update probe on the new reset dataset produced 2,577 warnings at 15 and zero at 50.
+Raised the budget to 50; this follows the current upstream default. Stopped the initial bootstrap at
+iteration 53/800 and will restart from random weights. Replayed all 1,024 reset states for 0.5 seconds
+under the new solver budget: all remained finite; all 640 grasp-through-insertion states retained
+bilateral contact. The 95th-percentile drift was ≤5.01 mm in those held phases.
+
+The user connected the robot and confirmed unchanged calibration and camera mount. Persistent IDs
+identify follower `5AE6079843` (currently `/dev/ttyACM1`) and leader `5AB0179854` (currently `/dev/ttyACM0`).
+The running shell lacked the already-granted dialout group; `sg dialout` supplies that group without
+changing device permissions. Read-only bus checks confirm matching stored calibration. Joint reads
+took 1.40/1.69/1.78 ms at the 50th/95th/99th percentiles; this excludes position writes and inference.
+A focused 640×480 image was saved as `outputs/consolidation_20261008/real_camera_current.png`.
+
+The current elbow read 102.59° exceeds the calibration interval's 92.48° positive half-span. Matching
+calibration registers therefore does not establish a verified map or an execution-ready starting pose.
+Added an execution-only check that rejects a measured pose outside the intersected limits before
+torque configuration and on each feedback cycle. Read-only checks remain available. No motor writes
+or torque changes were made. Physical zero/sign and home-pose checks remain pending.
