@@ -14,8 +14,8 @@ of this visual policy despite its result being below the original 90% acceptance
 
 The LEAPP bundle is exported, CPU parity checks pass, and a 20-second real-camera/read-only inference
 run completed without missed 120 Hz deadlines. The follower was recalibrated and its saved calibration
-matches the motors. **Physical joint-map verification and real policy trials remain pending.** A supervised motor-homing
-attempt reached near home but failed its settling check; see the homing troubleshooting entry below.
+matches the motors. **Physical joint-map verification and real policy trials remain pending.** Motor-driven homing now passes with bounded feedback trim and holds the pose; see the homing
+verification entry below.
 Training is stopped. No real placement success rate is claimed.
 
 Use [section 11: current supervised real trial](#11-current-supervised-real-trial--2026-10-08) for the
@@ -3968,3 +3968,21 @@ Nine homing tests pass, including correction of a simulated 2.29° static actuat
 travel bounds, unresolved timeout hold and tracking-fault release. No corrective motor motion was
 executed by the agent. The user can rerun the same homing command while observing; physical success
 of this correction remains pending that retry.
+
+### Motor-driven home confirmed; scene verification next — 2026-10-08
+
+The user reran homing with feedback trim and received `Home reached`. The report records maximum
+residual error 1.9466° at the elbow; other joints are within 0.60°. Elbow command trim was -0.7755°.
+A subsequent independent read-only joint check confirms the held pose remains at those angles and
+the saved calibration matches the motors. Archived the successful report at
+`outputs/consolidation_20261008/supervised_trial/homing_success.json`.
+
+Captured `supervised_trial/real_camera_at_home.png` without torque changes. The focused 640×480 view
+shows the yellow rack toward the upper left, the vial near the center, and the jaws at the bottom.
+Compared it with the nominal simulated wrist reference; the broad scene orientation is consistent,
+but this alone does not verify joint zeros, gripper opening or exact rack/base placement. Saved the
+joint readback as `supervised_trial/hardware_at_home.json`.
+
+Next user step: leave the arm holding home and provide an external view including the complete arm,
+base, rack and vial. Compare it with the simulation overview before marking the map verified and
+running the prepared five-second policy trial. No policy rollout has occurred yet.
