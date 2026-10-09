@@ -5,6 +5,11 @@ import gymnasium as gym
 _PACKAGE = "isaaclab_tutorial.tasks.place_vial.config.so101"
 
 for suffix, environment, runner in (
+    (
+        "-Camera-Sim2Real-Appearance",
+        "robust_env_cfg:SO101VialCameraAppearanceEnvCfg",
+        "rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg",
+    ),
     ("", "env_cfg:SO101VialEnvCfg", "rsl_rl_ppo_cfg:SO101StatePPORunnerCfg"),
     ("-Camera", "camera_env_cfg:SO101VialCameraEnvCfg", "rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg"),
     (
@@ -28,7 +33,7 @@ for suffix, environment, runner in (
             "rsl_rl_cfg_entry_point": f"{_PACKAGE}.agents.{runner}",
             **(
                 {"rsl_rl_ppo_cfg_entry_point": f"{_PACKAGE}.agents.rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg"}
-                if suffix == "-Camera-Sim2Real"
+                if suffix in ("-Camera-Sim2Real", "-Camera-Sim2Real-Appearance")
                 else {}
             ),
             "default_agent": "rsl_rl",

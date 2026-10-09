@@ -909,6 +909,7 @@ ovphysx = [
 ]
 ovrtx = [
     { name = "ovrtx" },
+    { name = "ovstage" },
 ]
 sim2real = [
     { name = "leapp" },
@@ -929,6 +930,7 @@ requires-dist = [
     { name = "leapp", marker = "extra == 'sim2real'", specifier = "==0.7.1" },
     { name = "ovphysx", marker = "extra == 'ovphysx'", index = "https://pypi.nvidia.com/" },
     { name = "ovrtx", marker = "extra == 'ovrtx'", specifier = "==0.5.0.377615", index = "https://pypi.nvidia.com/" },
+    { name = "ovstage", marker = "extra == 'ovrtx'", specifier = "==0.1.1.355824" },
 ]
 provides-extras = ["ovphysx", "ovrtx", "leapp", "sim2real"]
 

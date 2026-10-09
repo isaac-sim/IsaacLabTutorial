@@ -15,7 +15,7 @@ dependencies = ["isaaclab"]
 # Standalone PhysX runtime for the `physx` physics preset and the standalone RTX renderer for the `rtx` renderer
 # preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
 ovphysx = ["ovphysx"]
-ovrtx = ["ovrtx==0.5.0.377615"]
+ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
 leapp = ["leapp==0.7.1"]
 # Hardware deployment uses the isolated inline environment in utils/deploy.py.
 sim2real = ["leapp==0.7.1"]

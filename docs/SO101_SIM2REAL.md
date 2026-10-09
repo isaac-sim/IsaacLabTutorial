@@ -4030,3 +4030,142 @@ The same policy remains selected. Next: a fresh 30-second rollout from the check
 reference rack/vial arrangement, using the existing section 11.4 command. Remove any held object and
 clear the homing path before resetting. Observe the full attempt and stop after a successful placement
 because the real controller has no task-success detector. Normal exit/Ctrl+C disables torque.
+
+### Physical grasp failures, mat, and appearance experiment — 2026-10-08
+
+Subsequent user trials were not reliable: most attempts missed the vial, and a close approach did
+not consistently close and lift it. The earlier single reported grasp does not establish reliable
+transfer. Timing passed, but we have no synchronized trajectory to distinguish visual localization,
+joint/geometry error, and grasp-contact failures. No complete real placement is confirmed.
+
+The current setup photo is `/home/mhaiderbhai/Downloads/IMG_5969.jpg`. A dark gray square mat now
+supports the rack and vial. The user estimates 2–3 mm thickness and a side about 3.25 times the rack
+width: with the modeled 120 mm rack, use **390 mm square, 2.5 mm nominal thickness** as an estimate,
+not a measurement. Mat geometry/contact changes and wider placement training are still pending.
+
+Added task `IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real-Appearance` as an appearance-only
+experiment, preserving the deployed baseline task. It independently samples per-episode linear RGB:
+
+| Surface | RGB lower bound | RGB upper bound |
+| --- | --- | --- |
+| Printed robot parts, including gripper | (0.08, 0.04, 0.008) | (1.0, 0.85, 0.85) |
+| Rack | (0.06, 0.06, 0.02) | (1.0, 0.95, 0.95) |
+| Desk | (0.025, 0.025, 0.025) | (0.60, 0.60, 0.60) |
+| Vial body | (0.12, 0.12, 0.12) | (0.95, 0.95, 0.95) |
+| Cap | (0.02, 0.02, 0.02) | (0.95, 0.95, 0.95) |
+| Label | (0.65, 0.65, 0.60) | (1.0, 1.0, 1.0) |
+
+`assets/workshop/vial_labeled.usda` references the measured vial and adds a curved, visual-only
+white label, approximately 60 × 18 mm. Label size/location are inferred, not measured. Label radial
+scale follows body diameter randomization; the original collision geometry is retained. Robot
+printed parts share a material, so gripper and arm colors remain coupled; cap, vial body, label,
+rack, and desk have independent draws. Reset events retain colors for an episode rather than flickering.
+
+**Renderer limitation:** the installed Newton `VisualMaterialWriter` copies only the `color` channel
+into `shape_color`. Opacity and roughness writes do not affect this training renderer. The vial is
+still opaque: broad colors and a white label are appearance approximations, not refraction or
+transparent-plastic rendering. Do not claim this solves the clear-vial gap. A renderer supporting
+transparency needs a separate correctness/performance experiment before changing the training path.
+
+GPU camera smoke images/log are in `outputs/robustness_20261008/`. This experiment retains the old
+rack placement and physics distribution; broader nonoverlapping, visible starts, mat contacts,
+training, and held-out grasp/lift/placement evaluations remain necessary. No new robust policy has
+been trained or qualified yet.
+
+Appearance implementation checks: 15 focused asset/config/registration tests passed; a real Newton
+GPU camera render confirmed varying colors reach the image. A 200-iteration, 2,048-environment PPO
+fine-tune from `consolidated_visual_ppo_4/model_496.pt` has been launched with seed 83, home-only
+resets, learning rate 1e-4 and reset optimizer. This is **appearance-only**, not a new robust deployment
+bundle. Exact direct `uv` argument list, PID, and eventual status are in
+`outputs/robustness_20261008/appearance_run.json`; log is `appearance_train.log`. A follow-up evaluator
+is scheduled locally to compare the baseline and candidate on the appearance task, and the candidate
+on the original task (256 home starts each, seed 8401). These are development checks, not independent
+real-robot qualification. Training and evaluation results remain pending.
+
+### OV RTX investigation — 2026-10-08
+
+The user proposed OV RTX for the transparent vial. This can be selected independently of Newton
+physics with `presets=newton_mjwarp,ovrtx`. The existing opaque material must also be replaced;
+changing the renderer alone does not author clear plastic. NVIDIA documents transmission separately
+from visibility opacity: https://docs.omniverse.nvidia.com/materials-and-rendering/latest/templates/parameters/OmniSurface_Transmission.html.
+
+Installed the pinned optional runtime and found the renderer also imports `ovstage` even when
+standalone PhysX is not selected. Added `ovstage==0.1.1.355824` to the `ovrtx` extra and updated
+`uv.lock`. Future complete environment setup is `uv sync --locked --extra leapp --extra ovrtx`.
+During the active training run, installed only those two packages using `uv pip install --no-deps`
+to avoid replacing its numerical dependencies. The first render is compiling RTX shaders. Results,
+a glass-material prototype, and logs are under `outputs/robustness_20261008/ovrtx/`.
+The prototype uses thin-walled OmniGlass with IOR 1.49 and roughness 0.12 as initial modeling
+assumptions, not measurements of this vial. Throughput and transparent-vial correctness are not
+validated yet. The Newton appearance-only training run remains active.
+
+OV RTX smoke result: **passed** with Newton physics. Inspected both the opaque-material render and
+`ovrtx/glass_wrist_camera.png`; the OmniGlass prototype shows transmission and reflective edges.
+This verifies the material renders, not a measured match to the real plastic. The original white
+label remains a separate opaque visual mesh. First shader compilation took approximately 106 seconds
+for the complete first test; later startup was much faster.
+
+Preliminary end-to-end step probe, 16 environments at 80×60 camera resolution, five warmup steps and
+30 timed steps: OV RTX with the clear prototype **42.86 ms/step (373 env-steps/s)**; Newton with the
+opaque labeled asset **31.92 ms/step (501 env-steps/s)**. Both probes shared the GPU with ongoing
+training. They compare candidate rendering paths, not identical material implementations or isolated
+GPU throughput, and cannot predict 2,048-environment scaling. RTX also logged a DLSS minimum input
+resolution adjustment; resolution/denoiser behavior needs checking before the training renderer is
+selected. Benchmark scripts and JSON are alongside the render images.
+
+Training status at this check: appearance PPO completed 60/200 additional iterations, about 13.5
+minutes estimated remaining. Early training grasp/lift metrics are improving but remain poor; there
+is no evaluated candidate success rate yet. This remains the only active training run. OV RTX is a
+rendering prototype, not an RTX-trained policy; workspace and mat-physics expansion are still pending.
+
+### Selected next experiment: Newton plus color randomization — 2026-10-08
+
+User selected Newton rendering with color randomization as the first experiment. Continue the
+already-running `appearance_robustness_1` run with `presets=newton_mjwarp,newton_renderer` and its
+queued baseline/candidate evaluations. OV RTX remains an optional tested prototype; no RTX training
+is scheduled. The active appearance task randomizes printed robot/gripper, rack, desk, vial body,
+cap and label colors. Its vial remains opaque. At this decision, 92/200 additional iterations were
+complete, with approximately ten minutes remaining before evaluations. Latest exploratory training
+metrics were about 49% grasp and 22% lift; these are not held-out policy success rates. Keep the
+existing deployment bundle until the new candidate has been evaluated. Wider placement and mat
+physics work remains outstanding after this appearance experiment.
+
+### Newton appearance experiment completed — 2026-10-08
+
+The 200 additional PPO iterations completed in 1,119.52 seconds (18.7 minutes), producing
+`logs/rsl_rl/so101_vial_camera/2026-10-08_18-39-27_appearance_robustness_1/model_695.pt`.
+All three queued development evaluations completed (256 home-start episodes each, seed 8401):
+
+| Policy / evaluation scene | Grasp | Lift | Complete placement |
+| --- | ---: | ---: | ---: |
+| Original policy / broad appearance | 40.6% | 19.1% | 7/256 = 2.7% |
+| Fine-tuned policy / broad appearance | 82.8% | 60.2% | 74/256 = 28.9% |
+| Fine-tuned policy / original appearance | 93.4% | 89.5% | 208/256 = 81.3% |
+
+These are simulation development results, not physical success rates. Broad appearance means the
+new combined colors and label asset; this comparison does not isolate color from label effects.
+The candidate improves substantially on that distribution but remains far below deployment quality.
+On broad appearance, 57.0% timed out and 14.1% lost the vial; 2/256 episodes exceeded the evaluation's
+rack-contact safety threshold, with maximum rack contact 31.85 N. All scored placements used the
+same hole despite any-hole acceptance. Original-scene 81.3% should not be treated as a paired
+regression estimate against the earlier 85.8% result, which used a different seed and sample size.
+
+No new policy has been exported or promoted to the real deployment bundle. Training and its queued
+audits have finished; no next training run is currently scheduled. A useful next experiment is
+teacher-guided visual distillation on the new appearance distribution before further PPO, because
+placement learning from sparse PPO success remains weak. Mat/placement expansion remains pending.
+
+### Reproducing the appearance fine-tune on another machine
+
+The source branch is `feat/so101-consolidated-sim2real`. Generated checkpoints, images and logs
+remain local under ignored `logs/` and `outputs/`; pushing this branch does not transfer them.
+Copy the starting checkpoint named below separately before repeating this run.
+
+```bash
+uv sync --locked --extra leapp
+uv run --no-sync isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real-Appearance --num_envs 2048 --max_iterations 200 --seed 83 --run_name appearance_robustness_1 --visualizer none --agent rsl_rl_ppo_cfg_entry_point --checkpoint logs/rsl_rl/so101_vial_camera/2026-10-08_16-40-56_consolidated_visual_ppo_4/model_496.pt --reset_optimizer presets=newton_mjwarp,newton_renderer agent.algorithm.learning_rate=1e-4 agent.algorithm.schedule=fixed agent.algorithm.gamma=0.999 agent.algorithm.entropy_coef=0.001 'env.events.reset_from_dataset.params.phase_weights=[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]'
+```
+
+The exact development evaluation summaries are recorded above. The retained local archive
+`archive/so101-local-before-consolidation-20261008` has unique pre-consolidation history; do not
+assume it is redundant solely because this branch contains the consolidated implementation.

@@ -45,3 +45,43 @@ def test_camera_geometry_randomization_survives_play_and_preserves_policy_resolu
     assert projection["focal_scale_range"] == (0.95, 1.05)
     assert projection["normalize_intensity"] is False
     assert projection["history_length"] == 2
+
+
+def test_appearance_variant_preserves_baseline_and_randomizes_vial_parts():
+    from isaaclab_tutorial.tasks.place_vial.config.so101.robust_env_cfg import SO101VialCameraAppearanceEnvCfg
+
+    baseline = SO101VialCameraSim2RealEnvCfg()
+    original = baseline.to_dict()
+    cfg = SO101VialCameraAppearanceEnvCfg()
+    assert baseline.to_dict() == original
+    assert cfg.events.reset_from_dataset.params == baseline.events.reset_from_dataset.params
+    assert cfg.scene.vial.spawn.usd_path.endswith("vial_labeled.usda")
+    for part in ("body", "cap", "label"):
+        event = getattr(cfg.events, f"vial_{part}_color")
+        material = getattr(cfg.scene, event.params["materials"].name)
+        assert material.channels == ("color",)
+        assert event.mode == "reset"
+    before = cfg.events.vial_body_color.params.copy()
+    cfg.play_mode()
+    assert cfg.events.vial_body_color.params == before
+
+
+def test_label_is_visual_only_and_keeps_measured_colliders():
+    from pathlib import Path
+
+    from pxr import Usd, UsdPhysics
+
+    from isaaclab_tutorial.assets import VIAL_USD
+
+    original = Usd.Stage.Open(str(VIAL_USD))
+    labeled = Usd.Stage.Open(str(Path(VIAL_USD).with_name("vial_labeled.usda")))
+
+    def colliders(stage):
+        return {
+            str(prim.GetPath()): (prim.GetAttribute("radius").Get(), prim.GetAttribute("height").Get())
+            for prim in stage.Traverse()
+            if prim.HasAPI(UsdPhysics.CollisionAPI)
+        }
+
+    assert colliders(original) == colliders(labeled)
+    assert not labeled.GetPrimAtPath("/Vial/Label").HasAPI(UsdPhysics.CollisionAPI)

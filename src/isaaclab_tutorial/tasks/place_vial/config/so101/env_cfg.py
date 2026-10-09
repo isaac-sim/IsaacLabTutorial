@@ -311,8 +311,8 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
             name = label.rsplit("/", 1)[-1]
             if name in ("body_collider", "bottom_collider", "cap_collider"):
                 scale[0] = (cap if name == "cap_collider" else body) / 2
-            elif name in ("Mesh", "Mesh_001", "Mesh_002"):
-                factor = body / 0.0289 if name == "Mesh_002" else cap / 0.0354
+            elif name in ("Mesh", "Mesh_001", "Mesh_002", "Label"):
+                factor = body / 0.0289 if name in ("Mesh_002", "Label") else cap / 0.0354
                 scale[0] *= factor
                 scale[1] *= factor
             builder.shape_scale[index] = tuple(scale)
