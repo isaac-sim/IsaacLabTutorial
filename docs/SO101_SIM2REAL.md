@@ -5,7 +5,27 @@ That file already points here; the complete setup and experiment history is reta
 
 Started: 2026-10-06. Update this file as we complete each step; proposed commands are not completed steps.
 
-## Current status — 2026-10-08
+## Transfer training update — 2026-10-09
+
+The expanded Transfer vision policy has passed four independent 1,024-episode full-collider
+Newton audits: **96.39%, 95.80%, 96.88% and 96.48%**. Combined success is 96.39%; clean/noisy
+rates are 96.63%/96.14%. Training is stopped. The new profile covers jaw/rack/support friction,
+gripper dynamics, rolling resistance, command delay/gain, encoder residuals and local mat/rack/vial
+placement variation. The original 30-second task and success criterion remain unchanged.
+
+A portable copy is checked in under [deployments/so101_transfer_20261009](../deployments/so101_transfer_20261009/README.md),
+including checksum and extraction commands for the robot computer.
+
+The selected artifacts are in `outputs/robustness_20261008_multigpu/selected_vision/`; use its
+`leapp/leapp.yaml` for the next supervised test with the existing checked hardware setup.
+The contract explicitly changes shoulder-lift scale from 0.033 to **0.040** and retains all
+other action scales. CPU deployment parity passed on Torch 2.10.0 with zero maximum error.
+Eleven of 4,096 simulated episodes exceeded 20 N rack contact (peak 36.71 N). No physical
+robot was connected during this training campaign, and no real placement rate is claimed.
+See the [full audit, scope and replay commands](sim2real/DOMAIN_RANDOMIZATION.md#qualified-transfer-vision-policy--2026-10-09).
+Earlier results and hardware trial records below are retained as history.
+
+## Previous status — 2026-10-08
 
 The branches have been consolidated on `feat/so101-consolidated-sim2real`. Fresh training produced a
 **91.02% state teacher** and an **85.84% vision policy**, each measured on 1,024 independent simulated

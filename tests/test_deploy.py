@@ -21,7 +21,7 @@ def mapping():
     )
 
 
-def policy():
+def policy(shoulder_scale=0.033):
     runtime = SimpleNamespace()
 
     def infer(inputs):
@@ -41,19 +41,20 @@ def policy():
             "history_length": 2,
             "image_shape": [1, 6, 48, 64],
             "image_preprocessing": "RGB_uint8_divided_by_255",
-            "action_scale": [0.033] * 5 + [0.02],
+            "action_scale": [0.033, shoulder_scale, 0.033, 0.033, 0.033, 0.02],
         },
         mapping(),
     )
 
 
-def test_image_history_proprioception_and_feedback_targets():
-    p = policy()
+@pytest.mark.parametrize("shoulder_scale", [0.033, 0.04])
+def test_image_history_proprioception_and_feedback_targets(shoulder_scale):
+    p = policy(shoulder_scale)
     q = np.zeros(6)
     p.infer(np.full((480, 640, 3), 255, np.uint8), q, q, q)
     torch.testing.assert_close(p.runtime.inputs["policy/wrist_rgb"], torch.ones(1, 6, 48, 64))
-    np.testing.assert_allclose(p.target(q), [0.033, -0.033, 0.0165, 0, 0, 0])
-    np.testing.assert_allclose(p.target(q + 0.1), [0.133, 0.067, 0.1165, 0.1, 0.1, 0.1])
+    np.testing.assert_allclose(p.target(q), [0.033, -shoulder_scale, 0.0165, 0, 0, 0])
+    np.testing.assert_allclose(p.target(q + 0.1), [0.133, 0.1 - shoulder_scale, 0.1165, 0.1, 0.1, 0.1])
     p.infer(np.zeros((480, 640, 3), np.uint8), q, q + 20, q + 0.2)
     image = p.runtime.inputs["policy/wrist_rgb"]
     assert image[:, :3].eq(1).all() and image[:, 3:].eq(0).all()

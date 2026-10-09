@@ -3,13 +3,263 @@
 > This report describes the multi-GPU source branch. The measured-model consolidation and new
 > qualification status are recorded in [CONSOLIDATION.md](CONSOLIDATION.md).
 
-The deployment target is the user’s **orange WowRobo SO-101, yellow rack and bare wooden desk**,
+The deployment target is the user’s **orange WowRobo SO-101, yellow rack and wooden desk with a gray mat**,
 with the WowRobo wrist camera. The original workshop’s yellow robot and green mat were incorrect.
 Deployment will use LEAPP with a custom inference script and LeRobot for robot control. Source-simulator
 success is necessary, but does not establish successful transfer: historical frozen policies
 lost substantial performance when moved to PhysX. No real-robot success rate has been measured.
-The current selected visual policy passes fresh-seed Newton audits at **94.43% clean / 94.04% noisy**;
-see [RESULTS.md](RESULTS.md). Earlier camera diagnostics below predate the self-occlusion fix.
+The historical selected visual policy passed Newton audits at **94.43% clean / 94.04% noisy**;
+see [RESULTS.md](RESULTS.md). Those scores do not qualify the expanded Transfer profile below.
+Earlier camera diagnostics below predate the self-occlusion fix.
+
+## October 8 multi-GPU transfer audit
+
+The current physical trials in `../SO101_SIM2REAL.md` report unreliable pickup and no
+confirmed full placement. Timing passed, but synchronized camera/joint trajectories were
+not recorded, so visual localization, calibration and contact errors remain competing causes.
+The appearance-only fine-tune scored 28.9% on broad colors; historical >90% scores do not
+qualify that distribution or the corrected physical model.
+
+New paired tasks `-Sim2Real-Transfer` and `-Camera-Sim2Real-Transfer` retain the existing
+Sim2Real and Appearance tasks for comparison. Both new tasks share these physical settings:
+
+| Uncertainty | Transfer profile | Audit finding |
+| --- | --- | --- |
+| Vial mass/inertia | 12–30 g; existing mass randomizer | Retained; body/cap diameters retain construction-time ±0.5 mm variation. |
+| Vial contact | Friction 0.2–1.3, restitution 0–0.02 | Newton has one friction coefficient, not separate static/dynamic friction. |
+| Jaw contact | Both jaw links, friction 0.2–1.3 | Newly varied. With maximum friction combining, fixed 0.7 jaws previously masked slippery vial samples. |
+| Rack/support contact | Rack 0.2–1.0; support 0.3–1.3 | Newly varied; effective pair friction still uses the maximum, not the sampled vial value alone. |
+| Table/mat rolling resistance | Rolling coefficient 0.0002–0.002 m; torsional 0.001–0.005 m, sampled per world at construction | Surface contacts use six contact dimensions; jaw/vial and rack contacts retain three. Engineering ranges pending physical identification. |
+| Joint Coulomb friction / armature | All six joints ×0.6–2.5 / ×0.7–1.5 | Gripper now included. Multipliers do not create a nonzero property from a zero nominal value. |
+| Joint viscous friction | All six joints ×0.6–3.5 | Gripper now included; draws use startup values, avoiding reset-to-reset accumulation. |
+| Arm stiffness / damping | ×0.85–1.15 / ×0.7–1.5 | Retained. |
+| Gripper stiffness / damping | ×0.6–1.7 / ×0.7–1.5 | Damping newly varied. |
+| Command response | Per-joint gain ×0.9–1.1; shared arm/jaw delay 0 or 1 policy steps | 25% of episodes use 33.3 ms command delay; queues clear on partial resets. This is a bounded uncertainty assumption, not measured latency identification. |
+| Calibration residual | Episode-constant ±0.01 rad, shared between visual actor position and target feedback | Added alongside existing per-step noise; teacher/critic retain true state. Does not replace physical joint-map checks. |
+| Vial position / heading | Existing dataset and ±20 mm XY; extra ±15° heading | Bounded local expansion; not arbitrary-workspace or arbitrary-heading training. |
+| Rack placement | ±5 mm XY and ±5° yaw | Added; overlap rejection uses the sampled rack frame. |
+| Mat/support height | 0–4 mm above the 35 mm desk top, 390 mm square gray pad | Covers the reported 2–3 mm mat estimate; rigid support, not identified mat compliance. Rack/vial move together. |
+
+The transfer profile defaults to home-only training after teacher bootstrap. Optional downstream
+curriculum rows keep their validated poses and a flush support surface. The reset sampler checks
+rack overlap before writing states. An exhausted random draw tries bounded offsets with the
+original rack/heading; it raises instead of accepting an overlapping fallback. This matters because
+some regenerated home rows fail the conservative footprint check even before added jitter.
+The grasp proof compensates for support height; insertion and success retain the original rack-local
+criteria and ten-step stability requirement. No success tolerance was enlarged.
+
+Vision retains broad independent robot/rack/vial/body/cap/label colors, raw RGB and two-frame history,
+mount ±3 mm/±3°, focal scale 0.95–1.05, principal point ±1.5 px, radial distortion ±0.04, gamma
+0.85–1.15, exposure, white balance, blur and pixel/proprioceptive noise. Mount/projection/materials,
+physics, command delay and persistent calibration residual remain active in clean play. Noisy audits
+also enable per-step image/proprioceptive corruption. The gray pad is fixed in color; desk colors
+still vary. Newton does not provide transparent-plastic optics, randomized wood texture or material
+roughness here. These remain explicit visual gaps, not silently claimed coverage.
+
+Gravity, robot link lengths, solver integration/compliance and broad workspace placement remain fixed.
+They should be varied only with a measured discrepancy or a controlled sensitivity experiment;
+unbounded simultaneous randomization can destroy grasp learning without improving transfer.
+The default task uses the minimal robot collision model; the selected policy below was trained
+and qualified with all robot colliders retained. This profile does not establish hardware readiness.
+
+Validation artifacts live in `outputs/robustness_20261008_multigpu/`. The 32-environment native
+Newton probe confirmed nonzero variation in vial/jaw/rack/support friction, height, command delay
+and encoder bias. A follow-up probe confirmed nonzero stiffness, damping, armature and friction
+variation on every joint, including the gripper; inspected wrist images show the rack, vial and jaws. The software suite passed
+130 tests in the training environment; the six offline deployment tests also passed separately
+in the pinned Torch 2.10 CPU environment. No hardware connections were opened.
+The historical camera policy scored 1/256 on an initial expanded-scene diagnostic before the final
+encoder-bias/reset-fallback changes; that number is not a final-profile qualification.
+
+Four independent processes are explicitly scoped with `CUDA_VISIBLE_DEVICES`. Initial runs used
+fresh state bootstraps on GPUs 0/1, historical-teacher continuation on GPU 2, and historical-vision
+continuation on GPU 3. Subsequent phases trained state teachers, distilled visual students and
+refined visual PPO independently. The final comparison uses GPU 0 for visual continuation and
+GPU 2 for conservative full-collider visual continuation; other GPUs run frozen audits.
+These are independent experiments, not distributed PPO. The campaign runner records
+commands, source hashes, checkpoint paths, exact first-episode audits and stage failures. Its target
+is at least 95% complete placement on development tests, followed by 1,024-episode independent
+qualification seeds (four clean/noisy tests for vision). No new policy is qualified at launch.
+
+### Qualified Transfer vision policy — 2026-10-09
+
+Selected `authority_full_vision_168`, block 2, checkpoint 994. Both training and qualification
+retain **all robot colliders**, broad appearance/physical randomization, home starts and the
+original 30-second placement criterion. The frozen actor receives only two wrist RGB frames
+and 24 proprioceptive values. Its teacher/critic state is not a deployment input.
+
+| Independent audit | Seed | Placements / 1,024 | Success | Episodes above 20 N | Peak rack force |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Clean | 1168020 | 987 | 96.39% | 2 | 22.15 N |
+| Noisy | 1168021 | 981 | 95.80% | 6 | 36.71 N |
+| Clean confirmation | 1168022 | 992 | 96.88% | 3 | 28.18 N |
+| Noisy confirmation | 1168023 | 988 | 96.48% | 0 | 17.58 N |
+
+Two further tests of the selected checkpoint retained full physics, camera geometry and robot
+colliders while disabling color events to use the nominal scene appearance. Clean seed 17801
+scored **982/1,024 (95.90%)**; noisy seed 17802 scored **980/1,024 (95.70%)**. Their peaks
+were 28.90 N and 25.62 N, with 4 and 3 episodes above 20 N. These supplementary tests are
+stored in `selected_vision/nominal_clean/` and `selected_vision/nominal_noise/`.
+
+All four audits pass the predeclared 95% gate. Combined rates are **96.63% clean**, **96.14%
+noisy**, and **96.39% overall (3,948/4,096)**. These are measured simulator outcomes, not a
+real-robot success rate. Eleven episodes exceeded the 20 N contact diagnostic threshold;
+success qualification is not a contact-safety certification. Mean successful completion times
+were 14.33–14.41 seconds. Final training processes were stopped after selection.
+
+Artifacts are in `outputs/robustness_20261008_multigpu/selected_vision/`:
+
+- `checkpoint.pt`: selected PPO weights, SHA-256
+  `631a6383b48d7c8d831eb2a7b7916353ec53dee4b352b095a589e8075814ede1`.
+- `policy.pt`: exported camera/proprioception actor.
+- `leapp/leapp.yaml`, `leapp/visual_actor.pt`, `leapp/contract.json`: portable CPU bundle.
+- `block_02_qualification_*.json`, `campaign.json`, `manifest.json`: episode outcomes,
+  exact commands, GPU scope, checkpoint/source hashes and selection record.
+- `cpu_parity.json`: Torch 2.10.0+cpu / LEAPP 0.7.1, 32 varied inputs, maximum absolute
+  difference **0.0** against the training-environment actor. No hardware connection was opened.
+
+The contract uses arm scales `[0.033, 0.040, 0.033, 0.033, 0.033]` and jaw scale `0.020`.
+The existing deployment controller reads these values from the bundle. Keep raw RGB / 255,
+two-frame history, 30 Hz policy inference and 120 Hz measured-relative target updates.
+For a subsequent supervised physical trial, replace the existing command's `--bundle` with
+this `leapp/leapp.yaml` and retain the checked hardware calibration/camera setup. The larger
+shoulder command is an explicit evaluated control change, not a new joint zero or calibration.
+
+Reproduce the selected full-collider simulation audit, with exactly one physical GPU exposed:
+
+```bash
+SELECTED=outputs/robustness_20261008_multigpu/selected_vision
+CUDA_VISIBLE_DEVICES=0 SO101_EVALUATION_EPISODES=1024 \
+  SO101_EVALUATION_OUTPUT="$PWD/transfer_replay.json" \
+  uv run --no-sync isaaclab play --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real-Transfer \
+  --agent rsl_rl_ppo_cfg_entry_point --checkpoint "$SELECTED/checkpoint.pt" \
+  --num_envs 1024 --seed 1168020 --visualizer none \
+  --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter \
+  presets=newton_mjwarp,newton_renderer \
+  env.actions.arm_action.scale.shoulder_lift=0.04 \
+  env.scene.robot.spawn.func=isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg:_spawn_so101_for_wrist_camera
+```
+
+For noisy playback append `env.observations.wrist_rgb.enable_corruption=True` and
+`env.observations.proprioception.enable_corruption=True`. GPU simulation may show small
+run-to-run numerical differences. The engineering randomization ranges and visual limitations
+above remain applicable to the selected policy.
+
+### Contact diagnostic and retraining evidence (2026-10-09)
+
+The initial expanded-profile teachers plateaued at 48.8–56.3% home-start placement. The historical
+vision continuation scored only 2/256 clean and 1/256 noisy episodes after 200 updates. Those
+campaigns were stopped and retained as evidence; none is a deployment candidate.
+
+An idle-physics probe moved the robot out of reach and tracked 64 vials for ten seconds. The
+three-dimensional sliding-only contact model ignored authored rolling/torsional resistance:
+53/64 vials on the mat moved more than 1 cm, and the bare-table median displacement was 39 cm.
+The Transfer tasks now enable six-dimensional contacts only on table/mat surfaces and clear
+otherwise inactive rolling coefficients on other shapes to avoid maximum-pair mixing overriding
+the intended small surface values. This reduced mat median displacement to 0.13 mm, with 3/64
+moving more than 1 cm. This is a controlled simulation diagnostic, not measured real-material
+identification. Artifacts: `probe_support.py`, `support_drift_rolling.json` under the artifact root.
+
+Frozen weights from three saved state teachers were then audited on the corrected profile:
+
+| Teacher | Successful placements / 512 | Grasp rate | Lift rate | Lost vials |
+| --- | --- | --- | --- | --- |
+| Fresh 142 | 403 (78.71%) | 93.95% | 85.55% | 0.59% |
+| Fresh 143 | 429 (83.79%) | 94.73% | 88.28% | 0% |
+| Warm 144 | 445 (86.91%) | 98.83% | 91.80% | 0% |
+
+These use seed 14901 and are development audits, not final qualification. They precede a
+subsequent action-gain correction: the policy command is now clipped before multiplying by
+the sampled gain, preserving gains above one even when the policy command saturates. The best teacher had
+no rack contacts above 20 N (peak 16.59 N). Outcomes are in `rolling_teacher_142.json` through
+`rolling_teacher_144.json`. New state runs compare conservative home-only updates, faster
+home-only updates, and a mixed curriculum. The optional broader reset curriculum contains
+1,472 validated rows and preserves all original home rows; it adds approach/held poses from
+an expanded heading distribution. Audits always use the packaged home distribution plus Transfer
+randomization. Visual distillation begins from the 86.91% teacher while state refinement runs;
+teacher-assisted rollout scores must not be presented as visual policy success.
+
+Subsequent development audits retain the corrected command gain:
+
+| Candidate | Audit | Placements | Note |
+| --- | --- | --- | --- |
+| Warm state +200 updates, seed 154 | 256 home starts | 226/256 (88.28%) | Full Transfer physics |
+| Same teacher, full robot colliders | 256 home starts, seed 15401 | 224/256 (87.50%) | No rack contacts above 20 N; peak 16.36 N |
+| Low-noise state +200, seed 156 | 256 home starts | 230/256 (89.84%) | Initial action std 0.08, entropy coefficient zero |
+| Visual distillation 400 updates, seed 155 | Clean / noisy, 256 each | 102/256 (39.84%) / 91/256 (35.55%) | Teacher-free first-episode evaluation |
+| Visual PPO +200, seed 157 | Clean / noisy, 256 each | 135/256 (52.73%) / 154/256 (60.16%) | Independent development seeds, not paired noise ablations |
+
+These are intermediate, unqualified candidates. The full-collider check retains disabled robot
+self-collision, matching the existing task. Further state refinement, fresh corrected-profile state
+training, home-start visual PPO and mixed-curriculum visual distillation run on separate explicitly
+scoped GPUs. Final policy selection requires the qualification audits described above.
+
+### Actuation-authority diagnostic
+
+The original 0.033 rad shoulder-lift command scale leaves difficult high-friction samples. For the
+best saved teacher, the upper half of shoulder-lift friction samples succeeded 81.2% versus 98.4%
+in the lower half. Other joints did not show this separation. This motivates a control-authority
+experiment, not a claim that the physical arm's friction has been measured again.
+
+Controlled 256-episode diagnostic runs use seed 15601 and unchanged weights. The direct diagnostic
+baseline has the same recorded initial rack pose, support height, delay, bias, stiffness and
+friction samples as the earlier CLI audit; small solver outcome differences remain.
+
+| Frozen policy / diagnostic | Placement | Lift | Peak rack force | Episodes above 20 N |
+| --- | --- | --- | --- | --- |
+| Teacher, original scale / full friction | 226/256 (88.28%) | 92.58% | 18.14 N | 0 |
+| Teacher, shoulder scale 0.040 | 237/256 (92.58%) | 97.66% | 18.85 N | 0 |
+| Teacher, shoulder scale 0.045 | 239/256 (93.36%) | 97.66% | 25.07 N | 3 |
+| Teacher, friction multipliers capped at 1.8 | 249/256 (97.27%) | 98.83% | 18.12 N | 0 |
+| Vision, original scale / full friction | 193/256 (75.39%) | 81.25% | 20.88 N | 1 |
+| Vision, shoulder scale 0.040 | 204/256 (79.69%) | 93.36% | 19.26 N | 0 |
+| Vision, shoulder scale 0.045 | 203/256 (79.30%) | 93.75% | 23.14 N | 1 |
+
+The narrower-friction diagnostic is **not** qualification of the full distribution. New teacher and
+vision branches retain the full 0.6–2.5 friction multipliers and use the smaller 0.040 shoulder scale.
+The default Transfer task remains at 0.033; the experiment is explicit through
+`train_transfer --shoulder-scale 0.04`, which applies the same override to training and every audit.
+Direct playback uses `env.actions.arm_action.scale.shoulder_lift=0.04`. All other arm scales remain
+0.033 and the gripper remains 0.020. The 30 Hz policy / 120 Hz feedback cadence is retained.
+
+Export a selected shoulder-authority actor with
+`--action-scale 0.033 0.04 0.033 0.033 0.033 0.02`. The exporter validates and records these values;
+the CPU controller consumes the saved contract. Offline tests verify both scale variants. The selected policy’s success and contact-force audit results are recorded above. Diagnostic
+scripts and full outcomes are under `outputs/robustness_20261008_multigpu/authority_*.json` and
+`*_authority_*.json`.
+
+The state teacher with shoulder scale 0.040 passed two independent 1,024-episode audits:
+977/1,024 (95.41%) and 992/1,024 (96.88%). Peak rack forces were 29.09 N and 23.69 N;
+4 and 6 episodes respectively exceeded 20 N. These are simulation success qualifications,
+not a demonstration of hardware contact safety. The selected teacher and exact commands are
+recorded in `authority_state_165/campaign.json` under the artifact root.
+
+The vision continuation's first 200 updates reached 248/256 (96.88%) clean and 242/256
+(94.53%) noisy development placements. It remains unqualified until all larger audits pass.
+A full-collider diagnostic of its intermediate checkpoint scored 244/256 (95.31%), with
+peak rack force 16.08 N and no episodes above 20 N. The matching minimal-collider audit
+scored 237/256 (92.58%). These are development comparisons, not independent qualification.
+
+After a further 200 visual updates, checkpoint 796 reached 248/256 (96.88%) clean and
+244/256 (95.31%) noisy development placements. Its four independent 1,024-episode audits
+scored 972, 984, 982 and 974 successes (95.51% pooled). The first audit missed the 95% gate,
+so this checkpoint was **not** selected despite its pooled score. Separate full-collider checks
+scored 982/1,024 clean and 981/1,024 noisy. A full-collider noisy check with nominal scene
+colors scored 982/1,024. These additional diagnostics do not replace the failed qualification.
+The largest full-collider rack force was 25.60 N; the clean and noisy broad-color tests each
+had one episode above 20 N. The nominal-color test had seven such episodes (peak 24.62 N).
+
+For full-collider **camera** runs use `train_transfer --full-colliders`, or override
+`env.scene.robot.spawn.func=isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg:_spawn_so101_for_wrist_camera`.
+This preserves all robot colliders and hides the camera housing from its own view. The state
+spawn function restores that housing and invalidates wrist-vision comparisons: an earlier
+48.83% result using it was rejected, with the reason recorded in its launch manifest.
+A 32-world paired capture verified identical images, poses and physical parameters after using
+the correct camera spawn. Robot self-collision remains disabled as in the existing task.
+
+A separate diagnostic doubled the 30-second horizon for visual checkpoint 597: placement rose
+from 184/256 to 210/256, so slow recoveries explain some timeouts. Qualification retains 30 seconds.
 
 ## Physical appearance recovered from the earlier branch
 
@@ -108,9 +358,10 @@ textures, local reflections and changing light/shadow directions remain coverage
 
 [Peng et al.](https://arxiv.org/abs/1710.06537) motivate varying physical dynamics for transfer.
 The task already varies vial mass/contact properties, arm friction/viscous friction/armature,
-arm gains, gripper stiffness and vial XY placement. These distributions do not explicitly model
-gear backlash, persistent encoder-zero error, camera/control delay, frame loss or all contact-model
-differences. Randomizing motor gains is not a substitute for those mechanisms.
+arm gains, gripper stiffness and vial XY placement. The Transfer profile above additionally models
+persistent encoder bias and a bounded command delay. Gear backlash, frame loss, variable camera
+latency and all contact-model differences remain uncovered; randomizing motor gains is not a
+substitute for those mechanisms.
 
 The [official SO-101 calibration guide](https://huggingface.co/docs/lerobot/so101) requires motor
 calibration. The [RobotStudio simulation notes](https://github.com/TheRobotStudio/SO-ARM100/blob/main/Simulation/SO101/README.md)

@@ -374,6 +374,13 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
         for shape_index in range(num_shapes):
             attribute.values[shape_index] = value
 
+    support = sim.stage.GetPrimAtPath("/World/envs/env_0/Support")
+    if support:
+        rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
+        torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
+        if rolling is not None and torsional is not None:
+            mdp.configure_support_rolling_contacts(builder, tuple(rolling), tuple(torsional))
+
 
 def _register_contact_model() -> None:
     """Register the contact initializer once per process."""

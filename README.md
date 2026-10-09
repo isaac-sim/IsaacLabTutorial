@@ -3,18 +3,27 @@
 For physical setup and current sim-to-real commands, continue the
 [SO-101 working guide](docs/SO101_SIM2REAL.md#11-current-supervised-real-trial--2026-10-08).
 
-Local and multi-GPU work is being reconciled on this branch; see the
-[consolidation decisions and fresh-training status](docs/sim2real/CONSOLIDATION.md).
+The October 9 **Transfer vision policy** passes four independent full-collider audits:
+**96.63% clean / 96.14% noisy** across 4,096 simulated attempts. The expanded profile includes
+jaw/support friction, all-joint dynamics, command delay/gain, encoder bias and mat/placement
+variation. Its CPU-verified LEAPP bundle is in
+`outputs/robustness_20261008_multigpu/selected_vision/leapp/leapp.yaml`.
+For the robot computer, pull this branch and follow the [checked-in bundle instructions](deployments/so101_transfer_20261009/README.md).
+See the [qualification record and replay command](docs/sim2real/DOMAIN_RANDOMIZATION.md#qualified-transfer-vision-policy--2026-10-09).
+Real placement success remains unmeasured; rare rack contacts above 20 N remain in simulation.
+
+Earlier local/multi-GPU consolidation decisions are recorded in
+[the consolidation report](docs/sim2real/CONSOLIDATION.md).
 The historical scores below do not qualify the newly corrected physical model.
 
 <p align="center"><img src="media/demo.gif" alt="Original SO-101 workshop demonstration" width="100%"></p>
 
-The animation shows the original workshop appearance. Current Sim2Real scenes use the orange robot
-and bare brown desk.
+The animation shows the original workshop appearance. Sim2Real scenes use the orange robot
+and brown desk; the Transfer profile adds the gray support mat.
 
 This Isaac Lab tutorial trains an SO-101 arm to place a vial in **any of four rack holes**.
 The working training path uses **Newton MJWarp physics and the Newton renderer** for vision.
-State training needs no renderer. The state teacher scores **96.78%**. The visual policy scores
+State training needs no renderer. In the historical October 7 run, the state teacher scores **96.78%**. The visual policy scores
 **94.43% clean / 94.04% with observation noise** on fresh 1,024-episode audits, using the orange
 robot, brown desk and full camera/appearance/dynamics randomization. A separate end-to-end run
 from random state and visual weights achieves **92.87% state / 91.31% clean and noisy vision**.
@@ -55,6 +64,8 @@ The package registers its tasks through `isaaclab.tasks` and uses Isaac Lab's st
 | `-Camera-Distillation` | Wrist RGB + proprioception | State-teacher distillation |
 | `-Sim2Real` | State | Randomized PPO continuation |
 | `-Camera-Sim2Real` | Wrist RGB + proprioception | Randomized distillation or PPO |
+| `-Sim2Real-Transfer` | State | Expanded physical randomization and support contacts |
+| `-Camera-Sim2Real-Transfer` | Wrist RGB + proprioception | Broad appearance plus the same Transfer physics |
 
 ## State teacher
 
@@ -140,6 +151,37 @@ This fresh-teacher recipe was validated with 400 distillation and 200 PPO update
 200-update distillation and 100-update PPO blocks. It scored 91.31% on both fresh clean and noisy
 1,024-episode confirmations. Audit your resulting checkpoint; arbitrary initializations need not
 reproduce the same score. The earlier selected policy remains stronger at 94.43% / 94.04%.
+
+## Expanded transfer campaign
+
+Use `IsaacTutorial-Place-Vial-SO101-Sim2Real-Transfer` for the teacher and
+`IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real-Transfer` for the visual student. These add
+contact, gripper, command-delay, calibration, local placement and mat-height uncertainty to the
+appearance experiment. See the [current audit](docs/sim2real/DOMAIN_RANDOMIZATION.md#october-8-multi-gpu-transfer-audit).
+The new profile requires fresh evaluation; historical success rates above do not qualify it.
+
+For an existing compatible PPO checkpoint, run measured 200-update blocks and independent audits:
+
+```bash
+CUDA_VISIBLE_DEVICES=3 uv run python -m isaaclab_tutorial.utils.train_transfer \
+  --gpu 3 --kind vision --checkpoint "$VISION_CHECKPOINT" \
+  --output outputs/transfer_vision --seed 145 --num-envs 2048 \
+  --learning-rate 1e-4 --blocks 12 --threshold 0.95
+```
+
+The runner scopes every child process to the requested physical GPU and records `campaign.json`.
+The current shoulder-authority experiment adds `--shoulder-scale 0.04 --steps-per-env 32`;
+its deployment export must use `--action-scale 0.033 0.04 0.033 0.033 0.033 0.02`.
+Use `--full-colliders` to retain all robot colliders during both training and audits.
+It evaluates first home-start episodes with physics randomization retained. Qualification requires
+four separate 1,024-episode clean/noisy audits. A run that exhausts its blocks below the threshold
+remains explicitly unqualified. Use `--kind state --num-envs 4096 --learning-rate 3e-4` on a separate
+GPU for a teacher continuation. For a fresh teacher, omit `--checkpoint` and use
+`--uniform-starts --schedule adaptive --gamma 0.995 --learning-rate 3e-4`
+to bootstrap all eight validated phases; `--mixed-starts` uses 50% home starts for later curriculum
+continuation. Audits always retain home starts regardless of the training curriculum.
+Distillation still uses the direct command above with the new
+camera task; the runner accepts PPO checkpoints, not unconverted distillation checkpoints.
 
 ## Evaluation
 

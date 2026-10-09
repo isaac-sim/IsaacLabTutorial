@@ -122,6 +122,10 @@ class ResetFromDataset(ManagerTermBase):
         phase_weights: tuple[float, ...] | None = None,
         home_position_noise: float = 0.0,
         home_rack_clearance: float = 0.0,
+        home_rack_position_noise: float = 0.0,
+        home_rack_yaw_noise: float = 0.0,
+        home_heading_noise: float = 0.0,
+        support_height_range: tuple[float, float] = (0.0, 0.0),
     ) -> None:
         """Write reset states, optionally perturbing home-start vial XY by ``home_position_noise`` [m]."""
         del dataset_path, phase_weights
@@ -157,16 +161,38 @@ class ResetFromDataset(ManagerTermBase):
         _reset_controller_seed(env, ids, joint_target)
 
         vial_pose = self.states["vial_pose"][rows].clone()
+        rack_pose = env.scene["rack"].data.default_root_pose.torch[ids].clone()
+        home = self.states["phase"][rows] == 0
+        if min(home_rack_position_noise, home_rack_yaw_noise, home_heading_noise, *support_height_range) < 0:
+            raise ValueError("Placement randomization bounds must be nonnegative")
+        if support_height_range[1] < support_height_range[0]:
+            raise ValueError("Support height range must be ordered")
+        if home_rack_position_noise or home_rack_yaw_noise or home_heading_noise:
+            from isaaclab.utils.math import quat_mul
+
+            rack_pose[:, :2] += (
+                torch.empty_like(rack_pose[:, :2]).uniform_(
+                    -home_rack_position_noise, home_rack_position_noise, generator=self._noise_generator
+                )
+                * home[:, None]
+            )
+            for pose, bound in ((rack_pose, home_rack_yaw_noise), (vial_pose, home_heading_noise)):
+                angle = (
+                    torch.empty(len(ids), device=env.device).uniform_(-bound, bound, generator=self._noise_generator)
+                    * home
+                )
+                rotation = torch.zeros((len(ids), 4), device=env.device)
+                rotation[:, 2] = torch.sin(angle / 2)
+                rotation[:, 3] = torch.cos(angle / 2)
+                pose[:, 3:] = quat_mul(rotation, pose[:, 3:])
         if home_position_noise < 0 or home_rack_clearance < 0:
             raise ValueError("Home position noise and rack clearance must be nonnegative [m]")
-        if home_position_noise:
-            home = self.states["phase"][rows] == 0
+        if home_position_noise or home_rack_position_noise or home_rack_yaw_noise or home_heading_noise:
             noise = torch.empty((ids.numel(), 2), device=env.device).uniform_(
                 -home_position_noise, home_position_noise, generator=self._noise_generator
             )
             vial_pose[:, :2] += noise * home[:, None]
             # Jitter must not teleport a validated tabletop pose into the rack's solid lower deck.
-            rack_pose = env.scene["rack"].data.default_root_pose.torch[ids]
             for _ in range(16):
                 rejected = home & tabletop_vial_overlaps_rack(vial_pose, rack_pose, home_rack_clearance)
                 retry = rejected.nonzero(as_tuple=False).flatten()
@@ -176,9 +202,40 @@ class ResetFromDataset(ManagerTermBase):
                     -home_position_noise, home_position_noise, generator=self._noise_generator
                 )
                 vial_pose[retry, :2] = self.states["vial_pose"][rows[retry], :2] + offset
-            # The rare exhausted draw falls back to its original physics-validated reset pose.
+            # A physical reset row is not necessarily clear under the conservative
+            # footprint test. Try bounded corners before declaring an impossible draw.
             rejected = home & tabletop_vial_overlaps_rack(vial_pose, rack_pose, home_rack_clearance)
-            vial_pose[rejected] = self.states["vial_pose"][rows[rejected]]
+            fallback = rejected.clone()
+            rack_pose[fallback] = env.scene["rack"].data.default_root_pose.torch[ids[fallback]]
+            for x, y in ((0, 0), (0, -1), (-1, -1), (1, -1), (-1, 0), (1, 0), (0, 1), (-1, 1), (1, 1)):
+                if not bool(rejected.any()):
+                    break
+                vial_pose[rejected] = self.states["vial_pose"][rows[rejected]]
+                vial_pose[rejected, :2] += vial_pose.new_tensor((x, y)) * home_position_noise
+                rejected = fallback & tabletop_vial_overlaps_rack(vial_pose, rack_pose, home_rack_clearance)
+            if bool(rejected.any()):
+                raise ValueError("No collision-free home reset within configured position bounds")
+        if "support" in env.scene.keys():  # noqa: SIM118 (InteractiveScene has no __contains__)
+            # A 5 mm kinematic pad overlaps the desk; its exposed height spans bare desk to mat.
+            height = (
+                torch.empty(len(ids), device=env.device).uniform_(
+                    *support_height_range, generator=self._noise_generator
+                )
+                * home
+            )
+            if not hasattr(env, "_so101_support_height"):
+                env._so101_support_height = torch.zeros(env.num_envs, device=env.device)
+            env._so101_support_height[ids] = height
+            support = env.scene["support"]
+            support_pose = support.data.default_root_pose.torch[ids].clone()
+            support_pose[:, 2] += height
+            support_pose[:, :3] += env.scene.env_origins[ids]
+            support.write_root_pose_to_sim_index(root_pose=support_pose, env_ids=ids)
+            support.write_root_velocity_to_sim_index(
+                root_velocity=torch.zeros((len(ids), 6), device=env.device), env_ids=ids
+            )
+            vial_pose[:, 2] += height
+            rack_pose[:, 2] += height
         if not hasattr(env, "_so101_reset_vial_pose"):
             env._so101_reset_vial_pose = torch.zeros((env.num_envs, 7), device=env.device)
         env._so101_reset_vial_pose[ids] = vial_pose
@@ -190,8 +247,10 @@ class ResetFromDataset(ManagerTermBase):
             env_ids=ids,
         )
 
+        if not hasattr(env, "_so101_reset_rack_pose"):
+            env._so101_reset_rack_pose = torch.zeros((env.num_envs, 7), device=env.device)
+        env._so101_reset_rack_pose[ids] = rack_pose
         rack = env.scene["rack"]
-        rack_pose = rack.data.default_root_pose.torch[ids].clone()
         rack_pose[:, :3] += env.scene.env_origins[ids]
         rack.write_root_pose_to_sim_index(root_pose=rack_pose, env_ids=ids)
         rack.write_root_velocity_to_sim_index(
@@ -264,3 +323,40 @@ class RandomizeJointViscousFriction(ManagerTermBase):
             joint_ids=None if joint_ids == slice(None) else joint_ids,
             env_ids=ids,
         )
+
+
+def randomize_encoder_bias(env, env_ids, bound: float = 0.01):
+    """Sample small persistent coordinate errors shared by position and target feedback."""
+    if bound < 0:
+        raise ValueError("Encoder bias bound must be nonnegative")
+    ids = _ids(env, env_ids)
+    if not hasattr(env, "_so101_encoder_bias"):
+        env._so101_encoder_bias = torch.zeros((env.num_envs, 6), device=env.device)
+    env._so101_encoder_bias[ids] = torch.empty((len(ids), 6), device=env.device).uniform_(-bound, bound)
+
+
+def configure_support_rolling_contacts(builder, rolling_range, torsional_range):
+    """Enable rolling resistance only at the table/support, preserving jaw/rack contact dimensions.
+
+    Pair friction uses the maximum of both shapes. Clear previously inactive
+    rolling coefficients on the other shapes so they cannot override the small
+    support coefficients when the support requests a six-dimensional contact.
+    """
+    for bounds in (rolling_range, torsional_range):
+        if not 0 <= bounds[0] <= bounds[1]:
+            raise ValueError("Rolling/torsional ranges must be nonnegative and ordered")
+    per_world = {}
+    condim = builder.custom_attributes["mujoco:condim"].values
+    for index, label in enumerate(builder.shape_label):
+        world = builder.shape_world[index]
+        if world not in per_world:
+            u, v = torch.rand(2).tolist()
+            per_world[world] = (
+                rolling_range[0] + u * (rolling_range[1] - rolling_range[0]),
+                torsional_range[0] + v * (torsional_range[1] - torsional_range[0]),
+            )
+        surface = "/Support/" in label or "/Desk/" in label
+        builder.shape_material_mu_rolling[index] = per_world[world][0] if surface else 0.0
+        builder.shape_material_mu_torsional[index] = per_world[world][1] if surface else 0.0
+        if surface:
+            condim[index] = 6

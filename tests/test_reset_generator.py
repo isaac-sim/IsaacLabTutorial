@@ -28,6 +28,9 @@ def test_pregrasp_resets_reach_the_grasp_transition():
     ("kwargs", "message"),
     (
         ({"seed": -1}, "seed"),
+        ({"home_heading_range": (0.5, -0.5)}, "home_heading_range"),
+        ({"approach_heading_range": (-4.0, 4.0)}, "approach_heading_range"),
+        ({"approach_heading_range": (float("nan"), 0.5)}, "approach_heading_range"),
         ({"batch_size": 0}, "batch_size"),
         ({"joint_noise": float("nan")}, "joint_noise"),
         ({"contact_distance": 0.0}, "contact_distance"),

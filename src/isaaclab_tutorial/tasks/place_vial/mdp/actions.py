@@ -119,3 +119,44 @@ class SoftLimitRelativeGripperActionCfg(RelativeJointPositionActionCfg):
     """Configuration for :class:`SoftLimitRelativeGripperAction`."""
 
     class_type: type[SoftLimitRelativeGripperAction] = SoftLimitRelativeGripperAction
+
+
+class RobustRelativeJointPositionAction(SoftLimitRelativeGripperAction):
+    """Episode-consistent command gain and a shared zero/one policy-step delay.
+
+    Both arm and jaw use the same sampled delay. Queues are cleared on partial
+    resets, so a command from a terminated episode cannot reach a fresh robot.
+    """
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        self._previous_command = torch.zeros_like(self._raw_actions)
+        self._command_gain = torch.ones_like(self._raw_actions)
+        if not hasattr(env, "_so101_command_delay"):
+            env._so101_command_delay = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+
+    def reset(self, env_ids=None):
+        super().reset(env_ids)
+        ids = slice(None) if env_ids is None else env_ids
+        self._previous_command[ids] = 0.0
+        self._command_gain[ids] = torch.empty_like(self._command_gain[ids]).uniform_(*self.cfg.gain_range)
+        # Arm is ordered before the jaw in ActionsCfg and owns the shared draw.
+        if "gripper" not in self._joint_names:
+            self._env._so101_command_delay[ids] = (
+                torch.rand_like(self._env._so101_command_delay[ids], dtype=torch.float32) < self.cfg.delay_probability
+            )
+
+    def process_actions(self, actions):
+        delayed = torch.where(self._env._so101_command_delay[:, None], self._previous_command, actions)
+        # Bound the policy command before applying response uncertainty. Clipping
+        # afterwards would erase gains above one for saturated policy outputs.
+        command = torch.nan_to_num(delayed, nan=0.0, posinf=1.0, neginf=-1.0).clamp(-1.0, 1.0)
+        RelativeJointPositionAction.process_actions(self, command * self._command_gain)
+        self._previous_command.copy_(actions)
+
+
+@configclass
+class RobustRelativeJointPositionActionCfg(SoftLimitRelativeGripperActionCfg):
+    class_type: type = RobustRelativeJointPositionAction
+    gain_range: tuple[float, float] = (0.9, 1.1)
+    delay_probability: float = 0.25

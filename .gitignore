@@ -95,7 +95,8 @@ benchmark_*.json
 *.bak
 /datasets/
 
-# Generated policies stay outside source control; retain the required reset dataset.
+# Generated training policies stay outside source control; retain the required reset dataset.
+# Curated deployment archives under deployments/ are intentionally versioned for robot handoff.
 *.pt
 *.onnx
 *.onnx.data

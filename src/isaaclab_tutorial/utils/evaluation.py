@@ -63,6 +63,7 @@ def _install_episode_counter(target: int) -> list[str]:
     initial_rows: list[int] | None = None
     initial_poses: list[list[float]] | None = None
     outcomes: list[dict] = []
+    initial_conditions: dict = {}
     successes_by_hole = [0, 0, 0, 0]
     runtime = None
 
@@ -76,6 +77,7 @@ def _install_episode_counter(target: int) -> list[str]:
             cfg = getattr(self.unwrapped, "cfg", None)
             runtime = {
                 "success_criterion": "any_rack_hole_v1",
+                "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
                 "first_step_utc": datetime.now(UTC).isoformat(),
                 "physics_forward": getattr(forward, "__qualname__", None),
                 "physics_forward_code_sha256": hashlib.sha256(marshal.dumps(code)).hexdigest() if code else None,
@@ -115,11 +117,39 @@ def _install_episode_counter(target: int) -> list[str]:
                 }
                 if getattr(cfg, "events", None) is not None
                 else {},
+                "action_parameters": {
+                    name: {
+                        key: getattr(action, key)
+                        for key in ("scale", "joint_names", "gain_range", "delay_probability")
+                        if hasattr(action, key)
+                    }
+                    for name, action in vars(cfg.actions).items()
+                    if hasattr(action, "scale")
+                }
+                if getattr(cfg, "actions", None) is not None
+                else {},
             }
         if self.num_envs != target:
             raise RuntimeError(f"The exact audit runs one episode per environment: use --num_envs {target}.")
         if initial_rows is None and hasattr(self.unwrapped, "_so101_reset_row"):
             initial_rows = self.unwrapped._so101_reset_row.cpu().tolist()
+            for key, attribute in (
+                ("rack_pose", "_so101_reset_rack_pose"),
+                ("support_height_m", "_so101_support_height"),
+                ("command_delay_steps", "_so101_command_delay"),
+                ("encoder_bias_rad", "_so101_encoder_bias"),
+            ):
+                value = getattr(self.unwrapped, attribute, None)
+                if value is not None:
+                    initial_conditions[key] = value.cpu().tolist()
+            scene = getattr(self.unwrapped, "scene", None)
+            if scene is not None:
+                robot = scene["robot"]
+                initial_conditions["joint_names"] = robot.joint_names
+                for key in ("joint_friction_coeff", "joint_stiffness", "joint_viscous_friction_coeff"):
+                    value = getattr(robot.data, key)
+                    value = value.torch if hasattr(value, "torch") else value
+                    initial_conditions[key] = value.cpu().tolist()
         if initial_poses is None and hasattr(self.unwrapped, "_so101_reset_vial_pose"):
             initial_poses = self.unwrapped._so101_reset_vial_pose.cpu().tolist()
         result = original_step(self, actions)
@@ -197,6 +227,7 @@ def _install_episode_counter(target: int) -> list[str]:
                             "summary": summary,
                             "argv": invocation,
                             "runtime": runtime,
+                            "initial_conditions": initial_conditions,
                             "checkpoint_sha256": checkpoint_sha256,
                             "episodes": sorted(outcomes, key=lambda item: item["env_id"]),
                         },

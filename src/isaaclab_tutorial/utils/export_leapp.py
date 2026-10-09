@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import tempfile
 from pathlib import Path
 
@@ -24,7 +25,13 @@ class _FlatVisualActor(torch.nn.Module):
         return self.actor(proprioception, [wrist_rgb])
 
 
-def export_visual_actor(model_path: Path, output: Path, history: int = 2, normalize_intensity: bool = False) -> Path:
+def export_visual_actor(
+    model_path: Path,
+    output: Path,
+    history: int = 2,
+    normalize_intensity: bool = False,
+    action_scale: tuple[float, ...] = (0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
+) -> Path:
     """Bundle an RSL-RL visual TorchScript export and verify LEAPP runtime parity on CPU.
 
     Inputs are [1, 24] proprioception and [1, 3 * history, 48, 64] preprocessed RGB.
@@ -34,6 +41,8 @@ def export_visual_actor(model_path: Path, output: Path, history: int = 2, normal
 
     if history < 1:
         raise ValueError("history must be positive")
+    if len(action_scale) != 6 or any(not math.isfinite(value) or value <= 0 for value in action_scale):
+        raise ValueError("Expected six positive finite action scales matching the evaluated policy")
     output = output.resolve()
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"Refusing to overwrite nonempty export directory: {output}")
@@ -98,7 +107,7 @@ def export_visual_actor(model_path: Path, output: Path, history: int = 2, normal
                 "output": "normalized_action_requires_clipping_and_relative_target_conversion",
                 "policy_hz": 30,
                 "relative_target_hz": 120,
-                "action_scale": [0.033] * 5 + [0.02],
+                "action_scale": list(action_scale),
                 "parity_samples": len(examples),
                 "max_absolute_error": max_error,
                 "leapp_version": leapp.__version__,
@@ -116,13 +125,22 @@ def main():
     parser.add_argument("--output", type=Path, required=True, help="New LEAPP bundle directory")
     parser.add_argument("--history", type=int, default=2)
     parser.add_argument(
+        "--action-scale",
+        type=float,
+        nargs=6,
+        default=(0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
+        help="Evaluated per-joint scales in contract joint order; shoulder-authority runs use 0.04 as the second value",
+    )
+    parser.add_argument(
         "--normalize-intensity",
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Record max-channel normalization instead of the default raw RGB; this does not change the actor",
     )
     args = parser.parse_args()
-    print(export_visual_actor(args.model, args.output, args.history, args.normalize_intensity))
+    print(
+        export_visual_actor(args.model, args.output, args.history, args.normalize_intensity, tuple(args.action_scale))
+    )
 
 
 if __name__ == "__main__":

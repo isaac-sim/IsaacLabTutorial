@@ -147,6 +147,8 @@ class GeneratorCfg:
     branch_seed_count: int = 32
     joint_noise: float = 0.025
     vial_position_half_range: tuple[float, float] = TABLETOP_VIAL_POSITION_HALF_RANGE
+    home_heading_range: tuple[float, float] = TABLETOP_VIAL_HEADING_RANGE
+    approach_heading_range: tuple[float, float] = (-0.12, 0.12)
     contact_distance: float = 0.030
     ik_seeds: int = 64
     ik_iterations: int = 120
@@ -192,6 +194,15 @@ class GeneratorCfg:
             or any(not _is_finite_number(value) or value <= 0.0 for value in self.vial_position_half_range)
         ):
             raise ValueError("vial_position_half_range must contain two positive half-widths.")
+        for name in ("home_heading_range", "approach_heading_range"):
+            value = getattr(self, name)
+            if (
+                not isinstance(value, tuple)
+                or len(value) != 2
+                or any(not _is_finite_number(v) for v in value)
+                or not -math.pi <= value[0] < value[1] <= math.pi
+            ):
+                raise ValueError(f"{name} must be an ordered finite interval within [-pi, pi].")
 
 
 # Horizontal vial orientation before yaw randomization.
@@ -1436,7 +1447,7 @@ class _Generator:
         # The workshop randomizes roll about the vial axis, not its tabletop
         # heading. A modest yaw band covers setup error without presenting the
         # cap beyond the small arm's reliable continuation workspace.
-        yaw_range = TABLETOP_VIAL_HEADING_RANGE if phase == 0 else (-0.12, 0.12)
+        yaw_range = self.cfg.home_heading_range if phase == 0 else self.cfg.approach_heading_range
         yaw = torch.empty(self.num_envs, device=self.device).uniform_(*yaw_range, generator=self.random)
         half = 0.5 * yaw
         yaw_quat = torch.stack((torch.zeros_like(yaw), torch.zeros_like(yaw), half.sin(), half.cos()), dim=-1)
@@ -2305,6 +2316,9 @@ def generate_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_attempts_per_phase", type=int, default=32_768)
     parser.add_argument("--branch_seed_count", type=int, default=32)
+    parser.add_argument("--vial_position_half_range", type=float, nargs=2, default=TABLETOP_VIAL_POSITION_HALF_RANGE)
+    parser.add_argument("--home_heading_range", type=float, nargs=2, default=TABLETOP_VIAL_HEADING_RANGE)
+    parser.add_argument("--approach_heading_range", type=float, nargs=2, default=(-0.12, 0.12))
     parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated backend presets")
     add_launcher_args(parser)
     args = parser.parse_args(argv)
@@ -2319,6 +2333,9 @@ def generate_main(argv: list[str] | None = None) -> int:
         seed=args.seed,
         max_attempts_per_phase=args.max_attempts_per_phase,
         branch_seed_count=args.branch_seed_count,
+        vial_position_half_range=tuple(args.vial_position_half_range),
+        home_heading_range=tuple(args.home_heading_range),
+        approach_heading_range=tuple(args.approach_heading_range),
     )
     env_cfg = SO101VialGeneratorEnvCfg()
     env_cfg.scene.num_envs = cfg.batch_size

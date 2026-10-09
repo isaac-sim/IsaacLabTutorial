@@ -231,7 +231,9 @@ class PlacementHistoryTerm(ManagerTermBase):
 
     def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
         local, alignment, speed, angular_speed, released, placed = _placement_values(env)
-        holding = bilateral_contact(env) & (vial_height(env) > VIAL_REST_HEIGHT + GRASP_PROOF_LIFT)
+        holding = bilateral_contact(env) & (
+            vial_height(env) > VIAL_REST_HEIGHT + GRASP_PROOF_LIFT + getattr(env, "_so101_support_height", 0.0)
+        )
         cleared = vial_lowest_height_in_rack(env) >= RACK_CLEARANCE_HEIGHT
         inserted = vial_inserted(env)
         seated = placed & (alignment > UPRIGHT_ALIGNMENT) & released & (speed < 0.06) & (angular_speed < 0.8)
@@ -688,3 +690,16 @@ class DomainRandomizedCameraImage(ManagerTermBase):
         self._history_valid.fill_(True)
         # Storage may retain this observation across a reset or another compute call.
         return self._image_history.flatten(1, 2).clone()
+
+
+def biased_joint_position(env, asset_cfg: SceneEntityCfg):
+    """Deployable feedback with an episode-constant calibration residual."""
+    from isaaclab.envs.mdp import joint_pos
+
+    value = joint_pos(env, asset_cfg)
+    return value + getattr(env, "_so101_encoder_bias", 0.0)
+
+
+def biased_joint_target(env):
+    """Express targets in the same uncertain coordinates as position feedback."""
+    return joint_target(env) + getattr(env, "_so101_encoder_bias", 0.0)
