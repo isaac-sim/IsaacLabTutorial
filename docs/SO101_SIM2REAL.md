@@ -3894,3 +3894,24 @@ This previews only. Add `--execute` after clearing the arm's path to perform the
 If the error is instead `Permission denied`, check `id -nG` and use `newgrp dialout` if needed.
 If the explicit path still fails, retain the exact error so missing-device, permission and motor-bus
 failures can be distinguished.
+
+### Confirmed terminal permissions issue — 2026-10-08
+
+The user's full traceback identifies `SerialException: [Errno 13] Permission denied` on the correct
+follower port. LeRobot wraps this with a generic missing-port suggestion; port discovery is not the
+remedy here. Verified device permissions are `crw-rw---- root dialout`. The user account already belongs
+to `dialout`, but the existing session has not picked up that supplementary group. `sg dialout` obtains
+the group successfully, explaining why the agent's read-only checks worked.
+
+In the user's terminal, run:
+
+```bash
+newgrp dialout
+id -nG
+```
+
+Confirm `dialout` appears, then rerun the explicit-path `uv run --script ...home_so101.py` command in
+that same shell. No additional `usermod`, device chmod or root-owned uv environment is needed. Logging
+out of the desktop session and back in refreshes membership for future terminals as well; simply
+opening a terminal from the old desktop session may retain the old groups. No motor commands were
+sent while diagnosing this permissions failure.
