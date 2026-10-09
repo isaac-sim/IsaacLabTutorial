@@ -14,7 +14,8 @@ of this visual policy despite its result being below the original 90% acceptance
 
 The LEAPP bundle is exported, CPU parity checks pass, and a 20-second real-camera/read-only inference
 run completed without missed 120 Hz deadlines. The follower was recalibrated and its saved calibration
-matches the motors. **Physical joint-map verification and all real motion trials remain pending.**
+matches the motors. **Physical joint-map verification and real policy trials remain pending.** A supervised motor-homing
+attempt reached near home but failed its settling check; see the homing troubleshooting entry below.
 Training is stopped. No real placement success rate is claimed.
 
 Use [section 11: current supervised real trial](#11-current-supervised-real-trial--2026-10-08) for the
@@ -3756,9 +3757,11 @@ encoder remains within calibrated travel plus that endpoint tolerance.
 
 **On success, torque stays enabled and the arm holds home.** The process exits and releases the
 serial port so you can run inspection or the policy next. Support the arm during initial torque
-configuration. If interrupted or if a motion error occurs, homing disables torque and the arm may
-fall; keep a clear supported resting area and use the power switch for unexpected motion. Successful
-homing intentionally leaves the motors powered until the next controller or power-off. Do not move
+configuration. Ctrl+C, lost feedback or excessive tracking error disables torque and the arm may
+fall; keep a clear supported resting area and use the power switch for unexpected motion. A settling
+timeout after the home target has been sent, with fresh feedback and error no larger than 10°, now
+holds the measured pose and reports **home not confirmed** instead of releasing the arm. Both this
+bounded-timeout hold and successful homing leave motors powered until another controller or power-off. Do not move
 its joints by hand while it is holding.
 
 This supervised setup move may use the provisional joint map to help verify it. It does not mark
@@ -3915,3 +3918,25 @@ that same shell. No additional `usermod`, device chmod or root-owned uv environm
 out of the desktop session and back in refreshes membership for future terminals as well; simply
 opening a terminal from the old desktop session may retain the old groups. No motor commands were
 sent while diagnosing this permissions failure.
+
+### First physical homing attempt: settling timeout — 2026-10-08
+
+The user executed homing, observed the arm close to the reference home, and then saw it go limp
+with `Timed out reaching home within 2 degrees`. Read-only inspection afterward confirmed every
+motor's Goal_Position was at its requested home value (within encoder quantization), and all
+Torque_Enable registers were zero. The old error handler had disabled torque on timeout. The
+subsequent resting positions cannot identify the joint error at the instant of timeout.
+
+Fixed the missing diagnostics and that specific timeout behavior. Homing now prints named errors
+once per second and saves target, measured angles, error history and result to
+`outputs/so101_homing/latest.json` (override with `--report`). If all home targets were sent and
+feedback remains fresh with errors within 10°, a settling timeout sends the measured positions as
+hold targets, leaves torque enabled and explicitly reports `not_home_holding_measured_pose`.
+It does not claim successful home, widen the 2° acceptance tolerance or bypass policy startup checks.
+Tracking faults, bad feedback and Ctrl+C still release torque. Motor gains are unchanged pending
+measurement of the residual error. Seven mock-bus tests pass, including steady-offset timeout,
+reported offending joint, retained hold and torque release on a true tracking fault.
+
+Readback evidence: `outputs/consolidation_20261008/supervised_trial/homing_timeout_readback.json`.
+The next supervised retry uses the same explicit-path uv homing command; its automatic report will
+identify which joint needs investigation. No new motion was commanded by the agent during this fix.

@@ -1,5 +1,6 @@
 """Homing rate limits, preview behavior and torque ownership using a simulated bus."""
 
+import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -86,3 +87,35 @@ def test_encoder_endpoint_tolerance_does_not_allow_large_range_errors(monkeypatc
     with pytest.raises(ValueError, match="encoder"):
         h.home(robot, mapping, np.full(6, 0.1), execute=True)
     assert writes == []
+
+
+def test_settling_timeout_reports_joint_error_and_holds_measured_pose(monkeypatch, tmp_path):
+    robot, mapping, writes = setup_robot(monkeypatch)
+    original_write = robot.bus.sync_write
+    commands = []
+
+    def lagging_write(name, values, normalize=True):
+        commands.append(values.copy())
+        if normalize:
+            values = values.copy()
+            values["shoulder_lift"] -= 4.0  # 0.04 rad steady tracking offset, above 2° but below the fault limit.
+        original_write(name, values, normalize)
+
+    robot.bus.sync_write = lagging_write
+    report_path = tmp_path / "homing.json"
+    with pytest.raises(RuntimeError, match="home is NOT confirmed"):
+        h.home(robot, mapping, np.full(6, 0.1), execute=True, report_path=report_path)
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "not_home_holding_measured_pose"
+    assert report["error_deg"][1] == pytest.approx(np.degrees(0.04))
+    assert commands[-1]["shoulder_lift"] == pytest.approx(6.0)
+    assert writes.count(("disable",)) == 1  # Only initial configuration, no dropping the arm at timeout.
+
+
+def test_tracking_fault_report_does_not_claim_hold(monkeypatch, tmp_path):
+    robot, mapping, writes = setup_robot(monkeypatch, follow=False)
+    report_path = tmp_path / "homing.json"
+    with pytest.raises(RuntimeError, match="tracking error"):
+        h.home(robot, mapping, np.full(6, 0.5), execute=True, report_path=report_path)
+    assert json.loads(report_path.read_text())["status"] == "failed_released"
+    assert writes[-1] == ("disable",)
