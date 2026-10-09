@@ -4169,3 +4169,195 @@ uv run --no-sync isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-V
 The exact development evaluation summaries are recorded above. The retained local archive
 `archive/so101-local-before-consolidation-20261008` has unique pre-consolidation history; do not
 assume it is redundant solely because this branch contains the consolidated implementation.
+
+### Minimal SO101 collision experiment
+
+The full tutorial robot configuration is now consistently named `SO101_CFG` (replacing
+`WORKSHOP_SO101_CFG`). `MINIMAL_SO101_CFG` is a separate configuration in
+`src/isaaclab_tutorial/tasks/place_vial/config/so101/env_cfg.py`. It removes CollisionAPI and
+MeshCollisionAPI from the base, shoulder, upper-arm, lower-arm and wrist collision meshes. All
+colliders on the fixed gripper and moving jaw remain, including the camera mount. Visual meshes,
+joint frames/limits, actuator settings, authored body mass and inertia remain unchanged. Self-collision
+stays enabled for retained shapes. Minimal is now the default; the full configuration remains available explicitly.
+
+The minimal robot is used automatically with `presets=newton_mjwarp`; camera tasks use
+`presets=newton_mjwarp,newton_renderer` and retain the camera-housing visibility fix.
+A native Newton construction check found **32 → 18 robot colliders**, **48 → 34 total scene shapes**,
+and identical mass/inertia for every robot link. Unseeded vial mass differed between those initial
+inspection processes because the existing task randomizes vial mass; the matched training uses
+an explicit shared seed. Removed proximal colliders no longer prevent arm/table/rack penetration,
+so minimal-trained policies must also be evaluated with the full robot.
+
+The matched state comparison uses the same trained teacher checkpoint, seed 86, 4,096 environments,
+100 extra PPO updates, existing randomized state task, fresh optimizer, and identical solver settings.
+Runs execute sequentially without renderer or GPU-sharing training. This measures fine-tuning speed
+and task retention, **not fresh-from-scratch learning speed**. The runner discards the first ten
+iterations for throughput averages, logs rollout collection and PPO learning separately, and then
+evaluates full-on-full, minimal-on-minimal and minimal-on-full on 512 home starts with seed 1086.
+
+```bash
+uv run --no-sync python -m isaaclab_tutorial.utils.compare_so101_colliders \
+  --checkpoint logs/rsl_rl/so101_vial_state/2026-10-08_15-32-38_consolidated_randomized_state_3/model_1396.pt \
+  --iterations 100 --num-envs 4096 --eval-episodes 512 \
+  --output outputs/minimal_so101/comparison
+```
+
+The output directory must not already exist, preventing accidental replacement of earlier results.
+Commands, timing summaries, model paths and evaluation summaries are saved in `comparison.json`.
+Detailed logs and checkpoints remain ignored by Git. Initial comparison is running; results pending.
+
+### Minimal collision comparison results
+
+Completed both 100-update state fine-tunes and three 512-episode evaluations. Post-warmup timing
+uses 90 iterations per run:
+
+| Metric | Full SO101 | Minimal SO101 |
+| --- | ---: | ---: |
+| Environment steps/s | 73,866 | 79,915 |
+| Rollout collection/iteration | 3.464 s | 3.192 s |
+| PPO learning/iteration | 0.095 s | 0.089 s |
+| Process wall time including setup/export | 370.35 s | 341.46 s |
+
+Minimal gave **8.2% higher throughput** in this matched single-seed comparison. This is an observed
+runtime improvement, not proof of faster learning from scratch. Evaluated state-policy placements:
+
+| Trained robot | Evaluation robot | Success |
+| --- | --- | ---: |
+| Full | Full | 472/512 = 92.19% |
+| Minimal | Minimal | 473/512 = 92.38% |
+| Minimal | Full | 468/512 = 91.41% |
+
+No evaluation exceeded the rack-contact threshold; maximum forces were 8.15 N, 12.77 N and 10.82 N,
+respectively. These small success-rate differences do not establish a statistically reliable gain
+or regression. All successes used the original hole, despite any-hole acceptance. Minimal is now the default; the comparison tool explicitly selects the full model for its full-collision runs. The user requested profiling next because ~3.2 seconds
+per iteration is still expensive; the existing timing already places almost all cost in rollout
+collection rather than PPO optimization.
+
+### Profiling the remaining state-training cost
+
+After the comparison, profiled the minimal configuration at 4,096 environments, with the learned
+policy active, 64 warmup environment steps and 32 captured steps. Added opt-in
+`isaaclab_tutorial.utils.profile_so101.install_profile` instrumentation. Normal training does not
+load it. Raw traces and CSV/JSON summaries are under `outputs/minimal_so101/` and are not committed.
+The capture used Nsight Systems 2025.6.3, CUDA graph node tracing, and NVTX ranges. Profiling adds
+overhead: sampled wall time was 59.25 ms/environment step, versus approximately 49.9 ms from the
+unprofiled rollout collection average; do not use the trace as the throughput benchmark.
+
+Findings:
+
+- PPO optimization is only about 0.09 seconds of a 3.28-second minimal iteration. Collection is the
+  dominant cost. Each iteration collects 64 steps across 4,096 worlds; each step has four 120 Hz
+  control updates and two solver substeps per update. The runtime reports
+  `physics_handles_decimation=False`: four Python-side physics calls remain per environment step.
+- The trace contains 149,906 GPU kernel executions, summing to 749.76 ms of kernel time in a
+  1.90-second capture. Kernel sums are not GPU utilization and may overlap. Constraint-gradient
+  construction (16.8%), iterative line search (11.4%), and the Cholesky solve (7.7%) are large kernel
+  costs. Narrow-phase GJK/MPR/manifold kernels together account for about 15.9% of kernel time.
+- CPU timing charged 20.56 ms/step to physics calls, 18.93 ms to termination checks, 8.65 ms to reset,
+  5.27 ms to observations, and 1.85 ms to rewards. These CPU durations include waiting; they are not
+  independent GPU costs. Reset includes its nested event/randomization time (7.61 ms/step).
+- There were 3,777 `cudaStreamSynchronize` calls, taking 503.95 ms. Of that, 493.45 ms was issued
+  inside termination checks: their first blocking operations wait on previously queued physics.
+  It would be incorrect to attribute that entire duration to success-condition arithmetic.
+- A second targeted trace verified **1,550 `Tensor.new_tensor()` calls, each issuing a stream
+  synchronization**, with 452.33 ms combined synchronization wait. Helpers repeatedly construct
+  small CUDA constants for hole centers, bounds, axes and fingertip/grasp offsets. This measured wait
+  includes outstanding physics and is not a guaranteed saving if those constants are cached.
+- Repeated geometry computation and many small tensor operations also occur across observations,
+  rewards and terminations. Reusing device constants and per-step geometric intermediates is the
+  first semantics-preserving optimization candidate. Reset/randomization batching is another.
+  Changing solver iterations, timestep or contact models would change the physics and needs a
+  separate accuracy/transfer experiment; none were changed for this comparison or profile.
+
+Reproduce the initial trace from the repository root (requires `nsys` installed):
+
+```bash
+SO101_PROFILE_OUTPUT="$PWD/outputs/minimal_so101/profile_components.json" \
+  uv run --no-sync nsys profile --trace=cuda,nvtx,osrt --sample=none --cpuctxsw=none --cuda-graph-trace=node --capture-range=cudaProfilerApi --capture-range-end=stop --output=outputs/minimal_so101/profile_minimal isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 4096 --max_iterations 3 --seed 86 --run_name minimal_profile --visualizer none --checkpoint /home/mhaiderbhai/code/IsaacLabTutorial/logs/rsl_rl/so101_vial_state/2026-10-08_22-09-11_collider_comparison_20261008_220258_minimal/model_1495.pt --external_callback isaaclab_tutorial.utils.profile_so101.install_profile presets=newton_mjwarp
+```
+
+Use a new Nsight output basename when repeating to preserve earlier traces. The profiling callback
+now also instruments `new_tensor()` calls, as used in the targeted follow-up capture. No further
+performance optimization has been applied yet beyond the minimal colliders.
+
+
+### Minimal is the default; higher-success state training
+
+User requested minimal everywhere without a preset. All state, distillation, camera and appearance
+configurations now select the minimal robot automatically. Removed the `minimal_so101` preset.
+`SO101_CFG` retains the full robot for explicit code use. The comparison runner restores its full
+spawn function explicitly when running full-collision comparisons, so its labels remain accurate.
+Previous benchmark numbers above describe the completed experiment before this default change.
+
+The next state-policy target is near-100% complete placement from home starts. Treat 99% as a working
+simulation target, not a guarantee. Evaluate on independent seeds and with full collisions restored;
+training-phase success metrics and curriculum resets do not establish full-episode success.
+
+Launched home-only state refinement from the minimal comparison checkpoint `model_1495.pt`:
+4,096 environments, seed 87, learning rate 1e-4 fixed, gamma 0.999, entropy coefficient 0.001.
+Train in 150-update blocks (up to four blocks), evaluating 1,024 complete home-start episodes
+at each boundary with development seed 8701. Keep the best development checkpoint. Final checks
+use two new minimal-robot seeds (8801/8802) and full-collision seed 8803, 1,024 episodes each;
+all three must reach 99% for the campaign's qualification status. This threshold is a simulation
+acceptance target, not an asserted outcome or guarantee of physical success. Existing physics DR
+remains enabled; only reset phase weights switch to home-only.
+
+The local runner and exact commands/status are in `outputs/state_precision_20261008/run.py` and
+`campaign.json`. Logs are `state_precision_home_*.log` and the named audit logs. The first block
+has started successfully at roughly 3.26 seconds/iteration; evaluated results are pending. No policy
+has been promoted to real deployment. Default-selection/configuration tests: 19 passed.
+
+State-refinement progress: block 1 completed all 150 updates. Its 1,024-episode development audit
+scored **933/1024 = 91.11%** placements, 95.70% grasp, 92.87% lift, 4.49% vial losses and 4.39%
+timeouts, with no rack-contact threshold violations. This has not demonstrated improvement toward
+99%; the earlier 92.38% comparison used a different seed/sample size and is not a paired baseline.
+Block 2 is active: 108/150 updates completed at the status check, roughly 3.23 seconds/iteration
+and 2 minutes 16 seconds estimated until its next development audit. Independent qualification
+has not run yet. No new policy is ready for deployment.
+
+### Disable robot self-collision
+
+Per user request, both `SO101_CFG` and `MINIMAL_SO101_CFG` now disable self-collision on both
+backends: Newton `self_collision_enabled=False`, PhysX `enabled_self_collisions=False`.
+Robot contacts with scene objects remain enabled, as do the contact sensors. This supersedes the
+self-collision-enabled setting used in the earlier collider benchmark; its numbers remain historical.
+
+Native Newton validation of the default minimal scene found **zero robot–robot candidate collision
+pairs**, while retaining 54 robot–vial, 198 robot–rack and 18 robot–desk pairs. These are collision
+candidates, not simultaneous measured contacts. The report is
+`outputs/no_self_collision/contact_pairs.json`. Configuration/asset-related tests: 17 passed.
+No additional speedup from this change has been measured yet.
+
+Stopped the old refinement supervisor before it could start another block under the changed code;
+the already-running third evaluation finished with its previously loaded self-collision setting.
+Old development placements were 933/1024 (91.11%), 935/1024 (91.31%), and 933/1024 (91.11%).
+Preserved all checkpoints/results and marked that campaign superseded rather than mixing settings.
+
+Started a separate continuation from the best old checkpoint (`state_precision_home_2/model_1793.pt`)
+in `outputs/state_precision_no_self_20261008/`. Its manifest explicitly records
+`robot_self_collision=false`; training/evaluation blocks retain the prior home-start recipe and 99%
+simulation target. Full-collider qualification restores the full geometry but also obeys the user's
+new disabled-self-collision requirement. Results remain pending; the 99% target has not been achieved.
+
+### Investigating the Kuka Allegro throughput comparison
+
+Inspection of the installed IsaacLab core lift configuration found important differences:
+Kuka collects 32 rollout steps per PPO iteration versus our 64; seconds/iteration therefore
+cannot be compared directly. Compare aggregate environment steps/second at the same environment
+count and backend. Both Newton configurations use 1/120 s physics, decimation 4, two substeps,
+and solver limits of 100 iterations / 50 line-search iterations. Kuka uses a pyramidal friction
+cone and impratio 1, whereas this task uses an elliptic cone and impratio 10. Several Kuka
+dynamics randomizations run at startup, whereas our sim2real recipe repeats randomization at reset.
+These are source-confirmed differences, not a measured explanation of the reported 5x gap.
+
+Our existing profile also found 1,550 Tensor.new_tensor calls with associated stream
+synchronizations in a 32-step capture. Their waiting time includes preceding GPU physics work;
+it must not be treated as entirely recoverable overhead. Caching constants and repeated task
+geometry is an optimization candidate, not an implemented speedup. The matched collider-only
+experiment improved throughput by 8.2%, so robot collider count alone did not dominate that run.
+A matched Kuka runtime benchmark is still outstanding; the user's reference command/backend
+and throughput metric have been requested.
+
+The first self-collision-disabled refinement block subsequently completed: 938/1024 development
+placements (91.60%), with zero rack-contact threshold violations. Block 2 started; the 99% target
+remains unmet and no new deployment policy has been promoted.

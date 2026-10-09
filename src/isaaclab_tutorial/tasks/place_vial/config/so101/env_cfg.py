@@ -25,7 +25,7 @@ from isaaclab.sim.spawners.materials.physics_materials import spawn_physics_mate
 from isaaclab.sim.utils import bind_physics_material, clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
-from isaaclab_assets.robots.so101 import SO101_CFG
+from isaaclab_assets.robots import so101
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
 from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
 from isaaclab_newton.sim.schemas import NewtonArticulationCfg
@@ -34,7 +34,7 @@ from isaaclab_physx.physics import PhysxCfg
 from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
 from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
 from isaaclab_tasks.utils import PresetCfg, preset
-from pxr import Gf, Sdf, UsdShade
+from pxr import Gf, Sdf, Usd, UsdPhysics, UsdShade
 
 from isaaclab_tutorial.assets import DESK_USD, RACK_USD, RESET_DATASET, VIAL_USD
 from isaaclab_tutorial.tasks.place_vial import mdp
@@ -160,6 +160,35 @@ def _spawn_so101_with_camera_overrides(
     return prim
 
 
+def _remove_non_gripper_colliders(robot_prim: Any) -> None:
+    """Keep fixed jaw, moving jaw and camera-mount contacts; retain all link dynamics/visuals."""
+    root = robot_prim.GetPath()
+    for prim in Usd.PrimRange(robot_prim):
+        if not prim.HasAPI(UsdPhysics.CollisionAPI):
+            continue
+        link = prim.GetPath().MakeRelativePath(root).pathString.split("/", 1)[0]
+        if link not in ("gripper", "moving_jaw_so101_v1"):
+            prim.RemoveAPI(UsdPhysics.CollisionAPI)
+            prim.RemoveAPI(UsdPhysics.MeshCollisionAPI)
+            prim.RemoveProperty("physics:collisionEnabled")
+            prim.RemoveProperty("physics:approximation")
+
+
+@clone
+def _spawn_minimal_so101(
+    prim_path: str,
+    cfg: Any,
+    translation: tuple[float, float, float] | None = None,
+    orientation: tuple[float, float, float, float] | None = None,
+    **kwargs,
+):
+    prim = _spawn_so101_with_camera_overrides(
+        prim_path, cfg, translation=translation, orientation=orientation, **kwargs
+    )
+    _remove_non_gripper_colliders(prim)
+    return prim
+
+
 # The Sys-ID joint dynamics are authored in the asset's Newton USD variant as ``newton:armature`` [kg m^2],
 # ``newton:damping`` (passive viscous joint damping, authored per degree like the USD drive gains) and
 # ``newton:friction`` (Coulomb friction loss [N m]). PhysX ignores those attributes, so the PhysX preset re-applies
@@ -247,16 +276,16 @@ PHYSX_GRIPPER_STIFFNESS = SO101_GRIPPER_USD_STIFFNESS * PHYSX_GRIPPER_STIFFNESS_
 # retains its explicitly authored articulation budget. Newton keeps the asset defaults.
 PHYSX_SOLVER_POSITION_ITERATIONS = 128
 
-WORKSHOP_SO101_CFG = SO101_CFG.replace(
-    spawn=SO101_CFG.spawn.replace(
+SO101_CFG = so101.SO101_CFG.replace(
+    spawn=so101.SO101_CFG.spawn.replace(
         func=_spawn_so101_with_camera_overrides,
         # The asset instances its collision meshes; binding the contact material needs real prims.
         make_uninstanceable=True,
         articulation_props=[
-            properties.replace(self_collision_enabled=True)
+            properties.replace(self_collision_enabled=False)
             if isinstance(properties, NewtonArticulationCfg)
-            else properties.replace(enabled_self_collisions=True)
-            for properties in SO101_CFG.spawn.articulation_props
+            else properties.replace(enabled_self_collisions=False)
+            for properties in so101.SO101_CFG.spawn.articulation_props
         ],
         variants={
             "Robot": "robot",
@@ -267,14 +296,14 @@ WORKSHOP_SO101_CFG = SO101_CFG.replace(
     # Two actuator groups so the gripper can carry a PhysX-only drive stiffness (per-joint dicts must cover every
     # joint of their group). Both groups keep the USD-authored gains on Newton.
     actuators={
-        "arm": SO101_CFG.actuators["usd"].replace(
+        "arm": so101.SO101_CFG.actuators["usd"].replace(
             joint_names_expr=ARM_JOINTS,
             armature=preset(default=None, newton_mjwarp=None, physx=_subset(SYS_ID_ARMATURE, ARM_JOINTS)),
             friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ARM_JOINTS)),
             dynamic_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ARM_JOINTS)),
             viscous_friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_DAMPING, ARM_JOINTS)),
         ),
-        "gripper": SO101_CFG.actuators["usd"].replace(
+        "gripper": so101.SO101_CFG.actuators["usd"].replace(
             joint_names_expr=["gripper"],
             armature=preset(default=None, newton_mjwarp=None, physx=_subset(SYS_ID_ARMATURE, ["gripper"])),
             friction=preset(default=None, newton_mjwarp=None, physx=_subset(PHYSX_JOINT_FRICTION, ["gripper"])),
@@ -284,6 +313,14 @@ WORKSHOP_SO101_CFG = SO101_CFG.replace(
         ),
     },
 )
+
+
+MINIMAL_SO101_CFG = SO101_CFG.replace(spawn=SO101_CFG.spawn.replace(func=_spawn_minimal_so101))
+"""SO101 with contacts only on gripper links (including their camera mount).
+
+All joint, mass, inertia, visual and actuator settings match SO101_CFG. Proximal links
+can pass through obstacles; evaluate policies in the full configuration before deployment.
+"""
 
 
 def _initialize_contacts(_event: PhysicsEvent) -> None:
@@ -361,12 +398,12 @@ ARM_JOINTS = JOINTS[:-1]
 class SO101SceneCfg(InteractiveSceneCfg):
     """One SO-101, one vial, one rack, and a bare desk surface."""
 
-    robot = WORKSHOP_SO101_CFG.replace(
+    robot = MINIMAL_SO101_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Robot",
-        spawn=WORKSHOP_SO101_CFG.spawn.replace(
+        spawn=MINIMAL_SO101_CFG.spawn.replace(
             activate_contact_sensors=True,
         ),
-        init_state=WORKSHOP_SO101_CFG.init_state.replace(
+        init_state=MINIMAL_SO101_CFG.init_state.replace(
             pos=(-0.05, 0.0, 0.0),
             # Isaac Lab 3 uses XYZW quaternions: +90 degrees about world Z.
             rot=(0.0, 0.0, 0.7071068, 0.7071068),

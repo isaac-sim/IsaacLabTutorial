@@ -16,6 +16,7 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     PolicyStateGroupCfg,
     SO101SceneCfg,
     SO101VialEnvCfg,
+    _remove_non_gripper_colliders,
     _spawn_so101_with_camera_overrides,
 )
 from isaaclab_tutorial.tasks.place_vial.config.so101.visuals import (
@@ -34,6 +35,13 @@ def _spawn_so101_for_wrist_camera(prim_path, cfg, translation=None, orientation=
     # and both gripper jaws. Newton ray tracing does not apply the camera's near clipping plane.
     housing = prim.GetStage().GetPrimAtPath(f"{prim_path}/gripper/visuals/camera_mount")
     UsdGeom.Imageable(housing).MakeInvisible()
+    return prim
+
+
+@clone
+def _spawn_minimal_so101_for_wrist_camera(prim_path, cfg, translation=None, orientation=None, **kwargs):
+    prim = _spawn_so101_for_wrist_camera(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
+    _remove_non_gripper_colliders(prim)
     return prim
 
 
@@ -57,7 +65,7 @@ class SO101CameraSceneCfg(SO101SceneCfg):
     )
 
     def __post_init__(self):
-        self.robot.spawn.func = _spawn_so101_for_wrist_camera
+        self.robot.spawn.func = _spawn_minimal_so101_for_wrist_camera
 
 
 @configclass

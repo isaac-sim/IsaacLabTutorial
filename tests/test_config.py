@@ -201,5 +201,5 @@ def test_wrist_camera_hides_only_its_visual_housing(monkeypatch):
     assert housing.ComputeVisibility() == UsdGeom.Tokens.invisible
     assert collision.ComputeVisibility() == UsdGeom.Tokens.inherited
     assert jaw.ComputeVisibility() == UsdGeom.Tokens.inherited
-    assert SO101VialCameraEnvCfg().scene.robot.spawn.func is camera_env_cfg._spawn_so101_for_wrist_camera
+    assert SO101VialCameraEnvCfg().scene.robot.spawn.func is camera_env_cfg._spawn_minimal_so101_for_wrist_camera
     assert SO101VialEnvCfg().scene.robot.spawn.func is not camera_env_cfg._spawn_so101_for_wrist_camera
