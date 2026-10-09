@@ -36,7 +36,7 @@ url = "https://pypi.nvidia.com"
 explicit = true
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/StafaH/IsaacLab.git", rev = "a5edcec21741e98c5918f4c8ae88341fcd357a5f", subdirectory = "tools/wheel_builder" }
+isaaclab = { git = "https://github.com/StafaH/IsaacLab.git", rev = "e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 

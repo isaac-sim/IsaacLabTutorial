@@ -4,7 +4,10 @@ from collections.abc import Sequence
 
 import torch
 from isaaclab.envs.mdp.actions import RelativeJointPositionAction, RelativeJointPositionActionCfg
+from isaaclab.utils import index_fill_
 from isaaclab.utils.configclass import configclass
+
+from .geometry import constant_like
 
 GRIPPER_ACTION_THRESHOLD = 0.05
 
@@ -69,10 +72,11 @@ class SoftLimitRelativeJointPositionAction(RelativeJointPositionAction):
                 torch.where(gripper_action > GRIPPER_ACTION_THRESHOLD, False, self._gripper_closed),
             )
         )
+        gripper_targets = constant_like(
+            self._joint_target, (self.cfg.gripper_close_position, self.cfg.gripper_open_position)
+        )
         self._joint_target[:, self._gripper_index] = torch.where(
-            self._gripper_closed,
-            self._joint_target.new_tensor(self.cfg.gripper_close_position),
-            self._joint_target.new_tensor(self.cfg.gripper_open_position),
+            self._gripper_closed, gripper_targets[0], gripper_targets[1]
         )
         limits = _tensor(self._asset.data.soft_joint_pos_limits)[:, self._joint_ids]
         self._joint_target.clamp_(limits[..., 0], limits[..., 1])
@@ -110,8 +114,8 @@ class SoftLimitRelativeGripperAction(RelativeJointPositionAction):
     def seed_joint_target(self, env_ids, joint_target: torch.Tensor) -> None:
         """Clear stale commands after a generated state is written."""
         del joint_target
-        self._raw_actions[env_ids] = 0.0
-        self._processed_actions[env_ids] = 0.0
+        index_fill_(self._raw_actions, env_ids, 0.0)
+        index_fill_(self._processed_actions, env_ids, 0.0)
 
 
 @configclass

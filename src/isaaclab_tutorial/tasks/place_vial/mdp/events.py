@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import torch
 from isaaclab.managers import EventTermCfg, ManagerTermBase
+from isaaclab.utils import index_fill_
 
 from isaaclab_tutorial.tasks.place_vial.mdp.geometry import tabletop_vial_overlaps_rack
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
@@ -87,10 +88,10 @@ def _reset_controller_seed(
         env._so101_reset_joint_target = torch.zeros((env.num_envs, 6), device=env.device)
         env._so101_use_reset_joint_target = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
     if joint_target is None:
-        env._so101_use_reset_joint_target[env_ids] = False
+        index_fill_(env._so101_use_reset_joint_target, env_ids, False)
     else:
         env._so101_reset_joint_target[env_ids] = joint_target
-        env._so101_use_reset_joint_target[env_ids] = True
+        index_fill_(env._so101_use_reset_joint_target, env_ids, True)
 
 
 class ResetFromDataset(ManagerTermBase):

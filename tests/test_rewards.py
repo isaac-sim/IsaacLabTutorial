@@ -78,3 +78,24 @@ def test_approach_progress_pays_distance_covered_and_stops_after_the_grasp(monke
     assert reward(SimpleNamespace(), scale=0.01).tolist() == [1.0, 0.0], "clipped, and inactive once grasped"
     distance += 0.01
     assert reward(SimpleNamespace(), scale=0.01).tolist() == [-1.0, 0.0], "moving away is penalised"
+
+
+def test_body_state_keeps_selected_body_order_and_features():
+    from isaaclab.managers import SceneEntityCfg
+
+    # Identity robot frame makes the observation's frame and feature order explicit.
+    data = SimpleNamespace(
+        root_link_pos_w=torch.zeros(2, 3),
+        root_link_quat_w=torch.tensor([[0.0, 0.0, 0.0, 1.0]]).repeat(2, 1),
+        body_pos_w=torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]]).repeat(2, 1, 1),
+        body_quat_w=torch.tensor([[[0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 0.0]]]).repeat(2, 1, 1),
+        body_lin_vel_w=torch.ones(2, 2, 3),
+        body_ang_vel_w=torch.zeros(2, 2, 3),
+    )
+    env = SimpleNamespace(scene={"robot": SimpleNamespace(data=data)}, num_envs=2)
+    second = torch.tensor([[4.0, 5.0, 6.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]).repeat(2, 1)
+    first = torch.tensor([[1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]]).repeat(2, 1)
+    torch.testing.assert_close(terms.body_state(env, SceneEntityCfg("robot", body_ids=[1])), second)
+    torch.testing.assert_close(
+        terms.body_state(env, SceneEntityCfg("robot", body_ids=[1, 0])), torch.cat((second, first), dim=-1)
+    )

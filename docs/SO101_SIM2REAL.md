@@ -4361,3 +4361,122 @@ and throughput metric have been requested.
 The first self-collision-disabled refinement block subsequently completed: 938/1024 development
 placements (91.60%), with zero rack-contact threshold violations. Block 2 started; the 99% target
 remains unmet and no new deployment policy has been promoted.
+
+### Throughput work: remove host/device synchronization without changing physics
+
+Performance experiments live in `outputs/throughput_20261008/`. Baseline source is frozen at
+`0b92c83` in a detached worktree. The initial three-way comparison runs 40 PPO updates per
+variant, discards the first 10 for timing, and uses the same `model_1495.pt`, seed 86, 4,096
+worlds, 64-step rollouts, and reset optimizer. The refinement supervisor is temporarily stopped
+between blocks while these exclusive-GPU measurements run; completed checkpoints are retained.
+
+Local changes cache small read-only geometry constants by value, concrete device, and dtype;
+use scalar indexing for single robot bodies/joints instead of repeatedly uploading Python index
+lists; and use IsaacLab's `index_fill_` for reset flags. Cached constants are created outside
+inference mode so later differentiable callers remain valid. The binary gripper targets retain
+the joint tensor's dtype. No collision geometry, solver, timestep, controller, observation
+semantics, or randomization distribution is changed by these optimizations.
+
+A follow-up removes duplicated placement/lowest-point calculations inside the termination term.
+The time-to-success diagnostic now stays on the GPU and reports zero before any completed
+placement, rather than branching on a GPU boolean and leaving the metric absent/stale. This
+changes only diagnostic logging. The initial combined benchmark uses a frozen source copy under
+`overlay/`; `final_stage.py` separately measures the follow-up source.
+
+Upstream work is isolated in `../isaaclab-so101-throughput`, based on IsaacLab `develop`
+`07daf4426d`. Newton material randomization now prepares shape indices and friction/restitution
+bounds on the device once, instead of uploading them on every call. It retains the original
+sampling arithmetic, selected-body semantics, and Kamino material grouping. The existing
+material-selection test is extended to exercise a repeated reset under CUDA graph capture.
+This specifically detects synchronizing host uploads; it does not claim the whole environment
+reset is CUDA-graph compatible. An upstream draft PR and a backport onto the tutorial's existing
+IsaacLab revision are being prepared, to avoid changing the tutorial's Newton/MuJoCo stack.
+
+Physics experiments are separate: 50/25 iteration/line-search caps, tolerance `1e-5`, and the
+core lift task's pyramidal cone / `impratio=1`. Each is timed and evaluated using the frozen
+policy. They are experimental overrides, not new defaults. Core handover also uses elliptic
+friction / `impratio=10`; core tasks do not establish a single universally appropriate contact
+recipe. Placement success alone cannot establish equivalent real contact behavior.
+
+First-pass measurements (30 measured updates after 10 warmup updates):
+
+| Code | Environment steps/s | Collection seconds/update |
+| --- | ---: | ---: |
+| Frozen baseline | 80,044 | 3.188 |
+| Local constant/index/reset fixes | 83,831 | 3.040 |
+| Local fixes plus upstream material fix | 82,817 | 3.081 |
+
+The small local/combined difference does not establish an isolated training-speed benefit from
+material caching. Nsight did establish fewer stream synchronizations: **3,809 → 1,211** in the
+same 32-control-step capture, and **1,577 → 0** `Tensor.new_tensor` calls. Wait time includes
+outstanding physics; removing synchronization does not remove that work. Instrumented wall time
+was 56.89 → 53.75 ms/control step; use the uninstrumented table for throughput claims.
+
+The frozen-policy, seed-1086, 1,024-episode audits scored 920/1024 before and 924/1024 after the
+first-pass optimizations. Both had zero rack-impact threshold violations. These are comparable
+aggregate outcomes, not bitwise-identical trajectories or proof of improved policy quality.
+Standalone geometry outputs were bitwise equal on 4,096 randomized float32 and float64 inputs.
+
+Physics ablations used the first-pass combined source, 25 training updates (10 warmup), followed
+by evaluation of the original frozen policy, not the fine-tuned checkpoint:
+
+| Experimental override | Steps/s | Placements / 1,024 | Decision |
+| --- | ---: | ---: | --- |
+| Iterations 50, line search 25 | 83,382 | 927 | Reject: many solver line-search-limit warnings; negligible speed gain |
+| Tolerance 1e-5 | 83,061 | 922 | Keep existing 1e-6: negligible measured benefit |
+| Core lift pyramidal cone, impratio 1 | 96,753 | 863 | Keep elliptic/impratio 10: transfer behavior degraded |
+
+The core-lift contact ablation increased vial loss from 5.47% to 9.47%. It could be a separate
+retraining experiment, but these measurements do not justify substituting its contact model in
+the current sim2real recipe. **No physics settings were changed in the committed optimization.**
+
+Upstream draft: [IsaacLab #8417](https://github.com/isaac-sim/IsaacLab/pull/8417), from
+`StafaH:perf/newton-material-reset-sync`, commit `39bd809b17`. All seven Newton event tests passed
+against current develop and its Newton/MuJoCo dependencies. Restoring the pre-fix implementation
+made the new capture assertion fail on a CPU-to-CUDA copy. Full repository formatting/lint passed.
+
+The tutorial pin advances only to `e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837` on
+`StafaH:perf/so101-material-reset-pinned`: the old `a5edcec2` revision plus that one fix.
+`uv.lock` changes only the IsaacLab git reference; Newton, MuJoCo, Warp, Torch, and all other
+locked versions remain unchanged. The separate develop worktree uses newer dependencies only
+for upstream validation and is not the tutorial's runtime.
+
+Final source measurement, with the same 40-update protocol: **86,055 environment steps/s**
+(**+7.5%** versus 80,044), 2.959 s collection plus 0.088 s PPO learning per update. The final
+installed-runtime trace counted **1,014 stream synchronizations versus 3,809** (**73.4% fewer**).
+The remaining waits still include physics completion; this work does not establish a 5x speedup.
+
+The final 1,024-episode audit scored **919 placements (89.75%)**, compared with the baseline's
+920 (89.84%). It recorded **one** rack-force threshold exceedance (peak 20.26 N), versus zero
+in the baseline audit. Mean peak force was 3.191 N versus 3.181 N. Outcomes are comparable in
+aggregate, but individual trajectories/contacts were not identical; this is not a new policy
+qualification or permission to promote a benchmark checkpoint to real deployment.
+
+Validation completed: **64 tutorial tests passed**, **7 upstream Newton event tests passed**,
+and **7 event tests passed again against the installed backport and the tutorial's original
+Newton/MuJoCo versions**. Ruff, diff checks, and the required IsaacLab full formatting checks
+passed. Existing dependency deprecation warnings remain. The installed material module was
+verified byte-for-byte against the patched module used in the combined/final benchmarks.
+
+Installation used `uv lock`, then updated only IsaacLab after the GPU experiments completed:
+
+```bash
+uv pip install --python .venv/bin/python --no-deps \
+  'isaaclab @ git+https://github.com/StafaH/IsaacLab.git@e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837#subdirectory=tools/wheel_builder'
+```
+
+Normal future `uv sync` uses the new locked revision. To repeat the final timing run with the
+same local checkpoint (discard the first ten updates when averaging):
+
+```bash
+uv run --no-sync isaaclab train --rl_library rsl_rl \
+  --task IsaacTutorial-Place-Vial-SO101-Sim2Real --num_envs 4096 \
+  --max_iterations 40 --seed 86 --run_name throughput_repeat \
+  --checkpoint logs/rsl_rl/so101_vial_state/2026-10-08_22-09-11_collider_comparison_20261008_220258_minimal/model_1495.pt \
+  --reset_optimizer --visualizer none presets=newton_mjwarp
+```
+
+Resumed `outputs/state_precision_no_self_20261008/run.py` after its completed third training
+block. Subsequent audits/training use these code optimizations and the pinned backport;
+physics settings and the training recipe are unchanged. The 99% state-policy target remains
+unmet. Timing/ablation checkpoints were not selected for hardware deployment.

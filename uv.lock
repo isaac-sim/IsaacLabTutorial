@@ -837,7 +837,7 @@ wheels = [
 [[package]]
 name = "isaaclab"
 version = "3.0.0"
-source = { git = "https://github.com/StafaH/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=a5edcec21741e98c5918f4c8ae88341fcd357a5f#a5edcec21741e98c5918f4c8ae88341fcd357a5f" }
+source = { git = "https://github.com/StafaH/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837#e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837" }
 dependencies = [
     { name = "alphashape" },
     { name = "botocore" },
@@ -925,7 +925,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "isaaclab", git = "https://github.com/StafaH/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=a5edcec21741e98c5918f4c8ae88341fcd357a5f" },
+    { name = "isaaclab", git = "https://github.com/StafaH/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=e8e04fc2f6bd43a2313b5e9f60caf9be2b5e4837" },
     { name = "leapp", marker = "extra == 'leapp'", specifier = "==0.7.1" },
     { name = "leapp", marker = "extra == 'sim2real'", specifier = "==0.7.1" },
     { name = "ovphysx", marker = "extra == 'ovphysx'", index = "https://pypi.nvidia.com/" },

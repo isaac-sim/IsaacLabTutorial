@@ -9,6 +9,7 @@ from isaaclab.managers import ManagerTermBase
 from isaaclab.utils.math import combine_frame_transforms, quat_from_euler_xyz, subtract_frame_transforms
 
 from .events import _ids
+from .geometry import constant_like
 
 
 class RandomizeWristCameraMount(ManagerTermBase):
@@ -82,4 +83,4 @@ def camera_sampling_grid(
         radius_squared = undistorted.square().sum(-1, keepdim=True)
         undistorted = distorted / (1 + radial_distortion[:, None, None, None] * radius_squared)
     source_pixels = undistorted * focal_length_pixels
-    return source_pixels * source_pixels.new_tensor((2 / source_width, 2 / source_height))
+    return source_pixels * constant_like(source_pixels, (2 / source_width, 2 / source_height))
