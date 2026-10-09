@@ -40,9 +40,7 @@ def require_start_pose(measured: np.ndarray, reference: dict) -> None:
         raise ValueError("Invalid starting-pose reference")
     error = np.abs(measured - expected)
     if not np.isfinite(measured).all() or (error > tolerance).any():
-        raise ValueError(
-            f"Manually match the training home pose before execution; errors in degrees: {np.degrees(error)}"
-        )
+        raise ValueError(f"Move to the training home pose before execution; errors in degrees: {np.degrees(error)}")
 
 
 class JointMap:

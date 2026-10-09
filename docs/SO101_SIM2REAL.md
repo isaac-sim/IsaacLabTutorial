@@ -3723,9 +3723,47 @@ visible at this starting pose; this is the trained home distribution, not a clai
 initial vial visibility. Do not rotate/remount the camera to center the rack or change home pose
 without checking the resulting training/deployment mismatch.
 
-### 11.2. Manually match and verify home
+### 11.2. Motor-driven home and physical pose verification
 
-With the arm supported and freely movable after calibration, run:
+Use the motors to home; manual joint positioning is no longer the normal procedure. First move the
+rack, vial and other objects out of the arm's swept path. This interpolates joint targets, not a
+collision-planned Cartesian path. Observe the first move and keep access to motor power.
+
+Preview from the current measured position (no motor writes):
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/home_so101.py \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT"
+```
+
+Run the same command with `--execute` to move:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/home_so101.py \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --execute
+```
+
+The command seeds goals from current encoders before enabling torque, then interpolates at up to
+**5°/s per joint**. It checks calibration identity, target limits, raw encoder travel, 100 ms feedback
+stalls and 10° tracking error. The final pose must remain within 2° for 0.5 seconds. A four-tick
+(0.35°) encoder endpoint tolerance accommodates tiny deviations from recorded endpoints; destination
+limits are not widened. A closed gripper can start outside the simulation soft limits provided its
+encoder remains within calibrated travel plus that endpoint tolerance.
+
+**On success, torque stays enabled and the arm holds home.** The process exits and releases the
+serial port so you can run inspection or the policy next. Support the arm during initial torque
+configuration. If interrupted or if a motion error occurs, homing disables torque and the arm may
+fall; keep a clear supported resting area and use the power switch for unexpected motion. Successful
+homing intentionally leaves the motors powered until the next controller or power-off. Do not move
+its joints by hand while it is holding.
+
+This supervised setup move may use the provisional joint map to help verify it. It does not mark
+that map verified or enable autonomous policy execution. Compare the held pose with the reference
+image, then put the rack and vial back in the reference arrangement. Read the pose if needed:
 
 ```bash
 uv run --script src/isaaclab_tutorial/utils/inspect_so101.py \
@@ -3734,10 +3772,7 @@ uv run --script src/isaaclab_tutorial/utils/inspect_so101.py \
   --port "$SO101_FOLLOWER_PORT" --watch
 ```
 
-This only reads encoders. It does **not** release an already powered/holding arm; do not force joints
-against active motors. It prints measured simulation degrees, signed home errors and whether all
-errors are within 2°. Move the joints gently, supporting the arm, to match both the numerical target
-and rendered physical pose. Press Ctrl+C to stop inspection.
+Press Ctrl+C to finish inspection; inspection leaves torque unchanged.
 
 | Joint | Target simulation degrees | LeRobot native target |
 | --- | ---: | ---: |
@@ -3800,7 +3835,8 @@ Ctrl+C or a caught exception, cleanup disables torque and the arm may drop. Arra
 resting area and support it once motion has stopped, keeping fingers out of joints and jaws.
 
 Review approach direction, collisions, gripper alignment and timing before continuing. To attempt a
-complete placement, manually reset the arm and objects to the verified starting arrangement, then:
+complete placement, run the homing command again with the path clear, reset the objects to the verified
+starting arrangement, then:
 
 ```bash
 uv run --script src/isaaclab_tutorial/utils/deploy.py \
@@ -3826,3 +3862,13 @@ CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m isaaclab_tutorial.utils.expor
   --model logs/rsl_rl/so101_vial_camera/2026-10-08_16-40-56_consolidated_visual_ppo_4/exported/policy.pt \
   --output /absolute/path/to/new/leapp
 ```
+
+### Motor-driven homing implementation and checks — 2026-10-08
+
+The user requested motor-driven home instead of manual positioning. Added `home_so101.py` using
+the same isolated CPU uv environment. A read-only preview on the connected arm reports approximately
+15.9 seconds at the default 5°/s from its current folded pose. Its elbow encoder was two ticks beyond
+the recorded endpoint; added a bounded four-tick measurement tolerance while retaining exact target
+limits. Motor movement was not executed by the agent. Mock-bus tests cover bounded setpoints, tracking
+failure, endpoint tolerance, goal-before-torque initialization, no writes during preview and retained
+torque after success. Physical homing and visual mapping verification remain user-observed steps.
