@@ -8,7 +8,7 @@ import torch
 
 pytest.importorskip("cv2")
 
-from isaaclab_tutorial.utils.deploy import JOINTS, JointMap, VisualPolicy  # noqa: E402
+from isaaclab_tutorial.utils.deploy import JOINTS, JointMap, VisualPolicy, require_start_pose  # noqa: E402
 
 
 def mapping():
@@ -93,3 +93,14 @@ def test_execution_rejects_pose_outside_common_travel_before_clipping():
         m.require_in_limits(measured)
     with pytest.raises(ValueError, match="Measured pose"):
         m.require_in_limits(np.full(6, np.nan))
+
+
+def test_start_pose_rejects_wrong_home_and_invalid_reference():
+    reference = {"position": [0.1] * 6, "tolerance_rad": 0.035}
+    require_start_pose(np.full(6, 0.12), reference)
+    with pytest.raises(ValueError, match="home pose"):
+        require_start_pose(np.zeros(6), reference)
+    with pytest.raises(ValueError, match="home pose"):
+        require_start_pose(np.full(6, np.nan), reference)
+    with pytest.raises(ValueError, match="reference"):
+        require_start_pose(np.zeros(6), {"position": [0] * 5, "tolerance_rad": 0.1})

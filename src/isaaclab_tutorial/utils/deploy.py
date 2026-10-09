@@ -19,6 +19,7 @@ independently of the 120 Hz joint-feedback loop.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import threading
@@ -30,6 +31,18 @@ import numpy as np
 import torch
 
 JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
+
+
+def require_start_pose(measured: np.ndarray, reference: dict) -> None:
+    expected = np.asarray(reference["position"], dtype=float)
+    tolerance = float(reference["tolerance_rad"])
+    if expected.shape != (6,) or not np.isfinite(expected).all() or not math.isfinite(tolerance) or tolerance <= 0:
+        raise ValueError("Invalid starting-pose reference")
+    error = np.abs(measured - expected)
+    if not np.isfinite(measured).all() or (error > tolerance).any():
+        raise ValueError(
+            f"Manually match the training home pose before execution; errors in degrees: {np.degrees(error)}"
+        )
 
 
 class JointMap:
@@ -196,10 +209,15 @@ def main():
     parser.add_argument("--id", default="wowrobo_follower")
     parser.add_argument("--duration", type=float, default=30)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument(
+        "--start-pose", type=Path, help="JSON position (six radians) and tolerance_rad; checked before motion"
+    )
     args = parser.parse_args()
     if not math.isfinite(args.duration) or args.duration <= 0:
         parser.error("duration must be positive and finite")
-    mapping = JointMap(json.loads(args.joint_map.read_text()))
+    map_data = json.loads(args.joint_map.read_text())
+    mapping = JointMap(map_data)
+    start_pose = json.loads(args.start_pose.read_text()) if args.start_pose else None
     if args.execute and not mapping.verified:
         parser.error("--execute requires a physically verified joint map")
     from leapp import InferenceManager
@@ -214,11 +232,16 @@ def main():
     robot = SO101Follower(SO101FollowerConfig(port=args.port, id=args.id, use_degrees=True))
     camera = LatestCamera(args.camera)
     elapsed_steps, missed, inference_ms = [], 0, []
+    motors_configured = False
     try:
         # Bus-only connect avoids configuring/torquing the arm in the default dry run.
         robot.bus.connect()
         if not robot.is_calibrated:
             raise RuntimeError("Robot calibration must already match its motors")
+        if map_data.get("calibration_sha256"):
+            actual_hash = hashlib.sha256(robot.calibration_fpath.read_bytes()).hexdigest()
+            if actual_hash != map_data["calibration_sha256"]:
+                raise RuntimeError("Calibration changed since this joint map was prepared; reverify the map")
         # Intersect authored limits with calibrated motor travel in the same units.
         for index, name in enumerate(JOINTS):
             calibration = robot.calibration[name]
@@ -237,8 +260,11 @@ def main():
         target = previous.copy()
         if args.execute:
             mapping.require_in_limits(previous)
+            if start_pose is not None:
+                require_start_pose(previous, start_pose)
         policy.infer(camera.frame(), previous, np.zeros(6), target)
         if args.execute:
+            motors_configured = True
             robot.bus.disable_torque()
             robot.bus.sync_write("Goal_Position", native)
             robot.configure()
@@ -280,7 +306,7 @@ def main():
     finally:
         camera.close()
         if robot.bus.is_connected:
-            robot.bus.disconnect(disable_torque=args.execute)
+            robot.bus.disconnect(disable_torque=motors_configured)
     print(
         json.dumps(
             {

@@ -225,3 +225,22 @@ There were 78 lost vials and 68 timeouts (termination flags can overlap), and on
 the 20 N rack-contact diagnostic, peaking at **20.16 N**. Mean successful duration was 14.66 seconds.
 The model remains below the 90% acceptance threshold; the next investigation should target pickup
 failures rather than describe this checkpoint as ready for real deployment.
+
+### User-requested supervised trial preparation
+
+The user chose to try the current visual checkpoint before it reaches the original acceptance gate.
+Prepared a separate `supervised_trial/` bundle, explicitly marked experimental, without relabeling
+the failed qualification. Instructions are in [FIRST_REAL_TRIAL.md](FIRST_REAL_TRIAL.md).
+
+Export parity passed with zero error on eight inputs. LEAPP's initial CUDA/CPU validation mismatch
+was resolved by hiding CUDA during CPU export. Independent Torch 2.10 CPU runtime parity versus the
+Torch 2.13 training actor passed at maximum absolute error 5.37e-7. Real-camera/read-only inference
+completed 2,400 feedback steps over 20 seconds with zero missed 120 Hz deadlines; inference p95 was
+2.27 ms and overall control work p95 was 3.62 ms. Motor writes and tracking remain untested.
+
+Added a read-only joint inspector, local trial launcher, calibration-file fingerprint checking and
+an optional start-pose guard. The prepared launcher enforces the actual training home within 0.035
+radians. Rejected startup checks do not change torque. Updated isolated deployment tests pass five
+tests. Reference renders and measured startup errors were saved beside the bundle; the current
+resting arm is not at home. Physical joint-zero/gripper alignment and camera-view comparison remain
+required before setting the map verified. No motor motion or torque changes were performed.
