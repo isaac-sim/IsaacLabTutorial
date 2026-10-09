@@ -3872,3 +3872,25 @@ the recorded endpoint; added a bounded four-tick measurement tolerance while ret
 limits. Motor movement was not executed by the agent. Mock-bus tests cover bounded setpoints, tracking
 failure, endpoint tolerance, goal-before-torque initialization, no writes during preview and retained
 torque after success. Physical homing and visual mapping verification remain user-observed steps.
+
+### Homing port troubleshooting — 2026-10-08
+
+The user reported a missing port. Both USB serial devices were present; the follower's stable
+`5AE6079843-if00` path resolved to `/dev/ttyACM1`. A fresh read-only homing preview using that full
+path successfully read all motors, without changing torque or sending targets. An unset terminal
+variable or an outdated port argument is a possible explanation; the exact user-side error was not
+provided, so this cause is not confirmed. Use this self-contained command from the repository,
+without relying on earlier shell exports:
+
+```bash
+cd /home/mhaiderbhai/code/IsaacLabTutorial
+uv run --script src/isaaclab_tutorial/utils/home_so101.py \
+  --joint-map outputs/consolidation_20261008/supervised_trial/joint_map.json \
+  --start-pose outputs/consolidation_20261008/supervised_trial/start_pose.json \
+  --port /dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE6079843-if00
+```
+
+This previews only. Add `--execute` after clearing the arm's path to perform the supervised home.
+If the error is instead `Permission denied`, check `id -nG` and use `newgrp dialout` if needed.
+If the explicit path still fails, retain the exact error so missing-device, permission and motor-bus
+failures can be distinguished.
