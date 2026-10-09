@@ -191,3 +191,37 @@ mix training/evaluation models. The 0.615° upper-travel discrepancy must be inc
 qualification. Physical reference-pose checks, gripper zero verification and inference/control timing
 remain outstanding. A fully closed resting gripper can also be outside the simulation's soft limits;
 do not treat a valid calibration as authorization to bypass the initial-pose guard.
+
+### First full campaign result
+
+The fresh bootstrap completed 800 updates. Three 200-update randomized continuation blocks reached
+84.77%, 89.45% and 90.23% on 256 development episodes. The selected state teacher then passed its
+independent 1,024-episode qualification: **932/1,024 (91.02%)** complete home-start placements.
+
+Fresh visual distillation completed 400 updates, followed by 500 total visual PPO updates. Development
+results, each over 256 first episodes per observation condition:
+
+| Visual PPO updates | Clean observations | Noisy observations |
+| ---: | ---: | ---: |
+| 200 | 82.42% | 84.38% |
+| 300 | 85.16% | 86.72% |
+| 400 | 85.55% | 89.45% |
+| 500 | 85.16% | 89.45% |
+
+The supervisor stopped at its explicit visual acceptance gate. **No new qualifying visual export was
+produced and no real policy rollout was performed.** The final clean audit had 38 failures: 22 never
+registered a grasp, seven registered grasp but not lift, eight lift but not insertion, and one insertion
+without final success. The noisy audit had 27 failures, 17 without a registered grasp. These diagnostic
+flags suggest pickup is the main remaining problem, but do not establish its physical or visual cause.
+They are not a strict success-stage hierarchy: placement can succeed without every diagnostic flag.
+
+A fresh-seed 1,024-episode clean diagnostic of the final checkpoint was launched to check the apparent
+plateau beyond the reused 256-episode development sample. Results go to
+`outputs/consolidation_20261008/vision_diagnostic_clean_1024.json`. This is a diagnostic of an unqualified
+model, not a replacement for the planned frozen-model clean/noisy qualification suite.
+
+That diagnostic completed at **879/1,024 (85.84%)**, confirming the visual plateau on a fresh seed.
+There were 78 lost vials and 68 timeouts (termination flags can overlap), and one episode exceeded
+the 20 N rack-contact diagnostic, peaking at **20.16 N**. Mean successful duration was 14.66 seconds.
+The model remains below the 90% acceptance threshold; the next investigation should target pickup
+failures rather than describe this checkpoint as ready for real deployment.
