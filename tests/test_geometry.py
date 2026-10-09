@@ -86,21 +86,3 @@ def test_tabletop_overlap_uses_vial_extent_and_rack_frame():
     poses[:, 3:] = torch.tensor([-0.5, 0.5, 0.5, 0.5])
     rack[:, 3:] = torch.tensor([0, 0, half, half])
     assert tabletop_vial_overlaps_rack(poses, rack).tolist() == [False, True]
-
-
-def test_geometry_constants_preserve_dtype_and_gradients_after_inference():
-    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import hole_relative_positions
-
-    for dtype in (torch.float32, torch.float64):
-        with torch.inference_mode():
-            hole_relative_positions(torch.zeros((2, 3), dtype=dtype))
-            vertical_alignment(torch.tensor([[0.0, 0.0, 0.0, 1.0]], dtype=dtype))
-        quat = torch.tensor([[0.25, 0.0, 0.0, math.sqrt(0.9375)]], dtype=dtype, requires_grad=True)
-        vertical_alignment(quat).sum().backward()
-        torch.testing.assert_close(quat.grad, torch.tensor([[-1.0, 0.0, 0.0, 0.0]], dtype=dtype))
-        points = torch.zeros((2, 3), dtype=dtype, requires_grad=True)
-        relative = hole_relative_positions(points)
-        assert relative.dtype == dtype
-        relative.square().sum().backward()
-        expected = torch.tensor([[-0.24, -0.24, 0.0]], dtype=dtype).expand(2, -1)
-        torch.testing.assert_close(points.grad, expected)

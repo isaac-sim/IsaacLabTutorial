@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING
 
 import torch
 from isaaclab.managers import ManagerTermBase, ObservationTermCfg, RewardTermCfg, SceneEntityCfg, TerminationTermCfg
-from isaaclab.utils import index_fill_
 from isaaclab.utils.math import quat_apply, quat_apply_inverse, subtract_frame_transforms
 
 from isaaclab_tutorial.tasks.place_vial.mdp.geometry import (
-    constant_like,
     cylinder_lowest_offset,
     hole_relative_positions,
     inside_bounds,
@@ -121,7 +119,7 @@ def vial_lowest_height_in_rack(env: ManagerBasedRLEnv) -> torch.Tensor:
     rack_pos = _tensor(rack.data.root_pos_w)
     rack_quat = _tensor(rack.data.root_quat_w)
     root_r = rack_local_position(vial_pos, rack_pos, rack_quat)
-    local_axis = constant_like(vial_pos, (0.0, 0.0, 1.0)).expand_as(vial_pos)
+    local_axis = vial_pos.new_tensor((0.0, 0.0, 1.0)).expand_as(vial_pos)
     axis_r = quat_apply_inverse(rack_quat, quat_apply(vial_quat, local_axis))
     return root_r[:, 2] + cylinder_lowest_offset(axis_r[:, 2], VIAL_AXIS_MIN, VIAL_AXIS_MAX, VIAL_RADIUS)
 
@@ -129,16 +127,14 @@ def vial_lowest_height_in_rack(env: ManagerBasedRLEnv) -> torch.Tensor:
 def fingertip_positions_w(env: ManagerBasedRLEnv) -> tuple[torch.Tensor, torch.Tensor]:
     """Return both simplified contact-pad centres in world coordinates [m]."""
     robot: Articulation = env.scene["robot"]
-    fixed_id = robot.find_bodies("gripper", preserve_order=True)[0][0]
-    moving_id = robot.find_bodies("moving_jaw_so101_v1", preserve_order=True)[0][0]
-    fixed_pos = _tensor(robot.data.body_pos_w)[:, fixed_id]
-    fixed_quat = _tensor(robot.data.body_quat_w)[:, fixed_id]
-    moving_pos = _tensor(robot.data.body_pos_w)[:, moving_id]
-    moving_quat = _tensor(robot.data.body_quat_w)[:, moving_id]
-    fixed = fixed_pos + quat_apply(fixed_quat, constant_like(fixed_pos, FIXED_FINGERTIP_OFFSET).expand_as(fixed_pos))
-    moving = moving_pos + quat_apply(
-        moving_quat, constant_like(moving_pos, MOVING_FINGERTIP_OFFSET).expand_as(moving_pos)
-    )
+    fixed_id = robot.find_bodies("gripper", preserve_order=True)[0]
+    moving_id = robot.find_bodies("moving_jaw_so101_v1", preserve_order=True)[0]
+    fixed_pos = _tensor(robot.data.body_pos_w)[:, fixed_id].squeeze(1)
+    fixed_quat = _tensor(robot.data.body_quat_w)[:, fixed_id].squeeze(1)
+    moving_pos = _tensor(robot.data.body_pos_w)[:, moving_id].squeeze(1)
+    moving_quat = _tensor(robot.data.body_quat_w)[:, moving_id].squeeze(1)
+    fixed = fixed_pos + quat_apply(fixed_quat, fixed_pos.new_tensor(FIXED_FINGERTIP_OFFSET).expand_as(fixed_pos))
+    moving = moving_pos + quat_apply(moving_quat, moving_pos.new_tensor(MOVING_FINGERTIP_OFFSET).expand_as(moving_pos))
     return fixed, moving
 
 
@@ -153,16 +149,16 @@ def vial_grasp_point_w(env: ManagerBasedRLEnv) -> torch.Tensor:
     vial: RigidObject = env.scene["vial"]
     root_pos = _tensor(vial.data.root_pos_w)
     root_quat = _tensor(vial.data.root_quat_w)
-    offset = constant_like(root_pos, VIAL_GRASP_OFFSET).expand_as(root_pos)
+    offset = root_pos.new_tensor(VIAL_GRASP_OFFSET).expand_as(root_pos)
     return root_pos + quat_apply(root_quat, offset)
 
 
 def _gripper_openness(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Return normalized measured jaw opening in [0, 1]."""
     robot: Articulation = env.scene["robot"]
-    gripper_id = robot.find_joints("gripper", preserve_order=True)[0][0]
-    position = _tensor(robot.data.joint_pos)[:, gripper_id]
-    limits = _tensor(robot.data.soft_joint_pos_limits)[:, gripper_id]
+    gripper_id = robot.find_joints("gripper", preserve_order=True)[0]
+    position = _tensor(robot.data.joint_pos)[:, gripper_id].squeeze(1)
+    limits = _tensor(robot.data.soft_joint_pos_limits)[:, gripper_id].squeeze(1)
     return _finite(((position - limits[:, 0]) / (limits[:, 1] - limits[:, 0])).clamp(0.0, 1.0))
 
 
@@ -191,12 +187,8 @@ def vial_inserted(env: ManagerBasedRLEnv) -> torch.Tensor:
     camera student to imitate.
     """
     local, alignment, *_ = _placement_values(env)
-    return _inside_opening(local, alignment, vial_lowest_height_in_rack(env))
-
-
-def _inside_opening(local: torch.Tensor, alignment: torch.Tensor, lowest_height: torch.Tensor) -> torch.Tensor:
     centred = torch.linalg.vector_norm(hole_relative_positions(local)[..., :2], dim=-1).amin(dim=-1) < INSERTION_RADIUS
-    return centred & (lowest_height < RACK_RIM_HEIGHT) & (alignment > UPRIGHT_ALIGNMENT)
+    return centred & (vial_lowest_height_in_rack(env) < RACK_RIM_HEIGHT) & (alignment > UPRIGHT_ALIGNMENT)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -228,7 +220,7 @@ class PlacementHistoryTerm(ManagerTermBase):
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         self.progress.reset(env_ids)
         ids = slice(None) if env_ids is None else env_ids
-        index_fill_(self._max_rack_force, ids, 0.0)
+        self._max_rack_force[ids] = 0.0
         grasped = getattr(self._env, "_so101_reset_grasped", None)
         lifted = getattr(self._env, "_so101_reset_lifted", None)
         if grasped is not None:
@@ -240,9 +232,8 @@ class PlacementHistoryTerm(ManagerTermBase):
     def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
         local, alignment, speed, angular_speed, released, placed = _placement_values(env)
         holding = bilateral_contact(env) & (vial_height(env) > VIAL_REST_HEIGHT + GRASP_PROOF_LIFT)
-        lowest_height = vial_lowest_height_in_rack(env)
-        cleared = lowest_height >= RACK_CLEARANCE_HEIGHT
-        inserted = _inside_opening(local, alignment, lowest_height)
+        cleared = vial_lowest_height_in_rack(env) >= RACK_CLEARANCE_HEIGHT
+        inserted = vial_inserted(env)
         seated = placed & (alignment > UPRIGHT_ALIGNMENT) & released & (speed < 0.06) & (angular_speed < 0.8)
         rack_force = _contact_magnitude(env, "vial_rack_contact")
         self._max_rack_force.copy_(torch.maximum(self._max_rack_force, rack_force))
@@ -261,9 +252,8 @@ class PlacementHistoryTerm(ManagerTermBase):
         log["Diagnostics/gripper_openness"] = _gripper_openness(env).mean()
         log["Diagnostics/rack_local_z_m"] = _finite(local[:, 2]).mean()
         completed = self.progress.time_to_success >= 0
-        # Keep this diagnostic on-device; report zero until the first completed placement.
-        completed_time = torch.where(completed, self.progress.time_to_success, 0).float().sum()
-        log["Metrics/time_to_success_s"] = completed_time / completed.sum().clamp_min(1) * env.step_dt
+        if completed.any():
+            log["Metrics/time_to_success_s"] = self.progress.time_to_success[completed].float().mean() * env.step_dt
         phase = getattr(env, "_so101_reset_phase", None)
         if phase is not None:
             log["Reset/mean_phase"] = phase.float().mean()
@@ -314,13 +304,13 @@ def held_object_goal_error(env: ManagerBasedRLEnv) -> torch.Tensor:
     rack_quat = _tensor(rack.data.root_quat_w)
     vial_position = rack_local_position(_tensor(vial.data.root_pos_w), _tensor(rack.data.root_pos_w), rack_quat)
     vial_axis_w = quat_apply(
-        _tensor(vial.data.root_quat_w), constant_like(vial_position, (0.0, 0.0, 1.0)).expand_as(vial_position)
+        _tensor(vial.data.root_quat_w), vial_position.new_tensor((0.0, 0.0, 1.0)).expand_as(vial_position)
     )
     error = symmetric_axial_keypoint_error(
         hole_relative_positions(vial_position),
         quat_apply_inverse(rack_quat, vial_axis_w).unsqueeze(1),
-        constant_like(vial_position, HELD_INSERTION_TARGET),
-        constant_like(vial_position, (0.0, 0.0, 1.0)),
+        vial_position.new_tensor(HELD_INSERTION_TARGET),
+        vial_position.new_tensor((0.0, 0.0, 1.0)),
         VIAL_AXIS_MIN,
         VIAL_AXIS_MAX,
     )
@@ -342,7 +332,7 @@ class ApproachProgressReward(ManagerTermBase):
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         ids = slice(None) if env_ids is None else env_ids
-        index_fill_(self._has_previous, ids, False)
+        self._has_previous[ids] = False
 
     def __call__(self, env: ManagerBasedRLEnv, scale: float = 0.01) -> torch.Tensor:
         distance = _finite_error(torch.linalg.vector_norm(grasp_center_w(env) - vial_grasp_point_w(env), dim=-1))
@@ -380,14 +370,15 @@ class PhysicalMilestoneReward(ManagerTermBase):
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         ids = slice(None) if env_ids is None else env_ids
-        index_fill_(self._previous, ids, False)
-        index_fill_(self._initialized, ids, False)
+        self._previous[ids] = False
+        self._initialized[ids] = False
 
     def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
         history = _history(env)
         current = torch.stack((history.grasped, history.lifted, history.inserted), dim=-1)
         newly_reached = current & ~self._previous
-        reward = newly_reached[:, 0].float() + 2.0 * newly_reached[:, 1].float() + 4.0 * newly_reached[:, 2].float()
+        weights = current.new_tensor((1.0, 2.0, 4.0), dtype=torch.float32)
+        reward = (newly_reached.float() * weights).sum(dim=-1)
         reward = torch.where(self._initialized, reward, torch.zeros_like(reward))
         self._previous.copy_(current)
         self._initialized.fill_(True)
@@ -465,8 +456,6 @@ def body_state(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tenso
     """Return robot-body pose and velocity in the robot base frame."""
     robot: Articulation = env.scene[asset_cfg.name]
     ids = asset_cfg.body_ids
-    if isinstance(ids, list) and len(ids) == 1 and ids[0] >= 0:
-        ids = slice(ids[0], ids[0] + 1)
     root_pos_w, root_quat_w = _robot_root_pose(env)
     body_pos_w = _tensor(robot.data.body_pos_w)[:, ids].reshape(-1, 3)
     body_quat_w = _tensor(robot.data.body_quat_w)[:, ids].reshape(-1, 4)
@@ -590,14 +579,14 @@ class DomainRandomizedCameraImage(ManagerTermBase):
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         ids = slice(None) if env_ids is None else env_ids
-        index_fill_(self._history_valid, ids, False)
+        self._history_valid[ids] = False
         if self._projection_size is not None:
             self._resample(self._focal_scale, env_ids, self._focal_scale_range)
             self._resample(
                 self._principal_offset, env_ids, (-self._principal_point_pixels, self._principal_point_pixels)
             )
             self._resample(self._radial_distortion, env_ids, self._radial_distortion_range)
-            index_fill_(self._projection_dirty, ids, True)
+            self._projection_dirty[ids] = True
         self._resample(self._exposure, env_ids, self._exposure_range)
         self._resample(self._contrast, env_ids, self._contrast_range)
         self._resample(self._white_balance, env_ids, self._white_balance_range)
@@ -659,7 +648,7 @@ class DomainRandomizedCameraImage(ManagerTermBase):
                     output_size=self._projection_size,
                     focal_length_pixels=focal_length_pixels,
                 )
-                index_fill_(self._projection_dirty, ids, False)
+                self._projection_dirty[ids] = False
             image = torch.nn.functional.grid_sample(
                 image, self._projection_grid, mode="bilinear", padding_mode="border", align_corners=False
             )

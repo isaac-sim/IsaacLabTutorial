@@ -1,7 +1,5 @@
 """Pure tensor geometry used by the environment and unit tests."""
 
-from functools import lru_cache
-
 import torch
 
 # Rack-local centers of the four open cells in workshop/rack.usda, in top_01..top_04 order.
@@ -9,21 +7,9 @@ import torch
 RACK_HOLE_CENTERS = ((0.0, 0.0, 0.0), (0.060, 0.0, 0.0), (0.060, 0.060, 0.0), (0.0, 0.060, 0.0))
 
 
-@lru_cache(maxsize=64)
-def _constant(values: tuple, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
-    # Constants are shared read-only. Avoid retaining inference tensors across callers.
-    with torch.inference_mode(False):
-        return torch.tensor(values, device=device, dtype=dtype)
-
-
-def constant_like(reference: torch.Tensor, values: tuple) -> torch.Tensor:
-    """Return a read-only constant on the reference's concrete device and dtype."""
-    return _constant(values, reference.device, reference.dtype)
-
-
 def hole_relative_positions(rack_position: torch.Tensor) -> torch.Tensor:
     """Return offsets to all four openings, preserving rack-local height: (..., 4, 3)."""
-    return rack_position.unsqueeze(-2) - constant_like(rack_position, RACK_HOLE_CENTERS)
+    return rack_position.unsqueeze(-2) - rack_position.new_tensor(RACK_HOLE_CENTERS)
 
 
 def quat_conjugate_xyzw(quat: torch.Tensor) -> torch.Tensor:
@@ -46,14 +32,14 @@ def rack_local_position(point_w: torch.Tensor, rack_pos_w: torch.Tensor, rack_qu
 
 def inside_bounds(point: torch.Tensor, lower: tuple[float, ...], upper: tuple[float, ...]) -> torch.Tensor:
     """Return a mask for points inside inclusive axis-aligned bounds."""
-    lo = constant_like(point, lower)
-    hi = constant_like(point, upper)
+    lo = point.new_tensor(lower)
+    hi = point.new_tensor(upper)
     return ((point >= lo) & (point <= hi)).all(dim=-1)
 
 
 def vertical_alignment(quat_w: torch.Tensor) -> torch.Tensor:
     """Return cap-up vial alignment in [0, 1]."""
-    axis = constant_like(quat_w, (0.0, 0.0, 1.0)).expand(quat_w.shape[0], -1)
+    axis = quat_w.new_tensor((0.0, 0.0, 1.0)).expand(quat_w.shape[0], -1)
     return quat_rotate_xyzw(quat_w, axis)[..., 2].clamp(0.0, 1.0)
 
 
@@ -106,15 +92,13 @@ def tabletop_vial_overlaps_rack(
     This is a tabletop reset check, not an insertion/collision predicate.
     """
     position = rack_local_position(vial_pose[:, :3], rack_pose[:, :3], rack_pose[:, 3:])
-    world_axis = quat_rotate_xyzw(
-        vial_pose[:, 3:], constant_like(vial_pose, (0.0, 0.0, 1.0)).expand(len(vial_pose), -1)
-    )
+    world_axis = quat_rotate_xyzw(vial_pose[:, 3:], vial_pose.new_tensor((0.0, 0.0, 1.0)).expand(len(vial_pose), -1))
     axis = quat_rotate_xyzw(quat_conjugate_xyzw(rack_pose[:, 3:]), world_axis)
     length = axis[:, :2].norm(dim=-1).clamp_min(1e-8)
     along = axis[:, :2] / length[:, None]
     across = torch.stack((-along[:, 1], along[:, 0]), dim=-1)
-    deck_center = constant_like(position, (0.0301682871, 0.0301424648))
-    deck_half = constant_like(position, (0.06 + clearance, 0.06 + clearance))
+    deck_center = position.new_tensor((0.0301682871, 0.0301424648))
+    deck_half = position.new_tensor((0.06 + clearance, 0.06 + clearance))
     overlaps = torch.zeros(len(position), device=position.device, dtype=torch.bool)
     for lower, upper, radius in ((-0.01725, 0.086612839, 0.0147), (0.08676, 0.09953, 0.01795)):
         delta = position[:, :2] + axis[:, :2] * ((lower + upper) / 2) - deck_center

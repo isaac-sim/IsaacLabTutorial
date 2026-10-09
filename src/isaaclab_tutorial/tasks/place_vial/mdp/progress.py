@@ -3,7 +3,6 @@
 from collections.abc import Sequence
 
 import torch
-from isaaclab.utils import index_fill_
 
 
 class PlacementProgress:
@@ -34,14 +33,14 @@ class PlacementProgress:
     def reset(self, env_ids: Sequence[int] | slice | torch.Tensor | None = None) -> None:
         """Reset only the requested environments."""
         ids = slice(None) if env_ids is None else env_ids
-        index_fill_(self.grasped, ids, False)
-        index_fill_(self.lifted, ids, False)
-        index_fill_(self.inserted, ids, False)
-        index_fill_(self.success, ids, False)
-        index_fill_(self.unsafe_rack_contact, ids, False)
-        index_fill_(self.grasp_count, ids, 0)
-        index_fill_(self.stable_count, ids, 0)
-        index_fill_(self.time_to_success, ids, -1)
+        self.grasped[ids] = False
+        self.lifted[ids] = False
+        self.inserted[ids] = False
+        self.success[ids] = False
+        self.unsafe_rack_contact[ids] = False
+        self.grasp_count[ids] = 0
+        self.stable_count[ids] = 0
+        self.time_to_success[ids] = -1
 
     def update(
         self,
