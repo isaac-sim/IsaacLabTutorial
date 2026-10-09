@@ -4014,3 +4014,19 @@ access to power. Collect the user's observations and timing output before length
 Post-check read-only inference from the held physical home completed 600 steps in five seconds,
 with zero missed 120 Hz deadlines and inference p95 2.18 ms. Saved
 `supervised_trial/photo_check/read_only_at_home.log`. This still excludes motor writes.
+
+### First physical policy trials — grasp observed after repositioning
+
+The user ran the five-second policy command. It initially approached the vial but closed above it.
+Reported execute timing: 600 control steps, zero missed 120 Hz deadlines, control work p50/p95
+1.943/2.476 ms and inference p50/p95 0.543/0.886 ms. This is the first reported timing that includes
+real motor writes. No synchronized camera/joint trajectory was recorded, so the cause of the height
+miss remains unconfirmed; no joint offset, table height or policy change was made in response.
+
+After resetting to a better starting arrangement, the user reported a successful physical grasp.
+This supports investigating placement sensitivity but does not prove the earlier miss's cause.
+A grasp is not a complete placement, and there are too few counted trials to report a real success rate.
+The same policy remains selected. Next: a fresh 30-second rollout from the checked home pose and
+reference rack/vial arrangement, using the existing section 11.4 command. Remove any held object and
+clear the homing path before resetting. Observe the full attempt and stop after a successful placement
+because the real controller has no task-success detector. Normal exit/Ctrl+C disables torque.
