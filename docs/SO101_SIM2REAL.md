@@ -14,7 +14,7 @@ of this visual policy despite its result being below the original 90% acceptance
 
 The LEAPP bundle is exported, CPU parity checks pass, and a 20-second real-camera/read-only inference
 run completed without missed 120 Hz deadlines. The follower was recalibrated and its saved calibration
-matches the motors. **Physical joint-map verification and real policy trials remain pending.** Motor-driven homing now passes with bounded feedback trim and holds the pose; see the homing
+matches the motors. **The home-pose visual check has passed for a supervised trial; real policy trials remain pending.** Motor-driven homing now passes with bounded feedback trim and holds the pose; see the homing
 verification entry below.
 Training is stopped. No real placement success rate is claimed.
 
@@ -3648,7 +3648,8 @@ Local bundle: `outputs/consolidation_20261008/supervised_trial/`.
 - `model.pt`: final 500-update visual PPO checkpoint, sourced from
   `2026-10-08_16-40-56_consolidated_visual_ppo_4/model_496.pt`.
 - `leapp/leapp.yaml`, `leapp/visual_actor.pt`, `leapp/contract.json`: executable visual policy.
-- `joint_map.json`: recalibrated gripper scale, calibration-file fingerprint, **verified: false**.
+- `joint_map.json`: recalibrated gripper scale and calibration-file fingerprint; **verified for the
+  first supervised trial after the home-pose visual check**. Verification scope is recorded in the file.
 - `start_pose.json`: actual reset-dataset home row and 0.035 rad (approximately 2°) tolerance.
 - `manifest.json`, `cpu_runtime_parity.json`, `read_only_runtime.log`: provenance and validation.
 - `home_overview.png`, `home_top.png`, `home_wrist_camera.png`, `reference_scene.json`: simulated setup.
@@ -3795,8 +3796,9 @@ and the inspection readings so we can compare them; a new wrist-camera capture c
 without disturbing the mount. If the numbers match but the geometry does not, correct the map before
 motion. Do not merely change `verified` to bypass the check.
 
-The prepared map remains unverified until this comparison is completed. A changed calibration file
-also invalidates the map automatically. The gripper's newly measured span is 126.77°; the training
+This comparison has now been completed for the current physical setup and recorded in the map.
+A changed calibration file invalidates the map automatically. This is a single-pose visual check,
+not precision calibration or verification throughout the workspace. The gripper's newly measured span is 126.77°; the training
 model retained 127.38°. This 0.615° full-span difference is recorded rather than hidden.
 
 ### 11.3. Read-only inference
@@ -3986,3 +3988,29 @@ joint readback as `supervised_trial/hardware_at_home.json`.
 Next user step: leave the arm holding home and provide an external view including the complete arm,
 base, rack and vial. Compare it with the simulation overview before marking the map verified and
 running the prepared five-second policy trial. No policy rollout has occurred yet.
+
+### External home photo checked; supervised policy trial prepared — 2026-10-08
+
+Inspected `/home/mhaiderbhai/Downloads/Image from iOS.jpg`, copied locally to
+`supervised_trial/photo_check/physical_home.jpg`. Rendered a higher-angle simulated overview and a
+640×480 nominal wrist view to avoid judging small geometry from the earlier 64×48 preview. The broad
+linkage pose, jaw silhouette/opening, camera orientation and rack/vial arrangement are consistent
+for an initial supervised trial. Perspective and visual comparison do not establish precise dimensions,
+joint zeros or arbitrary-workspace accuracy. The vial is at a different sampled location from the
+single rendered reset row; the fixed-rack policy includes vial position variation.
+
+A fresh encoder read still passed the 0.035-radian home tolerance (largest error approximately 1.95°
+at the elbow). Verified that the current calibration file fingerprint matches the prepared map.
+Marked `supervised_trial/joint_map.json` verified for this **single-pose, supervised-trial scope**,
+recording supporting photo/report paths and the untested limits of that evidence. The previous
+unverified map is retained in `photo_check/joint_map_before_visual_check.json`. No precision or
+full-workspace calibration claim is made, and no policy motor commands have been sent by the agent.
+
+Next step is the existing five-second `uv run --script ...deploy.py --execute` command while the user
+observes the approach. This is a full-scale policy test, not an automatic homing procedure or a full
+placement acceptance run. On policy exit the arm releases torque; prepare the resting area and retain
+access to power. Collect the user's observations and timing output before lengthening the trial.
+
+Post-check read-only inference from the held physical home completed 600 steps in five seconds,
+with zero missed 120 Hz deadlines and inference p95 2.18 ms. Saved
+`supervised_trial/photo_check/read_only_at_home.log`. This still excludes motor writes.
