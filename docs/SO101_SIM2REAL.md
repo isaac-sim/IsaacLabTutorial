@@ -1,11 +1,33 @@
 # Wowrobo SO-101 sim-to-real working log
 
-> Historical local-branch record. The current consolidation status and commands are tracked in
-> [sim2real/CONSOLIDATION.md](sim2real/CONSOLIDATION.md) and the repository README.
+This is the continuing working guide originally started in `../mustafa_isaaclab2/SO101_SIM2REAL.md`.
+That file already points here; the complete setup and experiment history is retained below.
 
 Started: 2026-10-06. Update this file as we complete each step; proposed commands are not completed steps.
 
-Current status: teleoperation and focused camera capture work. The elbow, vial dimensions, calibrated gripper span,
+## Current status — 2026-10-08
+
+The branches have been consolidated on `feat/so101-consolidated-sim2real`. Fresh training produced a
+**91.02% state teacher** and an **85.84% vision policy**, each measured on 1,024 independent simulated
+home-start attempts. The user selected the fixed-rack setup first and requested a supervised real trial
+of this visual policy despite its result being below the original 90% acceptance threshold.
+
+The LEAPP bundle is exported, CPU parity checks pass, and a 20-second real-camera/read-only inference
+run completed without missed 120 Hz deadlines. The follower was recalibrated and its saved calibration
+matches the motors. **Physical joint-map verification and all real motion trials remain pending.**
+Training is stopped. No real placement success rate is claimed.
+
+Use [section 11: current supervised real trial](#11-current-supervised-real-trial--2026-10-08) for the
+current setup and direct `uv` commands. Training and hardware use separate uv-managed environments;
+the old shared-environment commands below record earlier configurations and are not current launch instructions.
+Detailed consolidation evidence is in [sim2real/CONSOLIDATION.md](sim2real/CONSOLIDATION.md).
+
+## Historical status before consolidation
+
+The following status, setup and experiment entries preserve the earlier session history. Their
+commands and results apply to the revisions and environments recorded at the time.
+
+Historical status: teleoperation and focused camera capture work. The elbow, vial dimensions, calibrated gripper span,
 control cadence, broad collision-filtered placement and camera-visible vial starts are implemented. The software
 suite has 80 passing tests, and a recurrent LEAPP smoke export passes numerical validation. Current best audited
 historical any-hole state-teacher placement is **93/128 broad home-start episodes (72.66%)** with self-collision enabled;
@@ -3610,3 +3632,197 @@ Started `feat/so101-consolidated-sim2real` from fetched multi-GPU commit `86167f
 The user selected the proven placement setup first, with broad workspace expansion later.
 Measured asset corrections are being combined with the multi-GPU camera fixes and fresh-training recipe.
 See [CONSOLIDATION.md](sim2real/CONSOLIDATION.md) for the decision table and running results.
+
+## 11. Current supervised real trial — 2026-10-08
+
+The user requested trying the current vision checkpoint despite its result being below the original
+90% simulation acceptance gate. This is an experimental supervised trial, not a qualified deployment.
+The checkpoint scored **879/1,024 (85.84%)** on a fresh clean simulated audit. One episode reached
+20.16 N rack contact. Pickup is the main observed failure stage. It has not run on the physical arm.
+
+### Prepared files and checks
+
+Local bundle: `outputs/consolidation_20261008/supervised_trial/`.
+
+- `model.pt`: final 500-update visual PPO checkpoint, sourced from
+  `2026-10-08_16-40-56_consolidated_visual_ppo_4/model_496.pt`.
+- `leapp/leapp.yaml`, `leapp/visual_actor.pt`, `leapp/contract.json`: executable visual policy.
+- `joint_map.json`: recalibrated gripper scale, calibration-file fingerprint, **verified: false**.
+- `start_pose.json`: actual reset-dataset home row and 0.035 rad (approximately 2°) tolerance.
+- `manifest.json`, `cpu_runtime_parity.json`, `read_only_runtime.log`: provenance and validation.
+- `home_overview.png`, `home_top.png`, `home_wrist_camera.png`, `reference_scene.json`: simulated setup.
+
+Training-runtime export parity: maximum absolute error **0** on eight input pairs. Separate Torch
+2.10 CPU deployment runtime versus Torch 2.13 training outputs: **5.37e-7**, within 1e-6 tolerance.
+LEAPP auto-selected CUDA on the first export validation attempt; exporting with `CUDA_VISIBLE_DEVICES=''`
+resolved the CPU/CUDA mismatch. That failed export is retained separately for diagnosis.
+
+The physical camera/joint read-only inference test ran 20 seconds, 2,400 feedback steps, with **zero
+missed 120 Hz deadlines**. Control work p95 was 3.62 ms and inference p95 was 2.27 ms. This excludes
+motor-write latency and motion tracking; it is not a closed-loop hardware qualification. Read-only
+mode can observe stale motor goal registers after calibration, so its predicted actions do not
+validate task behavior from that resting pose.
+
+### Terminal and uv environment
+
+Run the following commands from the tutorial repository. `uv run --script` uses each hardware
+script's inline dependency pins (LeRobot 0.6.1 and CPU Torch 2.10), without modifying the Isaac Lab
+training environment. Do not add `--extra sim2real` to these hardware commands: that project extra
+now installs simulation-side LEAPP only, not LeRobot. No manual virtual-environment activation is needed.
+
+```bash
+cd /home/mhaiderbhai/code/IsaacLabTutorial
+```
+
+Your account already belongs to `dialout`. If this terminal's `id -nG` output does not include it,
+run `newgrp dialout` once, then continue in that shell. This replaces the `sg dialout -c` wrappers used
+by the assistant's older shell; no repeat `usermod` or permission change is needed.
+
+Set the confirmed device paths and prepared bundle:
+
+```bash
+export SO101_FOLLOWER_PORT='/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE6079843-if00'
+export SO101_CAMERA='/dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB2.0_CAM1_USB2.0_CAM1-video-index0'
+export SO101_TRIAL_DIR="$PWD/outputs/consolidation_20261008/supervised_trial"
+```
+
+The follower currently resolves to `/dev/ttyACM1`; the leader resolves to `/dev/ttyACM0`.
+Use the stable paths above rather than the earlier session's reversed ACM assignments.
+
+### 11.1. Match the physical setup
+
+Use the correctly powered follower, the unchanged focused wrist camera, an empty yellow rack and one
+matching vial. Secure the arm base. Close teleoperation and other camera/serial applications. Keep the
+leader out of the follower's working area. The first target is the fixed-rack training setup; arbitrary
+rack positions and rotations were not trained in this campaign.
+
+Open the rendered references from the repo root:
+
+```bash
+xdg-open outputs/consolidation_20261008/supervised_trial/home_overview.png
+xdg-open outputs/consolidation_20261008/supervised_trial/home_top.png
+```
+
+Match the rack orientation and lying vial shown there. For interpreting the simulation layout,
+world +X runs toward the objects and +Y is the lateral direction toward the rack. Relative to the
+robot's CAD root at (-0.05, 0, 0), the four opening centers in the table plane are
+(23, 8), (29, 8), (29, 14), (23, 14) cm. The rack center is therefore (26, 11) cm, **not** (23, 8).
+These are CAD-frame measurements, not distances from the edge of the physical mounting bracket;
+confirm the base-frame alignment with the reference images before using them as physical offsets.
+The exact reference vial pose is in `reference_scene.json`. Place it in the same orientation and
+region first; expand placement only after a successful repeatable baseline.
+
+The 64×48 nominal wrist reference can be opened with:
+
+```bash
+xdg-open outputs/consolidation_20261008/supervised_trial/home_wrist_camera.png
+```
+
+It shows the rack toward the upper left and the jaws at the bottom. The reference vial is not fully
+visible at this starting pose; this is the trained home distribution, not a claim of guaranteed
+initial vial visibility. Do not rotate/remount the camera to center the rack or change home pose
+without checking the resulting training/deployment mismatch.
+
+### 11.2. Manually match and verify home
+
+With the arm supported and freely movable after calibration, run:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/inspect_so101.py \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --watch
+```
+
+This only reads encoders. It does **not** release an already powered/holding arm; do not force joints
+against active motors. It prints measured simulation degrees, signed home errors and whether all
+errors are within 2°. Move the joints gently, supporting the arm, to match both the numerical target
+and rendered physical pose. Press Ctrl+C to stop inspection.
+
+| Joint | Target simulation degrees | LeRobot native target |
+| --- | ---: | ---: |
+| Shoulder pan | -7.00 | -7.00° |
+| Shoulder lift | -51.88 | -51.88° |
+| Elbow | 17.88 | 17.88° |
+| Wrist flex | 84.87 | 84.87° |
+| Wrist roll | -46.09 | -46.09° |
+| Gripper | 14.64 | approximately 21.41% |
+
+Numerical agreement alone does not verify the map. Confirm that the actual linkage shape and camera
+orientation match the simulated references. In particular the elbow frame correction and gripper's
+provisional -12.50575° zero still need physical confirmation. Share a photo of the arm at this pose
+and the inspection readings so we can compare them; a new wrist-camera capture can then be taken
+without disturbing the mount. If the numbers match but the geometry does not, correct the map before
+motion. Do not merely change `verified` to bypass the check.
+
+The prepared map remains unverified until this comparison is completed. A changed calibration file
+also invalidates the map automatically. The gripper's newly measured span is 126.77°; the training
+model retained 127.38°. This 0.615° full-span difference is recorded rather than hidden.
+
+### 11.3. Read-only inference
+
+After arranging the scene, this command can be run without enabling motor writes:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/deploy.py \
+  --bundle "$SO101_TRIAL_DIR/leapp/leapp.yaml" \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --camera "$SO101_CAMERA" \
+  --duration 20
+```
+
+It uses the real wrist camera, two-frame raw RGB history, joint feedback, and exported policy, then
+prints timing statistics. There are no motor configuration, torque or target writes in this mode.
+
+### 11.4. First motion, after physical mapping verification
+
+Once the map is physically checked and marked verified, start with a five-second supervised trial:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/deploy.py \
+  --bundle "$SO101_TRIAL_DIR/leapp/leapp.yaml" \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --camera "$SO101_CAMERA" \
+  --duration 5 --execute
+```
+
+The deployment command checks calibration identity, common joint limits and the home pose before enabling motion.
+It initializes motor goals to the measured pose before configuring/enabling the motors. There is no
+automatic homing move. The controller uses the trained 30 Hz policy and 120 Hz measured-relative
+targets; this is **full trained action scale**, not a slow-motion mode. A five-second trial is too short
+to expect task completion (simulated successes average about 14.7 seconds).
+
+Stay at the power switch with the arm's path clear. Ctrl+C stops the loop; software cannot guarantee
+an instantaneous physical stop, so use the power switch if motion is wrong. On normal completion,
+Ctrl+C or a caught exception, cleanup disables torque and the arm may drop. Arrange a clear padded
+resting area and support it once motion has stopped, keeping fingers out of joints and jaws.
+
+Review approach direction, collisions, gripper alignment and timing before continuing. To attempt a
+complete placement, manually reset the arm and objects to the verified starting arrangement, then:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/deploy.py \
+  --bundle "$SO101_TRIAL_DIR/leapp/leapp.yaml" \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --camera "$SO101_CAMERA" \
+  --duration 30 --execute
+```
+
+The real controller has no task-success detector and will continue until its time limit or interruption;
+stop it after a successful placement. Recheck reported deadlines after the first motion trial because
+read-only timings exclude goal writes. Record each attempt's outcome, failure stage and video when
+available in this guide. No real success rate is claimed until those trials have been performed.
+
+### Reproducing the export
+
+The artifact directory is local and ignored by Git; the Python deployment scripts and this guide are tracked.
+For a new export, choose an empty output directory and run:
+
+```bash
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m isaaclab_tutorial.utils.export_leapp \
+  --model logs/rsl_rl/so101_vial_camera/2026-10-08_16-40-56_consolidated_visual_ppo_4/exported/policy.pt \
+  --output /absolute/path/to/new/leapp
+```

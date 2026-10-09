@@ -1,5 +1,8 @@
 # SO-101 vial placement
 
+For physical setup and current sim-to-real commands, continue the
+[SO-101 working guide](docs/SO101_SIM2REAL.md#11-current-supervised-real-trial--2026-10-08).
+
 Local and multi-GPU work is being reconciled on this branch; see the
 [consolidation decisions and fresh-training status](docs/sim2real/CONSOLIDATION.md).
 The historical scores below do not qualify the newly corrected physical model.

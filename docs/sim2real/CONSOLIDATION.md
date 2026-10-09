@@ -230,7 +230,7 @@ failures rather than describe this checkpoint as ready for real deployment.
 
 The user chose to try the current visual checkpoint before it reaches the original acceptance gate.
 Prepared a separate `supervised_trial/` bundle, explicitly marked experimental, without relabeling
-the failed qualification. Instructions are in [FIRST_REAL_TRIAL.md](FIRST_REAL_TRIAL.md).
+the failed qualification. Instructions are in [the SO-101 working guide, section 11](../SO101_SIM2REAL.md#11-current-supervised-real-trial--2026-10-08).
 
 Export parity passed with zero error on eight inputs. LEAPP's initial CUDA/CPU validation mismatch
 was resolved by hiding CUDA during CPU export. Independent Torch 2.10 CPU runtime parity versus the
@@ -244,3 +244,14 @@ radians. Rejected startup checks do not change torque. Updated isolated deployme
 tests. Reference renders and measured startup errors were saved beside the bundle; the current
 resting arm is not at home. Physical joint-zero/gripper alignment and camera-view comparison remain
 required before setting the map verified. No motor motion or torque changes were performed.
+
+### Guide layout restored
+
+The user requested continuing the existing guide and using direct uv commands. Checked both sibling
+repositories: `../mustafa_isaaclab2/SO101_SIM2REAL.md` is already a redirect to this repository's
+`docs/SO101_SIM2REAL.md`; no second guide was found in `mustafa_isaaclab3`. Integrated the complete
+trial procedure into section 11 of that existing working log and refreshed its current-status summary.
+The standalone trial document is now only a redirect. Removed the newly introduced shell launcher;
+current instructions use `uv run --script` directly, with `newgrp dialout` only if the user's terminal
+has not picked up its existing group membership. Preserved historical commands as dated records and
+explicitly distinguished the current isolated hardware environment from the old shared environment.

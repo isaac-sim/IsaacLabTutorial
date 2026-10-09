@@ -1,7 +1,7 @@
 # LEAPP and LeRobot deployment
 
 For the current local experimental checkpoint and physical setup steps, use
-[FIRST_REAL_TRIAL.md](FIRST_REAL_TRIAL.md). Its 85.84% simulated success is distinct from the
+[the SO-101 working guide, section 11](../SO101_SIM2REAL.md#11-current-supervised-real-trial--2026-10-08). Its 85.84% simulated success is distinct from the
 historical multi-GPU results below.
 
 > This report describes the multi-GPU source branch. The measured-model consolidation and new
