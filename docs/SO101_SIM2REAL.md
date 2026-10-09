@@ -3749,8 +3749,10 @@ uv run --script src/isaaclab_tutorial/utils/home_so101.py \
 ```
 
 The command seeds goals from current encoders before enabling torque, then interpolates at up to
-**5°/s per joint**. It checks calibration identity, target limits, raw encoder travel, 100 ms feedback
-stalls and 10° tracking error. The final pose must remain within 2° for 0.5 seconds. A four-tick
+**5°/s per joint**. After reaching the nominal target, it allows one second to settle, then applies
+a feedback trim at up to 0.5°/s, capped at ±5° from nominal and clipped to common hardware/simulation
+travel. This corrects small static actuator offsets without changing servo gains or calibration.
+It checks calibration identity, target limits, raw encoder travel, 100 ms feedback stalls and 10° tracking error. The final pose must remain within 2° for 0.5 seconds. A four-tick
 (0.35°) encoder endpoint tolerance accommodates tiny deviations from recorded endpoints; destination
 limits are not widened. A closed gripper can start outside the simulation soft limits provided its
 encoder remains within calibrated travel plus that endpoint tolerance.
@@ -3940,3 +3942,29 @@ reported offending joint, retained hold and torque release on a true tracking fa
 Readback evidence: `outputs/consolidation_20261008/supervised_trial/homing_timeout_readback.json`.
 The next supervised retry uses the same explicit-path uv homing command; its automatic report will
 identify which joint needs investigation. No new motion was commanded by the agent during this fix.
+
+### Elbow steady-state homing error and bounded correction — 2026-10-08
+
+The next user-observed run completed the commanded trajectory but remained at an elbow error of
+**-2.30°** for approximately ten seconds. Other errors were pan -0.18°, lift +0.39°, wrist flex +0.12°,
+wrist roll -0.60° and gripper +0.33°. It correctly reported home unconfirmed and kept torque enabled.
+Archived the report at `outputs/consolidation_20261008/supervised_trial/homing_elbow_offset_before_trim.json`.
+
+Read-only register checks confirmed all motors still enabled, P=16, I=0, D=32 and clockwise/
+counterclockwise dead zones of one encoder tick. The elbow carried a nonzero load register reading.
+These observations are consistent with a load-dependent static position error, but do not prove its
+cause or verify the kinematic calibration. Post-timeout measurements were around 20.88° elbow after
+switching its hold goal to 20.18°; those values are not the original trajectory's terminal measurement.
+Raw registers are saved in `supervised_trial/homing_gains_readback.json`.
+
+Added homing-only feedback trim after a one-second settling period: integrate 0.5 times the measured
+angle error, limit adjustment to 0.5°/s, stop integrating within 0.5° error, and cap command offset at
+±5° within the original hardware/simulation limits. The target home, 2° acceptance threshold,
+10° tracking fault limit, gains and calibration remain unchanged. Success is based on measured
+position, not the offset command. Diagnostic reports now include the commanded angle and trim.
+Unresolved bounded settling timeouts still hold the measured pose without claiming success.
+
+Nine homing tests pass, including correction of a simulated 2.29° static actuator error, rate/offset/
+travel bounds, unresolved timeout hold and tracking-fault release. No corrective motor motion was
+executed by the agent. The user can rerun the same homing command while observing; physical success
+of this correction remains pending that retry.

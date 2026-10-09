@@ -39,6 +39,17 @@ def homing_step(command, measured, goal, step_rad, tracking_limit_rad):
     return command + fraction * delta
 
 
+def settling_target(command, measured, goal, limits, dt):
+    """Slow, bounded integral trim for static position error; no persistent servo changes."""
+    error = goal - measured
+    rate = math.radians(0.5)
+    increment = np.clip(0.5 * error * dt, -rate * dt, rate * dt)
+    increment[np.abs(error) <= math.radians(0.5)] = 0
+    lower = np.maximum(goal - math.radians(5), limits[:, 0])
+    upper = np.minimum(goal + math.radians(5), limits[:, 1])
+    return np.clip(command + increment, lower, upper)
+
+
 def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None):
     """Use calibrated travel for the path; the final goal must also satisfy simulation limits."""
     if goal.shape != (6,) or not np.isfinite(goal).all():
@@ -55,6 +66,9 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
     physical = np.asarray(physical)
     if ((goal < physical[:, 0]) | (goal > physical[:, 1])).any():
         raise ValueError("Home target is outside calibrated motor travel")
+    trim_limits = np.column_stack(
+        (np.maximum(physical[:, 0], mapping.limits[:, 0]), np.minimum(physical[:, 1], mapping.limits[:, 1]))
+    )
 
     def read():
         raw = robot.bus.sync_read("Present_Position", normalize=False)
@@ -95,6 +109,7 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
         began = previous
         next_report = began
         stable_since = None
+        settling_since = None
         while True:
             time.sleep(0.02)
             tick = time.monotonic()
@@ -102,15 +117,25 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
             now = time.monotonic()
             if now - previous > 0.1:
                 raise RuntimeError("Homing feedback exceeded 100 ms; stopping")
-            command = homing_step(
-                command, measured, goal, math.radians(speed_deg_s) * (now - previous), math.radians(10)
-            )
+            dt = now - previous
+            if settling_since is None:
+                command = homing_step(command, measured, goal, math.radians(speed_deg_s) * dt, math.radians(10))
+                if np.max(np.abs(goal - command)) < 1e-6:
+                    settling_since = now
+            else:
+                # Let the initial motion settle before compensating steady load-dependent error.
+                target = (
+                    command if now - settling_since < 1 else settling_target(command, measured, goal, trim_limits, dt)
+                )
+                command = homing_step(command, measured, target, math.radians(0.5) * dt, math.radians(10))
             native = (command - mapping.offset) / mapping.scale
             robot.bus.sync_write("Goal_Position", dict(zip(JOINTS, native.tolist(), strict=True)))
             previous = now
             errors = np.degrees(goal - measured)
             report["measured_deg"] = np.degrees(measured).tolist()
             report["error_deg"] = errors.tolist()
+            report["command_deg"] = np.degrees(command).tolist()
+            report["trim_deg"] = np.degrees(command - goal).tolist() if settling_since is not None else None
             if now >= next_report:
                 sample = {"elapsed_s": now - began, "error_deg": errors.tolist()}
                 report["samples"].append(sample)
@@ -120,7 +145,7 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
                     flush=True,
                 )
                 next_report = now + 1
-            if np.max(np.abs(goal - command)) < 1e-6 and np.max(np.abs(goal - measured)) <= 0.035:
+            if settling_since is not None and np.max(np.abs(goal - measured)) <= 0.035:
                 stable_since = tick if stable_since is None else stable_since
                 if tick - stable_since >= 0.5:
                     completed = True
@@ -132,7 +157,7 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
             if now >= deadline:
                 # Feedback is fresh and the tracking guard passed. Stop pursuing the goal and
                 # hold the measured position rather than dropping a nearly homed arm.
-                if np.max(np.abs(goal - command)) < 1e-6 and np.max(np.abs(goal - measured)) <= math.radians(10):
+                if settling_since is not None and np.max(np.abs(goal - measured)) <= math.radians(10):
                     native_hold = (measured - mapping.offset) / mapping.scale
                     robot.bus.sync_write("Goal_Position", dict(zip(JOINTS, native_hold.tolist(), strict=True)))
                     holding_after_timeout = True

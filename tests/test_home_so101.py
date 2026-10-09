@@ -1,6 +1,7 @@
 """Homing rate limits, preview behavior and torque ownership using a simulated bus."""
 
 import json
+import math
 from types import SimpleNamespace
 
 import numpy as np
@@ -89,27 +90,50 @@ def test_encoder_endpoint_tolerance_does_not_allow_large_range_errors(monkeypatc
     assert writes == []
 
 
-def test_settling_timeout_reports_joint_error_and_holds_measured_pose(monkeypatch, tmp_path):
+def test_static_offset_is_corrected_without_relaxing_home_tolerance(monkeypatch, tmp_path):
     robot, mapping, writes = setup_robot(monkeypatch)
     original_write = robot.bus.sync_write
-    commands = []
 
     def lagging_write(name, values, normalize=True):
-        commands.append(values.copy())
         if normalize:
             values = values.copy()
-            values["shoulder_lift"] -= 4.0  # 0.04 rad steady tracking offset, above 2° but below the fault limit.
+            values["shoulder_lift"] -= 4.0  # 0.04 rad static actuator error (2.29 degrees).
         original_write(name, values, normalize)
 
     robot.bus.sync_write = lagging_write
     report_path = tmp_path / "homing.json"
+    h.home(robot, mapping, np.full(6, 0.1), execute=True, report_path=report_path)
+    report = json.loads(report_path.read_text())
+    assert report["status"] == "home_reached_holding"
+    assert abs(report["error_deg"][1]) <= np.degrees(0.035)
+    assert 0 < report["trim_deg"][1] <= 5
+    assert writes.count(("disable",)) == 1
+
+
+def test_unresolved_settling_timeout_reports_error_and_holds(monkeypatch, tmp_path):
+    robot, mapping, writes = setup_robot(monkeypatch, follow=False)
+    report_path = tmp_path / "homing.json"
     with pytest.raises(RuntimeError, match="home is NOT confirmed"):
-        h.home(robot, mapping, np.full(6, 0.1), execute=True, report_path=report_path)
+        h.home(robot, mapping, np.full(6, 0.07), execute=True, report_path=report_path)
     report = json.loads(report_path.read_text())
     assert report["status"] == "not_home_holding_measured_pose"
-    assert report["error_deg"][1] == pytest.approx(np.degrees(0.04))
-    assert commands[-1]["shoulder_lift"] == pytest.approx(6.0)
-    assert writes.count(("disable",)) == 1  # Only initial configuration, no dropping the arm at timeout.
+    assert report["error_deg"][1] == pytest.approx(np.degrees(0.07))
+    assert writes.count(("disable",)) == 1
+
+
+def test_settling_trim_is_rate_limited_bounded_and_respects_travel():
+    goal = np.zeros(6)
+    command = goal.copy()
+    measured = np.full(6, -0.1)
+    limits = np.tile([-1.0, 1.0], (6, 1))
+    limits[0, 1] = 0.02
+    for _ in range(1000):
+        next_command = h.settling_target(command, measured, goal, limits, 0.02)
+        assert np.max(np.abs(next_command - command)) <= math.radians(0.5) * 0.02 + 1e-12
+        command = next_command
+    assert command[0] == pytest.approx(0.02)
+    np.testing.assert_allclose(command[1:], math.radians(5))
+    np.testing.assert_allclose(h.settling_target(command, goal, goal, limits, 0.02), command)
 
 
 def test_tracking_fault_report_does_not_claim_hold(monkeypatch, tmp_path):
