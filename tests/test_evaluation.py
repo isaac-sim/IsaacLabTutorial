@@ -25,6 +25,9 @@ class _FakeWrapper:
     def __init__(self):
         self.num_envs = 2
         self.unwrapped = self
+        self.cfg = SimpleNamespace(
+            scene=SimpleNamespace(robot=SimpleNamespace(init_state=SimpleNamespace(pos=(0, 0, 0))))
+        )
         self.termination_manager = _TerminationManager(
             {
                 "success": torch.tensor([True, False]),
@@ -34,6 +37,8 @@ class _FakeWrapper:
         )
         self._so101_terminal_progress = torch.tensor([[True, True, True, False], [True, False, False, True]])
         self._so101_terminal_max_rack_force = torch.tensor([2.0, 30.0])
+        self._so101_terminal_max_support_force = torch.tensor([3.0, 8.0])
+        self._so101_terminal_support_contact_time = torch.tensor([0.1, 2.0])
         self._so101_terminal_time_to_success_s = torch.tensor([8.5, 0.0])
         self.steps = iter((torch.tensor([True, False]), torch.tensor([True, False]), torch.tensor([True, True])))
 
@@ -58,6 +63,7 @@ def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch
     assert evaluation.EXACT_EVALUATION_ACTIVE is True
     wrapper = _FakeWrapper()
     wrapper.cfg = SimpleNamespace(
+        scene=wrapper.cfg.scene,
         episode_length_s=30.0,
         is_finite_horizon=False,
         observations=SimpleNamespace(
@@ -90,6 +96,9 @@ def test_episode_counter_counts_each_world_once_and_reports_outcomes(monkeypatch
     assert result["unsafe_rack_contact_rate"] == pytest.approx(0.5)
     assert result["mean_peak_rack_contact_force_n"] == pytest.approx(16.0)
     assert result["max_rack_contact_force_n"] == pytest.approx(30.0)
+    assert result["mean_peak_jaw_support_force_n"] == pytest.approx(5.5)
+    assert result["mean_jaw_support_contact_time_s"] == pytest.approx(1.05)
+    assert result["jaw_support_over_1s_rate"] == pytest.approx(0.5)
     assert result["mean_time_to_success_s"] == pytest.approx(8.5)
     saved = json.loads(output.read_text())
     assert saved["summary"] == result

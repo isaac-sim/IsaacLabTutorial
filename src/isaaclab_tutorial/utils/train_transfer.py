@@ -29,6 +29,12 @@ def main():
     parser.add_argument("--blocks", type=int, default=12)
     parser.add_argument("--iterations", type=int, default=200)
     parser.add_argument("--threshold", type=float, default=0.95)
+    parser.add_argument(
+        "--max-support-contact-rate",
+        type=float,
+        default=0.01,
+        help="Maximum fraction of audit episodes with over 1 s of jaw/support force above 1 N",
+    )
     parser.add_argument("--num-envs", type=int, default=2048)
     parser.add_argument("--steps-per-env", type=int, help="Training rollout length; agent default when omitted")
     parser.add_argument("--shoulder-scale", type=float, help="Explicit shoulder-lift scale for training and all audits")
@@ -44,6 +50,12 @@ def main():
         "--training-dataset", type=Path, help="Alternate reset curriculum; audits retain packaged home rows"
     )
     args = parser.parse_args()
+    if args.mixed_starts or args.uniform_starts:
+        parser.error(
+            "Corrected mounting geometry requires home-only starts until downstream reset poses are regenerated"
+        )
+    if not 0 <= args.max_support_contact_rate <= 1:
+        parser.error("Maximum support contact rate must be in [0, 1]")
     repo = Path(__file__).resolve().parents[3]
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -205,7 +217,9 @@ def main():
                 index = command.index(preset)
                 command[index:index] = ["--checkpoint", str(checkpoint)]
                 if block == 1:
-                    command.insert(command.index(preset), "--reset_optimizer")
+                    command.append(
+                        "agent.algorithm.class_name=isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start:FreshOptimizerPPO"
+                    )
             directory = run(f"block_{block:02}", command)
             models = list(directory.glob("logs/rsl_rl/*/*/model_*.pt"))
             if not models:
@@ -220,7 +234,9 @@ def main():
                 manifest.update(best_checkpoint=str(checkpoint), best_development_rate=best)
             manifest["latest_checkpoint"] = str(checkpoint)
             save()
-            if score < args.threshold:
+            if score < args.threshold or any(
+                s["jaw_support_over_1s_rate"] > args.max_support_contact_rate for s in summaries
+            ):
                 continue
             # Different seeds for every qualification attempt; confirmation seeds
             # are never reused to choose among training checkpoints.
@@ -235,7 +251,9 @@ def main():
                         args.kind == "vision" and index % 2 == 1,
                     )
                 )
-            if min(s["success_rate"] for s in qualifications) >= args.threshold:
+            if min(s["success_rate"] for s in qualifications) >= args.threshold and all(
+                s["jaw_support_over_1s_rate"] <= args.max_support_contact_rate for s in qualifications
+            ):
                 manifest.update(
                     status="qualified",
                     selected_checkpoint=str(checkpoint),

@@ -5,6 +5,32 @@ That file already points here; the complete setup and experiment history is reta
 
 Started: 2026-10-06. Update this file as we complete each step; proposed commands are not completed steps.
 
+## Isaac Lab release pin — 2026-10-12
+
+Switched from the simulation-fixes fork to official `release/3.0.0`, locked at
+`6ea915c1354c8ba1254d56ecae8e59ada6479ea6`. Removed redundant dependency overrides,
+manual solver-attribute registration and duplicate self-collision configuration.
+LEAPP is now 0.7.2. The release has no `--reset_optimizer`; the updated campaign uses
+RSL-RL's public weight-only loading interface for its first warm-start block.
+See [dependency migration notes](ISAACLAB_CHANGES.md) for retained task-specific corrections
+and compatibility details. Historical commands in this log retain their original context;
+use the current README/campaign rather than copying old fork-only flags.
+
+```bash
+uv sync --locked --extra sim2real --group dev
+```
+
+Validation: full suite 161 passed; the additional distillation initialization regression
+also passed. The randomized camera Transfer task completed two fresh PPO updates and one
+warm-start update with 16 environments on the GPU. Formatting, lint, spelling and lockfile
+checks passed. No hardware was moved and no new qualified policy was exported.
+
+## Current status and cleanup — 2026-10-12
+
+The latest bounded-controller campaign finished **unqualified**: 79.3% clean / 81.6% noisy placement. No new deployment bundle was exported. Earlier qualification claims below describe older controllers and do not clear the current configuration for hardware.
+
+Generated runs, checkpoints, hardware maps, raw measurements, videos, and temporary experiment scripts have been moved outside this checkout to `../IsaacLabTutorial-artifacts/cleanup-20261012/`. Historical `outputs/`, `logs/`, `results/`, and `videos/` paths below are relative to that archive. Restore the specific files needed before rerunning historical commands; the archive is local and is not included in Git. The curated transfer bundle under `deployments/` remains versioned for reproducible handoff. Compact joint-response data and the complete working log remain in the repository.
+
 ## Transfer training update — 2026-10-09
 
 The expanded Transfer vision policy has passed four independent 1,024-episode full-collider
@@ -16,8 +42,11 @@ placement variation. The original 30-second task and success criterion remain un
 A portable copy is checked in under [deployments/so101_transfer_20261009](../deployments/so101_transfer_20261009/README.md),
 including checksum and extraction commands for the robot computer.
 
-The selected artifacts are in `outputs/robustness_20261008_multigpu/selected_vision/`; use its
-`leapp/leapp.yaml` for the next supervised test with the existing checked hardware setup.
+Training-machine provenance is `outputs/robustness_20261008_multigpu/selected_vision/`.
+On this robot computer the verified bundle is extracted to
+`outputs/robot_transfer_20261009/so101_transfer_vision/leapp/leapp.yaml`.
+Use [section 12](#12-transferred-policy-local-checks-and-next-real-trial--2026-10-09)
+for the current local checks and supervised commands.
 The contract explicitly changes shoulder-lift scale from 0.033 to **0.040** and retains all
 other action scales. CPU deployment parity passed on Torch 2.10.0 with zero maximum error.
 Eleven of 4,096 simulated episodes exceeded 20 N rack contact (peak 36.71 N). No physical
@@ -4390,3 +4419,949 @@ pre-experiment sim2real implementation from `0b92c83`, including IsaacLab pin
 remain as previously configured. The optimization's measured benefit did not justify keeping
 it for this workflow. Training checkpoints and experiment reports remain local; no training
 process was running when the rollback began. Upstream draft PR #8417 was closed.
+
+## 12. Transferred policy: local checks and next real trial — 2026-10-09
+
+Checked branch commit `bea600d`. The deployment archive checksum passed and it was extracted
+under `outputs/robot_transfer_20261009/`. The actor SHA-256 matches the LEAPP YAML, and archived
+`deploy.py` is byte-identical to the repository script. Joint order, radians, RGB/255, two-frame
+history, 30 Hz inference, 120 Hz feedback and the new 0.040 shoulder-lift scale agree with the
+runtime contract. The other arm scales remain 0.033; gripper scale remains 0.020.
+
+The user confirmed calibration and camera mount are unchanged and connected the follower.
+Stable follower USB ID `5AE6079843` now resolves to `/dev/ttyACM0`; leader `5AB0179854` resolves
+to `/dev/ttyACM1`. Use by-id paths, not the older ACM numbering.
+
+Completed locally, with no motor writes:
+
+- Existing follower calibration matches its motors and the saved map's SHA-256; the deployment
+  script's common simulation/hardware range checks passed.
+- Ten-second sensor-only run: 1,200 control steps, zero missed 120 Hz deadlines, control work
+  p50/p95 1.49/3.90 ms, inference p50/p95 2.08/2.61 ms. These timings do not measure exposure-to-action latency.
+- Torch 2.10.0+cpu / LEAPP: 32 varied inputs matched the bundled JIT exactly. This verifies the
+  local bundle runtime; comparison with the original training actor remains the archived parity evidence.
+- Captured and inspected `outputs/robot_transfer_20261009/wrist_camera_preflight.png` at 640×480.
+  Mat texture and gripper are visible; rack/vial framing has not been verified at home.
+- Motor-home preview measured elbow 71.34° versus home 17.88°; minimum interpolated move is
+  10.7 seconds. **Home has not been executed or confirmed for this session.**
+
+Evidence: `read_only_check.log`, `local_preflight.json`, `home_preview.log`, and the camera PNG
+under `outputs/robot_transfer_20261009/`. No physical policy trial was performed during these checks.
+
+### 12.1. Prepare and home
+
+Run from a Bash terminal on the robot computer:
+
+```bash
+cd /home/mhaiderbhai/code/IsaacLabTutorial
+SO101_TRIAL_DIR=outputs/consolidation_20261008/supervised_trial
+SO101_BUNDLE=outputs/robot_transfer_20261009/so101_transfer_vision/leapp/leapp.yaml
+SO101_FOLLOWER_PORT=/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE6079843-if00
+SO101_CAMERA=/dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB2.0_CAM1_USB2.0_CAM1-video-index0
+
+uv run --script src/isaaclab_tutorial/utils/home_so101.py \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --execute
+```
+
+Clear rack/vial from the swept path before homing. Wait for **Home reached**; motors then remain
+on holding home. Restore the scene to the existing reference layout before starting inference:
+`home_top.png`, `home_overview.png`, and `reference_scene.json` in `$SO101_TRIAL_DIR`.
+Keep the mat and unchanged camera mount. The current policy covers local placement variations:
+rack ±5 mm XY / ±5° yaw, vial dataset starts with ±20 mm XY jitter / extra ±15° heading. These
+are not guarantees of success anywhere in the robot workspace. Start near the reference layout.
+
+### 12.2. Short supervised check, then full attempt
+
+First check approach/control for five seconds:
+
+```bash
+uv run --script src/isaaclab_tutorial/utils/deploy.py \
+  --bundle "$SO101_BUNDLE" \
+  --joint-map "$SO101_TRIAL_DIR/joint_map.json" \
+  --start-pose "$SO101_TRIAL_DIR/start_pose.json" \
+  --port "$SO101_FOLLOWER_PORT" --camera "$SO101_CAMERA" \
+  --duration 5 --execute
+```
+
+Five seconds is an approach check, not the full task horizon. The new shoulder scale is loaded
+from the bundle; do not edit the joint-map calibration to implement that change. Stop if the
+arm makes unexpected motion or pushes hard on the rack. At command exit or Ctrl+C, deployment
+disables torque: support the arm as it stops. Homing and deployment have different exit behavior.
+
+If approach looks correct, clear the workspace, home again, restore rack/vial, and run the same
+command with `--duration 30 --execute`. Qualification used 30-second attempts; successful
+simulated attempts averaged about 14.4 seconds. Do not resume a new process halfway through an
+attempt: each process resets policy image/action history and requires the checked start pose.
+
+Record every attempt (including misses): initial vial/rack placement, grasp, lift, insertion,
+stable release, any rack impact and the command's timing output. Begin with five repetitions
+near the reference layout before testing placement offsets one axis at a time. Do not claim
+physical success from the simulator's 96.39% result; real-robot success for this bundle is unmeasured.
+
+### First transferred-policy grasp difficulty: camera inspection
+
+The user reports that the robot reaches the vial but does not close and lift.
+Captured a fresh 640×480 wrist image without accessing or commanding the motors:
+`outputs/robot_transfer_20261009/grasp_stall_144839.png`.
+The blue cap occupies much of the lower-middle image; part of the clear vial and
+orange gripper are visible at the bottom, with the yellow rack at the left edge.
+The full finger contact surfaces and lower vial are outside the frame, so this
+image cannot establish grasp height, jaw clearance, or actual contact. It does
+not by itself distinguish a policy that fails to command closure from a gripper
+that cannot follow that command. No deployment process was running at capture;
+this is a post-run view, not a synchronized frame from the active rollout.
+
+Requested whether this was the five-second approach check or a full 30-second
+attempt, and whether the pose persisted while inference was running. A five-second
+cutoff must not be classified as a full-task failure. If a full attempt stalls,
+next diagnosis should capture commanded versus measured gripper/joint positions
+and synchronized wrist frames during a supervised rollout before changing the
+joint map, gripper limits, or training randomization. Existing deployment timing
+summaries alone do not contain that evidence.
+
+The user confirmed this was a full 30-second attempt that stalled at the vial,
+and authorized the assistant to run motion commands. Added optional `deploy.py
+--trace <new-file.npz>` diagnostics: 120 Hz measured positions, requested/sent
+targets and clipped actions, plus timestamped 30 Hz policy-resolution RGB inputs.
+Data is buffered in memory and saved after disconnect, including on interruption.
+No additional serial reads are introduced in the executing control loop. Read-only
+trace targets are hypothetical, not motor commands; executing targets are those
+returned by LeRobot send_action, not independently read-back motor goal registers.
+
+Verified logging in a three-second read-only run at the post-stall pose:
+`outputs/robot_transfer_20261009/stall_read_only.npz` contains 360 joint samples
+and 90 images. One 120 Hz deadline was missed; p95 control work was 3.76 ms and
+p95 inference 2.62 ms. The measured gripper stayed at 5.87 simulation degrees,
+with average normalized gripper action -0.531 (range -0.763 to -0.300), requesting
+about -0.609 degrees relative closure. These are fresh-history, stationary inputs,
+not a reconstruction of the failed rollout. They do not establish a motor fault
+or justify changing gains/calibration. Asked the user to free the vial and clear
+the return path before motorized homing; no movement performed yet.
+
+After the user confirmed clearance, motorized homing succeeded, holding all joints
+within 1 degree of home (`outputs/robot_transfer_20261009/diagnostic_home.json`).
+After the user replaced the objects and confirmed readiness, ran the unchanged
+policy for 30 seconds with `--execute --trace
+outputs/robot_transfer_20261009/grasp_trial_01.npz`. Completed 3,600 feedback steps,
+zero missed deadlines; p95 control work 2.48 ms, p95 inference 0.94 ms. Deployment
+exited normally and disabled torque. A frame montage is saved as
+`outputs/robot_transfer_20261009/grasp_trial_01_frames.png`.
+
+The wrist sequence shows approach followed by persistent close-up of the vial.
+During 20–30 seconds, mean clipped actions were approximately [0.205, -0.535,
+-0.283, -0.006, -0.046, +0.114] in contract joint order. Gripper action spanned
+-1 to +1; measured gripper moved from 8.24 to 7.27 simulation degrees over that
+interval. Shoulder lift stayed around +20 to +23 degrees after approach despite
+sustained negative mean action. This is not simply a policy that never commands
+closure, nor a missed-deadline failure. Contact constraints, load/deadband under
+measured-relative control, and policy oscillation remain possible explanations.
+Need external observation of jaw contact/lift and motor-response diagnostics
+before changing gains, offsets or training. No such parameters changed in this test.
+
+### Mat-contact investigation and staged approach — 2026-10-09
+
+The user observed loose jaws, no lift, and jaws touching/pushing on the mat. Treat
+this as a clearance/contact failure, not evidence to increase grip force.
+Post-run read-only servo settings are in `servo_settings_after_trial.json` under
+`outputs/robot_transfer_20261009`: P/I/D = 16/0/32, both dead zones = 1 tick,
+gripper torque limit = 500, status registers = 0, torque disabled on all motors.
+These are post-run values and do not exclude transient load during contact.
+
+Replayed measured joint positions from `grasp_trial_01.npz` through the current
+Newton SO101 generator model with zero velocities and forward kinematics only
+(no dynamic simulation step, no hardware writes). Script, log and report:
+`check_clearance.py`, `clearance_replay.log`, `clearance_replay.json` in the same
+output directory. Joint order matched the trace. Also transformed enabled jaw
+collision-mesh vertices into the measured body poses to inspect lowest Z; fixed
+link includes camera geometry. This is a model-based replay, not physical metrology.
+
+At t=1 s, lowest fixed/moving collision vertices are at 138.9/152.8 mm world Z.
+At t=2 s they are at 29.8/35.8 mm; at t=5 s, 22.8/24.6 mm. Desk top is 35 mm,
+with training support top at 35–39 mm. Thus measured post-contact poses imply
+model penetration, roughly 9–16 mm below the assumed mat surface in the stalled
+portion. This could reflect joint/geometry/base-to-table alignment errors or
+load-dependent physical deflection; it is not proof that training allowed the
+same penetration. The existing 0–4 mm support-height randomization already covers
+the user's estimated 2–3 mm mat. Do not add an arbitrary joint offset to conceal
+this discrepancy or claim the root cause is fixed.
+
+User cleared the return path and supervised homing; `clearance_home.json` confirms
+home reached (all joint errors below 1 degree), motors holding. Prepared a one-second
+approach test that holds instead of falling when the duration expires. New optional
+`deploy.py --hold-at-end` requires `--execute`; only normal completion holds freshly
+read raw motor positions. Error/Ctrl+C still releases torque. Read/write failure
+while establishing the hold also requests torque off. Existing default exit behavior
+is unchanged. Ten deployment tests passed, including hold/release failure paths;
+Ruff checks passed. User readiness for object replacement/one-second test requested.
+
+User authorized the staged test ("run it"). Ran the same deployment bundle from
+checked home with `--duration 1 --hold-at-end --trace
+outputs/robot_transfer_20261009/clearance_stage_01.npz`. Completed 120 feedback
+steps with zero missed deadlines (p95 control work 2.48 ms, inference 0.87 ms).
+Normal stop established a measured-position hold, motors remain ON and serial
+port is released. Last trace pose in simulation degrees:
+[4.088, -24.659, 19.648, 72.703, -48.484, 19.406]. This is the last pre-command
+sample, not an independent measurement of the settled holding pose.
+
+Captured `outputs/robot_transfer_20261009/clearance_stage_01.png` afterward:
+vial fully visible on the mat, rack at left, open jaws in foreground. Wrist view
+alone cannot measure vertical jaw clearance. Need a side-on photo/physical
+clearance measurement at this held pose before advancing the approach. No grasp
+or clearance correction has yet been validated.
+
+User supplied side photograph `/home/mhaiderbhai/Downloads/IMG_5973.jpg` at the
+held one-second stop. Photo clearly shows free-space jaws; apparent tip heights
+are roughly 11–12 cm (lower tip) and 13 cm (higher tip) on the tape. Tape zero is
+occluded and tips are offset from the tape, so these are provisional perspective
+readings, not measured calibration offsets. Requested a direct lower-tip height
+reading with tape zero resting on the mat; no further motion commanded.
+
+Read current held encoders without torque/configuration changes:
+[5.23, -22.73, 20.35, 72.18, -48.48, 20.02] simulation degrees, saved in
+`outputs/robot_transfer_20261009/clearance_stage_01_held.txt`. Used this settled
+pose rather than the earlier rollout's one-second sample or the last pre-command
+trace row. Kinematic mesh replay (`check_stage_clearance.py`,
+`clearance_stage_01_model.json` in the same directory) gives lowest fixed/moving
+jaw collision Z = 136.74/151.66 mm world coordinates. With tabletop Z=35 mm and
+mat thickness 2–3 mm, predicted clearances are 98.7–99.7 / 113.7–114.7 mm.
+Photo therefore suggests the physical jaws may be higher than the model by
+roughly 1–2 cm, consistent in sign with post-stall replay penetration, but this
+remains unconfirmed pending direct measurement. Do not apply that as a correction.
+
+User directly estimated the lower tip at 11 cm above the mat at stage 1. Compared
+with the settled-pose model estimate 98.7–99.7 mm, this suggests approximately
++10–11 mm real-minus-model height error at this pose, subject to ruler/pose error.
+User then confirmed the tape/return path clear. Homed successfully using the
+original reference (`clearance_home_02.json`); motors held at home.
+
+Prepared stage 2 as a fixed diagnostic target from the prior rollout's t=1.35 s
+measured joint pose, saved separately as `clearance_stage_02_pose.json`. This is
+NOT the training home/start-pose reference. Model replay predicts lowest jaw
+vertices at Z=102.05/115.02 mm, approximately 64–65 / 77–78 mm above a 2–3 mm mat.
+Started the existing homing controller toward this diagnostic target at 3 deg/s,
+with the report at `clearance_stage_02_move.json`. Its console labels any supplied
+target as "Home"; in this invocation that means the diagnostic pose, not actual
+policy home. No policy execution, calibration, gains or offsets changed.
+
+Stage 2 completed normally, holding torque ON. Settled measured angles from the
+move report are [1.9780, -7.5165, 20.0879, 65.4945, -48.5714, 21.6041] degrees.
+Recomputed geometry at these measured angles (not the desired target): lowest
+fixed/moving jaw Z = 94.72/106.08 mm, giving 56.7–57.7 / 68.1–69.1 mm clearance
+above a 2–3 mm mat. Saved `clearance_stage_02_settled_model.json` and its replay
+script/log. Requested direct lowest-tip height while holding. The ~1.85-degree
+residual elbow error materially changes the predicted height; always use measured
+pose for comparison. This remains a diagnostic pose; rehome before any policy run.
+
+User measured stage-2 lowest jaw height at approximately 67 mm above the mat.
+Model at settled encoders predicts 56.7–57.7 mm: real-minus-model = +9.3–10.3 mm.
+Stage 1 was approximately 110 mm versus 98.7–99.7 mm: +10.3–11.3 mm.
+The two approximate ruler measurements agree on a roughly +10 mm height difference
+across these poses. This supports investigating a vertical base/table reference
+mismatch; it does not uniquely distinguish mounting height, joint-zero error, mesh
+geometry or load-dependent deflection. No calibration or scene correction applied.
+Important sign: model puts jaws LOWER than physical measurements at the same
+encoders. Lowering the real arm by 10 mm would worsen the observed mat collision.
+Arm remains holding at stage 2, torque ON; policy is not running.
+
+Mount photo `/home/mhaiderbhai/Downloads/IMG_5974.jpg` shows the follower's printed
+foot on bare wood, with the mat under the objects; no spacer is visible. Inspected
+the cached source USD (`so101_new_calib_SysID/so101_new_calib.usda`) using USD
+transforms and actual base mesh vertices. The `base_so101_v2` mesh minimum Z is
+30.08145 mm in authored world/root placement. Tutorial robot root Z is 0 and desk
+top Z is 35 mm, giving a nominal 4.91855 mm base-mesh/table overlap. This is a
+concrete scene-alignment discrepancy if that lowest face is the physical seating
+face; confirm seating geometry before applying it as a root correction. It could
+account for about half of the observed +10 mm fingertip height difference, not
+all of it. Physical print geometry, remaining joint offsets, and ruler uncertainty
+remain unresolved. No motor motion, gains, calibration or training scene changes
+made during this photo inspection. Existing policy was trained with current root
+placement; changing training root height requires reset-dataset and policy
+revalidation, not silently modifying the deployed joint map.
+
+### Corrected-mount Transfer training campaign — 2026-10-09
+
+User confirmed the robot is always seated directly on the tabletop and requested
+fixing the simulation and training a better policy. Transfer state/vision scenes
+now put the authored base seating face on the 35 mm tabletop: root Z is
++0.004918552224591553 m. This corrects the measured mesh/table overlap, not the
+entire approximate +10 mm ruler discrepancy. The remaining ~5 mm is unresolved;
+no physical joint-map offsets, motor gains or action scales have been changed.
+Historical non-Transfer scenes remain available for reproducing old experiments;
+this campaign uses the corrected Transfer scenes exclusively.
+
+Added two filtered jaw/support sensors (Desk + Support, excluding vial/rack) and
+`jaw_support_force_cost`: zero up to 1 N, linearly increasing to one at 6 N, reward
+weight -2.0. This is an engineering starting weight, not an experimentally tuned
+optimum. Episode statistics now retain peak support force and cumulative time
+above 1 N. Independent evaluation reports these per episode and as summary metrics.
+Training qualification now requires placement success >=95% AND no more than 1%
+of audit episodes spending over one second pressing the support above 1 N.
+The 30-second task horizon and any-hole success criterion remain unchanged.
+
+Use home-only starts: old downstream grasp/insertion reset rows were validated
+before the root correction and are not qualified for the changed geometry.
+`train_transfer` rejects mixed/uniform starts until those rows are regenerated.
+Mat-height, visual, camera, motor and placement randomization remain enabled, and
+this campaign uses full robot colliders and the deployment shoulder scale 0.040.
+
+Recovered the deployed JIT's exact actor weights into a PPO checkpoint using
+`outputs/mat_clearance_20261009/recover_actor.py`. All actor keys and shapes were
+checked against the local compatible visual architecture; reconstructed torch
+network matched the JIT exactly on 32 independent inputs (max error 0).
+Critic comes from local `appearance_robustness_1/model_695.pt`, so this is a new
+fine-tune, not continuation of the remote optimizer/critic. Optimizer starts fresh,
+exploration std=0.1. Source hashes and key mapping are in `recovery.json`;
+checkpoint is `initial_ppo.pt` in that output directory. Original deployment bundle
+is untouched. Baseline evaluation of recovered actor on corrected scene is running
+with 256 independent home starts, seed 4501, full colliders. Initial setup failures
+(configclass class-attribute access, then playback requiring --reset_optimizer)
+were corrected before the actual evaluation. Sixteen relevant unit tests and
+Ruff checks passed. Physical robot remains at stage-2 hold; no movement this phase.
+
+Corrected-scene baseline completed: 247/256 successes (96.484%), grasp 99.609%,
+lift 97.656%; mean successful duration 14.54 s. Five episodes (1.953%) accumulated
+over 1 s jaw/support contact above 1 N, so baseline fails the new 1% contact gate.
+Mean peak jaw/support force 21.81 N; mean cumulative contact time 0.198 s. Rack
+peak 20.75 N. Evidence: `outputs/mat_clearance_20261009/baseline_corrected.json`.
+These simulation results do not establish physical grasp reliability.
+
+Launched fine-tuning of the recovered visual actor with a fresh optimizer and
+older compatible local critic. Driver PID is saved in `training_driver.pid`:
+
+```bash
+uv run --no-sync python -m isaaclab_tutorial.utils.train_transfer \
+  --gpu 0 --kind vision \
+  --checkpoint outputs/mat_clearance_20261009/initial_ppo.pt \
+  --output outputs/mat_clearance_20261009/vision_finetune \
+  --seed 451 --learning-rate 0.00005 --entropy-coef 0.001 \
+  --blocks 6 --iterations 200 --num-envs 2048 --steps-per-env 64 \
+  --shoulder-scale 0.040 --full-colliders \
+  --threshold 0.95 --max-support-contact-rate 0.01
+```
+
+The first shell-background launch did not survive the command wrapper; verified
+no training process existed, then launched through Python Popen with a new session
+and explicit redirected streams. Logs: `training_driver.log`,
+`vision_finetune/block_01/run.log`, campaign metadata in `vision_finetune/campaign.json`.
+No new checkpoint is yet qualified. Sixteen reward/config/progress tests pass;
+the earlier ten hardware deployment tests also passed.
+Training initialization succeeded on the RTX PRO 6000. The first saved checkpoint
+exists at `vision_finetune/block_01/logs/rsl_rl/so101_vial_camera/2026-10-09_15-20-10_transfer_vision_451_1/model_0.pt`.
+This confirms the new PPO run started; it is not a qualified improvement. The
+background driver will run clean/noisy audits after each block and independent
+qualification seeds only for candidates that meet both development gates.
+
+### Fine-tune qualification completed
+
+On the user's request for recurring progress updates, checked the live campaign:
+it had already completed and marked `qualified` after the first 200-update block
+(about 20 minutes training, followed by development and qualification audits).
+Selected `model_199.pt` in the block-01 run; SHA-256
+`d069d454956515d47f30f4b0c373e938070a09040ee4f38edef32e8ba9e3c3da`.
+Four independent 1,024-episode audits (alternating clean/noisy observations):
+991, 974, 987, 976 successes; aggregate 3,928/4,096 = 95.8984%.
+Every audit exceeded 95% placement success. Episodes accumulating >1 second of
+jaw/support force above 1 N were respectively 2, 4, 6, 5 (17/4,096 = 0.4150%);
+each audit passed the <=1% contact gate. Mean contact durations were 0.120,
+0.113, 0.128, 0.117 seconds; mean episode peak support force remained approximately
+17.8–19.6 N. Brief substantial force contacts still occur; this is not contact-free
+behavior. Baseline 5/256 = 1.953% prolonged-contact rate was on a different sample,
+so comparison is indicative rather than paired. Success is simulation-qualified,
+not a demonstrated physical grasp fix. New policy not yet exported/deployed.
+No recurring notification was scheduled because this training campaign has ended.
+
+### Exporting and testing the clearance-trained policy
+
+User requested export and physical execution. With user-confirmed clear return
+path and supervision, homed successfully (`outputs/mat_clearance_20261009/pretrial_home.json`);
+arm was already near home at connection. Exported the qualified block-01
+`model_199.pt` actor using its audited `exported/policy.pt`:
+
+```bash
+CUDA_VISIBLE_DEVICES='' uv run --no-sync python -m isaaclab_tutorial.utils.export_leapp \
+  --model outputs/mat_clearance_20261009/vision_finetune/block_01/logs/rsl_rl/so101_vial_camera/2026-10-09_15-20-10_transfer_vision_451_1/exported/policy.pt \
+  --output outputs/mat_clearance_20261009/deployment/leapp \
+  --history 2 --no-normalize-intensity \
+  --action-scale 0.033 0.040 0.033 0.033 0.033 0.020
+```
+
+Checked selected checkpoint SHA and exact equality of every exported actor tensor
+against that checkpoint. LEAPP parity: 8 independently varying inputs, max error
+0.0. Deployment manifest contains checkpoint/bundle hashes and qualification
+summaries. Bundle path: `outputs/mat_clearance_20261009/deployment/leapp/leapp.yaml`.
+The original bundle remains available. Three-second hardware read-only execution
+of new bundle passed calibration checks and 360 feedback steps with zero missed
+deadlines; p95 control work 3.89 ms, inference 2.62 ms. Evidence in
+`deployment/read_only.log` and `read_only.npz`. User asked to replace objects and
+confirm readiness for five-second approach test; default torque-off exit retained
+to avoid holding into an unexpected support contact. No new-policy motor commands
+yet, pending object readiness.
+
+Additional deployment-runtime parity passed on Torch 2.10.0+cpu: 32 independent
+inputs against the audited original JIT actor, maximum error 0.0
+(`deployment/cpu_parity.json`). User replaced objects and confirmed supervision.
+Ran new bundle for five seconds with --execute and original verified hardware map
+and home reference, recording `deployment/real_trial_01.npz` and `.log`.
+Completed 600 feedback steps, zero missed deadlines; p95 work 2.51 ms, inference
+0.97 ms. Normal exit disabled torque. Saved wrist montage
+`deployment/real_trial_01_frames.png`: approach followed by close view of vial
+between/near the jaws. No physical grasp, lift or mat clearance can be established
+from this view alone; requested user's direct observation before extending duration.
+Final pre-command measured joint sample, simulation degrees:
+[4.879, 23.341, 7.516, 54.945, -75.736, 5.604]. No longer rollout started.
+
+User observed an apparently secure grasp in the new-policy five-second test,
+with slight mat pressure. This is encouraging user-observed grasp evidence, not
+yet a confirmed lift or placement; light contact versus sustained pushing remains
+to be assessed. User authorized homing after being asked to free the vial and
+clear the return path. Started return to original training home using the existing
+controller; report `outputs/mat_clearance_20261009/pretrial_home_02.json`.
+Will require object replacement/readiness before the full 30-second attempt.
+Return home completed normally, motors holding and serial released. Requested
+confirmation that objects are reset and hands clear for the 30-second trial;
+new-policy full-horizon execution has not started yet.
+
+User confirmed objects reset and supervision for the full new-policy trial.
+Ran `deployment/leapp/leapp.yaml` for 30 seconds with the existing joint map,
+start pose and stable hardware ports; recorded
+`outputs/mat_clearance_20261009/deployment/real_trial_02.npz` and `.log`.
+Normal completion: 3,600 feedback steps, zero missed 120 Hz deadlines, p95 control
+work 2.51 ms and inference 0.98 ms. Torque disabled at exit. Wrist montage
+`deployment/real_trial_02_frames.png` shows persistent vial close-up after approach;
+no lift or insertion can be established from those frames alone. Final measured
+pre-command joint sample in simulation degrees:
+[10.418, 22.725, 12.176, 48.000, -80.308, 8.769]. Asked user whether vial lifted,
+remained at mat or was placed; physical outcome pending their observation.
+
+User confirmed full new-policy trial stayed at the mat with NO LIFT. This is a
+physical failure; the earlier five-second apparent grasp was not a demonstrated
+load-bearing grasp. Simulation qualification did not resolve real transfer.
+Compared both full-rollout traces over t>10 s: old/new gripper mean clipped action
++0.109/+0.130, fraction opening (>0.1) 55.8%/72.7%, closing (<-0.1) 33.7%/21.0%.
+New gripper measured span 7.01–10.18 simulation degrees versus old 6.31–11.14.
+New mean shoulder/elbow actions -0.710/-0.378 with limited joint excursion despite
+20 seconds of feedback. Evidence supports repeated reopening and stalled arm
+response, not simply a missing close command or timing failure. No further
+identical trial performed. Next diagnostic should isolate free-space gripper
+motion and arm response under the measured-relative controller before more
+reward changes or training; physical contact/load and policy observations remain
+possible contributors. Motors are off after the completed trial.
+
+### Free-space response checks after failed full rollout
+
+User confirmed path clear. Homed with the standard controller, then slowly closed
+the empty gripper at 3 deg/s to the simulation grasp angle -8.9 degrees, holding
+arm joints at home. Report `gripper_absolute_close.json`: measured about -8.55
+at subsequent read, within 0.35 degrees of goal. Reopened using original home.
+
+Ran `check_gripper_response.py` (same output directory), a bounded gripper-only
+120 Hz measured-relative test with action -0.5 and scale 0.020 rad. It validates
+calibration SHA, limits, home pose and existing holding torque, does not change
+servo settings, and caps closure at -8.9 degrees. Encoder moved from +14.395 to
+-8.462 degrees in 3.483 seconds (approximately 6.56 deg/s average). Saved
+`gripper_relative_close.json`; normal end holds fresh measured pose. Reopened.
+
+Ran `check_shoulder_response.py`, same control rule on shoulder lift only, action
+-0.5, scale 0.040 rad, bounded target 5 degrees beyond nominal home in the negative
+direction. Shoulder moved -50.857 to -56.308 degrees by ~1 second, then settled
+0.571 degrees short of the -56.879 target for remainder of the eight-second test.
+Saved `shoulder_relative_response.json`. Other motors retained holding goals;
+small passive joint drift was present. Returned to original home successfully,
+report `response_checks_final_home.json`; motors remain ON and holding.
+
+These checks establish free-space encoder response under both absolute and
+measured-relative commands. They do not establish loaded grip force, correct
+jaw-gap mapping, or response at the extended grasp posture. Requested user's
+visual confirmation of normal closure/reopening. The prior rollout's repeated
+opening and contact constraint remain unresolved; no new policy rollout or gain
+change made. All diagnostic scripts/reports live in outputs/mat_clearance_20261009.
+
+User requested repeat closure to observe it. Repeated the slow absolute-position
+empty-gripper close/reopen at home, 3 deg/s, with a five-second closed pause.
+Closed measured angle about -8.46 degrees versus -8.9 target. Existing homing
+controller also corrected the small elbow hold residual; this was not strictly
+an isolated gripper-only motor write. Reports:
+`outputs/mat_clearance_20261009/gripper_absolute_close_repeat.json` and
+`gripper_reopen_repeat.json`. No gains/calibration changes or policy run.
+
+User requested another repeat. Executed slow empty close to -8.9 degrees, five-
+second pause, then reopen to home at 3 deg/s. Measured closed angle about -8.55.
+Reports: `gripper_absolute_close_repeat_02.json`, `gripper_reopen_repeat_02.json`
+under outputs/mat_clearance_20261009. User explicitly confirmed: "Yes it did close
+and open". This establishes visually observed free-space mechanism motion as well
+as encoder response; loaded grip strength and the policy's contact behavior remain
+unverified. No calibration/gain changes. Return-to-home outcome checked before
+ending the diagnostic.
+
+### End-to-end transfer audit after repeated physical failure
+
+User requested comprehensive diagnosis and a working transfer. No new motion yet.
+Checked current action implementation against deploy.py: both arm and gripper use
+measured-relative position targets at 120 Hz; the transferred task does not use
+the older binary gripper latch. Six-joint order, raw-RGB history, scale 0.040 on
+shoulder and 0.020 on gripper match the exported contract. LeRobot's default
+max_relative_target is None, so no additional default limiter was identified.
+
+Matched nominal Newton free-space gripper test (`check_sim_gripper_response.py`):
+constant action -0.5, scale 0.020, measured-relative target, 120 Hz, starts at
+14.395 degrees and stops near -8.4 degrees. Sim reaches -8.409 at 2.617 seconds;
+real reached -8.462 at 3.483 seconds. Real is about 33% slower in duration. This
+is a nominal comparison, not a measured distribution test; existing damping DR
+may cover it. No gains or calibration altered based on this result.
+
+Captured real camera at held home (`real_measured_home.png`) and rendered nominal
+camera at measured angles [-6.9,-51.91,19.82,84.66,-46.37,14.4] degrees
+(`sim_measured_home.png`). Script `render_measured_home.py` uses corrected Transfer
+root, full collider spawn and nominal 20.955 aperture at 640x480 (not the 80x60
+overscan aperture), with no reset-time camera perturbation. Jaw silhouettes show
+an alignment difference, but one pose cannot distinguish intrinsic/extrinsic or
+jaw-geometry mismatch. Vial/rack placements differ; do not use their apparent size
+alone to estimate camera calibration. Current images and scripts are under
+outputs/mat_clearance_20261009.
+
+Prepared a second shoulder response comparison in the known clearance posture,
+with goal only 5 degrees toward lifting, not a policy rollout. Nominal sim moved
+from -7.5165 to -12.3684 degrees in 3.317 seconds. User asked to confirm workspace
+clear/supervision before the corresponding physical check. No contact or loaded
+response conclusions yet.
+
+Code audit found a regression introduced by the mounting correction:
+TransferCameraSceneCfg.__post_init__ replaced the inherited camera initialization
+without calling super, leaving the default minimal spawn without the camera-housing
+visibility override. Fixed with super().__post_init__ and added regression coverage.
+This does NOT explain the tested policy's failure: the completed training and all
+qualification commands explicitly selected _spawn_so101_for_wrist_camera via
+--full-colliders; the measured-pose rendering script also selected it explicitly.
+No policy weights or existing qualification results changed by this default-path fix.
+
+### Extended shoulder response: physical stall reproduced (2026-10-09)
+
+User authorized the staged diagnostic while watching. The first approach command
+used the wrong saved-pose folder and failed before connecting or moving. Corrected
+the reference to `outputs/robot_transfer_20261009/clearance_stage_02_pose.json`.
+Approached at 3 degrees/s, then applied shoulder-only measured-relative action
+-0.5 with scale 0.040 rad at 120 Hz for eight seconds, with a five-degree travel
+cap. Other joint targets remained held; no gains or calibration changed.
+
+Real shoulder started and ended at -7.6923 degrees despite target -8.8382
+degrees. The comparable nominal simulation moved from -7.5165 to -12.3684
+degrees in 3.317 seconds. These are similar, not identical, initial postures;
+this establishes a substantial response mismatch at an extended configuration,
+not its precise mechanical cause. Earlier tucked-home shoulder test did move.
+Small measured-relative targets can stall under posture-dependent load; this
+is a plausible contributor to failed lifting, not proof of the only cause.
+
+Artifacts: `outputs/mat_clearance_20261009/extended_response_start.json`,
+`extended_shoulder_response.json`, `sim_extended_shoulder_response.json`,
+`extended_response_final_home.json`. Returned to the original policy home
+successfully. Motors remain ON holding; serial port released.
+
+Next: identify the shoulder response across bounded command amplitudes and
+postures, then match the simulated actuation/control contract and requalify the
+policy. Do not silently increase deployment action scale or change motor gains
+for the existing policy. Physical grasp-and-lift remains unqualified.
+
+### Shoulder offset sweep and fingertip-grasp objective (2026-10-09)
+
+User authorized bounded measurements and retraining, and requested shallower
+fingertip grasps to avoid pressing the mat. These are complementary: free-space
+shoulder stalls occurred without a vial or support contact.
+
+Executed `uv run --script outputs/mat_clearance_20261009/measure_shoulder_response.py`
+with `--delta-deg`, `--pose`, and a distinct `--report`, restoring the checked pose
+using `home_so101.py --speed-deg-s 3 --execute` between moving trials. Each test
+lasted at most eight seconds with an absolute target cap five degrees above the
+reference shoulder angle. No motor gain, current limit or calibration changes.
+
+| Pose | Upward target offset | Measured start → end | Result |
+| --- | --- | --- | --- |
+| Extended | 1.5° | -7.516° → -7.516° | No movement |
+| Extended | 2.0° | -6.110° → -6.110° | No movement |
+| Extended | 3.0° | -6.462° → -6.462° | No movement |
+| Extended | 3.5° | -7.692° → -10.330° | Moved, then stopped short of capped target |
+| Extended | 4.0° | -5.934° → -10.242° | Moved, then stopped short of capped target |
+| Home | 1.5° | -51.560° → -56.308° | Moved, then stopped near target |
+
+Reference restoration accepts up to 2° error, so these are nearby rather than
+identical initial postures. Goal register readback confirmed receipt on moving
+trials. Shoulder voltage register 122–123, temperature 36°C, status 0. Extended
+current register 7 versus 1 at home; do not interpret these as calibrated torque.
+A preliminary 2° trial was rejected before commands because elbow drift exceeded
+the pose gate; restored pose and repeated successfully. All traces reside in
+`outputs/mat_clearance_20261009/shoulder_{extended,home}_*.json`.
+
+The current shoulder scale 0.040 rad limits offsets to 2.292°, below the observed
+extended-pose movement threshold. New training must cover the measured response
+and a sufficient command range; changing only the deployed old policy's scale
+would violate its trained contract. The simulation fitting is in progress, not
+yet an identified physical model. Returned to original home successfully via
+`sweep_final_home.json`; motors remain ON holding, serial port released.
+
+### Measured actuator fit and shallower-grasp fine-tuning
+
+Fitted an effective shoulder model against all six upward-response traces,
+including both moving and stalled examples. This is not unique identification
+of the motor's physical parameters. Relative to the asset's nominal shoulder:
+stiffness x0.22 (10.5122 N m/rad), drive damping x0.10 (0.2563 N m s/rad),
+Coulomb friction x0.40 (0.137917 N m). Passive viscous friction and inertia retain
+the asset values. The default MuJoCo friction impedance allowed creep under
+sub-threshold effort; shoulder `mjc:solimpfriction` is now
+`[0.9999, 0.9999, 0.001, 0.5, 2.0]` in the Transfer asset spawn. Verified the
+solver receives that value and the fitted stiffness directly from the authored
+USD, with no diagnostic runtime override. Six-trial mean RMSE: 0.2082°.
+
+Held-out physical test at a midpoint between home and the extended pose:
+2.5° upward command moved -29.846° to -33.187°. The fitted model's trajectory
+RMSE was 0.4314° without refitting. Then restored the original policy home
+successfully (`sweep_holdout_final_home.json`); motors remain ON holding.
+These tests cover upward motion at three unloaded postures; payload, downward
+motion and other joints are not fully identified. Existing DR remains active.
+
+Reproducible measured curves and initial/held targets are retained in
+[shoulder_response_20261009.json](sim2real/shoulder_response_20261009.json), with
+comparison plots (archived as `../IsaacLabTutorial-artifacts/cleanup-20261012/shoulder_response_20261009.png`).
+
+Transfer state/vision tasks now share this fitted shoulder and default shoulder
+action scale 0.10 rad (5.73° maximum offset). This is a new training contract,
+not a scale override for an old deployed policy. The nominal non-Transfer tasks
+retain their old motor model. Physics fitting changes no real servo settings.
+The new approach shaping target is 8 mm above the cap/shoulder centre, encouraging
+a shallower pinch. Physical grasp/lift/success criteria remain unchanged.
+Jaw/support penalty weight increases from -2 to -8, with allowance 0.25 N and
+saturation span 2 N, excluding contacts with vial and rack. This encourages
+clearance but is not proof that a learned policy always grasps with its tips.
+Fifteen focused reward/config tests and Ruff checks pass.
+
+Launched the next vision fine-tune (seed 521) from the previous model_199.pt:
+
+```bash
+uv run --no-sync python -m isaaclab_tutorial.utils.train_transfer \
+  --gpu 0 --kind vision \
+  --checkpoint outputs/mat_clearance_20261009/vision_finetune/block_01/logs/rsl_rl/so101_vial_camera/2026-10-09_15-20-10_transfer_vision_451_1/model_199.pt \
+  --output outputs/shoulder_response_20261009/vision_finetune \
+  --seed 521 --learning-rate 0.00005 --entropy-coef 0.001 \
+  --blocks 6 --iterations 200 --num-envs 2048 --steps-per-env 64 \
+  --shoulder-scale 0.10 --full-colliders \
+  --threshold 0.95 --max-support-contact-rate 0.01
+```
+
+Driver command/PID/log are in `outputs/shoulder_response_20261009/`.
+Each block must pass clean/noisy development audits, then independent 1024-episode
+qualification seeds. Qualification in simulation is not physical qualification.
+A new bundle must export shoulder scale 0.10 and pass supervised grasp/lift trials.
+
+Early training status correction: the live `Metrics/success_rate` is an
+instantaneous per-step success flag, not completed-episode success. An initial
+chat update misread it and understated performance. At update 222 (24 updates
+into this resumed block), `Episode_Termination/success` was 0.8666. The live
+grasp/lift flags likewise describe the current population, not final episode
+outcomes. Independent first-episode audits remain the acceptance metric.
+
+Validation follow-up: 46 focused tests passed across rewards/configuration,
+Transfer behavior, campaign qualification and episode accounting. Updated older
+mock fixtures to include mounting metadata and support-contact outcomes; added
+coverage that excessive support contact rejects an otherwise successful policy.
+Confirmed the running job's saved env.yaml contains the shoulder fit, 0.10 action
+scale, 0.008 m raised approach target, and 0.25 N support-contact allowance.
+
+Midpoint visual check: model_300.pt, one independent simulated episode (seed
+8121), completed grasp/lift/insertion/placement in 17.5 s. Measured peak jaw/support
+force and cumulative support-contact time were both zero for this episode. This
+is a visual example, not statistical qualification. Inspected the overview montage;
+the vial visibly leaves the support and is transported into the rack. Evidence:
+`outputs/shoulder_response_20261009/midpoint_visual/evaluation.json`, `montage.png`,
+and the checkpoint run's `videos/play/clip_model_300_0000.mp4`.
+
+Video capture needed an isolated `uv run --no-sync --with 'moviepy<2'` overlay
+and `PYGLET_HEADLESS=true` set before importing pyglet. The first two capture
+attempts failed before playback (missing moviepy, then mismatched headless canvas).
+The training environment/dependencies were not modified by the overlay.
+
+Midpoint noisy audit (model_300.pt, 256 worlds, seed 8122, shoulder scale 0.10):
+208/256 placements (81.25%), 98.05% grasp, 83.98% lift; 1/256 episodes exceeded
+one second of support contact. Mean peak support force 11.12 N. Failure analysis
+found lift rates 95.3% in the lowest shoulder-friction quartile versus 65.6% in
+the highest. Selected failed-world traces show shoulder actions saturated at
+-1 for 96–100% of the last 20 seconds, with very little shoulder motion in the
+highest-friction case. Replaying the same seed did not reproduce exact outcomes
+(219/256 successes), so these are not bitwise deterministic paired rollouts.
+
+Exploratory scale-0.12 audit of the same weights: 220/256 placements (85.94%),
+88.67% lift; 1/256 prolonged-support-contact episodes. This has NOT qualified and
+has NOT been deployed. Continue fine-tuning with the larger action range rather
+than removing the high-friction training cases. The campaign supervisor was
+SIGSTOP'd while its first training child continues to its final checkpoint, to
+prevent automatically launching another block with the old 0.10 range.
+
+Requested user readiness for a bounded elbow response check, because its earlier
+homing residual may indicate another small-command stall. No new hardware motion
+while waiting. Kinematics checked: reducing elbow angle by 5° at the known
+extended posture increases lowest-jaw height from 102.0 to 118.7 mm in the
+uncorrected-root model (both well above the tabletop). The real arm remains at
+home holding following the completed shoulder measurements.
+
+The first block completed 200 updates in 1,782.73 s, producing model_398.pt
+(resumed iteration numbering starts at 199). Training child exited successfully.
+Stopped the campaign supervisor before further blocks; its manifest explicitly
+records the range-change reason and latest checkpoint, without marking it qualified.
+The initially saved PID identified the uv wrapper; verified the process tree and
+paused the actual Python supervisor while allowing its training child to finish.
+
+Continued from model_398.pt in
+`outputs/shoulder_response_20261009/range012/vision_finetune`, seed 522, shoulder
+scale 0.12, 100 updates per block (up to eight), same learning rate, rollout size,
+randomization and acceptance gates. Current Transfer default is now 0.12 rad
+(6.875° maximum shoulder target offset). The old 0.10 campaign and its measurements
+remain separate. This new range has only been tested in simulation so far.
+Deployment preparation scripts in `range012/` refuse export until qualification,
+verify JIT tensors against the selected checkpoint, export the explicit 0.12
+contract, then check CPU runtime parity. Physical qualification remains pending.
+
+Range-0.12 block 01 completed 100 updates in 631.99 s (model_497.pt).
+Development audits: clean 242/256 = 94.53% placement, 95.70% lift; noisy
+230/256 = 89.84% placement, 93.36% lift. Both had 1/256 prolonged-support-contact
+cases. Noisy mean peak support force was 9.12 N and mean support-contact time
+0.0397 s; clean mean contact time was 0.1318 s. Rack impacts remain an observation
+point (unsafe-impact rates 5.08% clean / 7.03% noisy). Candidate is unqualified;
+block 02 continues automatically with the same distribution and gates.
+
+Read-only holding-status check: all motor status registers zero, torque enabled,
+temperatures 34–48°C (elbow warmest). No configuration or torque writes. Elbow
+hardware test still awaits user availability. Nominal simulated elbow predictions
+are saved separately in `sim_elbow_prediction.json`; these are predictions, not
+physical measurements or justification to change elbow gains.
+
+Exploratory shoulder range 0.16 on the unchanged model_497 actor improved noisy
+lift rate to 96.48%, but placement fell to 82.81% (212/256); unsafe rack contacts
+rose to 12.5%. This is not a deployment candidate. Simply multiplying every
+shoulder command trades away placement precision.
+
+Prepared a separate 0.12-to-0.16 warm start that scales the shoulder actor output
+by 0.75 and adjusts previous-action normalization for actor and critic. This
+preserves unsaturated physical commands while allowing more authority where the
+old action clipped. It does not guarantee closed-loop equivalence at saturation.
+Independent 64-sample forward checks gave actor max error 2.86e-6 and critic
+8.58e-6. Original checkpoint is unchanged. Experiment and provenance are under
+`outputs/shoulder_response_20261009/rescaled016/`; simulation audit pending.
+The initial audit failed before playback because the warm start intentionally
+omits optimizer state; reran with `--reset_optimizer`.
+
+The rescaled 0.16 warm start completed its noisy 256-episode audit: 221/256
+placements (86.33%), 95.70% lift, 6.25% unsafe rack contacts, and 1/256 prolonged
+support-contact episodes. Although better than the naive range increase for
+placement/contact, it remains below the 0.12 policy. No default or hardware
+contract changed; continue the 0.12 campaign.
+
+Range-0.12 block 02: clean 241/256 (94.14%), noisy 234/256 (91.41%). Still below
+the 95% gate; block 03 started automatically. A separate completion process
+(`range012/finish_campaign.py`, log `completion_driver.log`) records the final
+outcome and only invokes LeApp export plus CPU parity after qualification.
+It never commands hardware. Final export/qualification outcome will be appended
+here and saved in `range012/completion.json`; no real-world success is implied.
+
+### Real elbow experiment after user requested execution
+
+Executed bounded elbow-only tests at home; no policy grasp rollout. Initial
+read-only check passed home tolerance. With a measured-relative -2° target offset
+for eight seconds, elbow stayed at 19.824° (no encoder movement). With -3° after
+restoring home, it moved from 19.033° to 15.516° over eight seconds. Motor status
+was zero, temperature 48°C, voltage raw 123–124. This establishes a small-command
+stall at this posture, not a full elbow dynamics fit. The policy elbow scale
+0.033 rad (1.891°) is below the tested stalled offset. Nominal simulation predicted
+movement with 2°, so the ongoing shoulder-only correction does not cover this gap.
+
+First 3° attempt was rejected before motion because measured-pose holding after
+the 2° trial let elbow settle 2.74° from home. Restored home and repeated under
+the original start guard; no tolerance was relaxed. Final home restoration
+completed; motors remain on holding, serial port released.
+
+Evidence: `outputs/shoulder_response_20261009/elbow_home_2.json`,
+`elbow_home_3.json` (rejected), `elbow_home_3_retry.json`, `elbow_reset_home.json`,
+and `elbow_final_home.json`. Further elbow response fitting and matching action
+range are needed before treating the current campaign as physically ready.
+Simulation qualification/export alone must not clear this newly measured issue.
+
+### Aggressive rollout and limited-controller retry
+
+User requested a full experimental rollout before qualification. Exported the
+best evaluated model_596 checkpoint separately in
+`outputs/shoulder_response_20261009/full_trial_01/`, explicitly unqualified.
+JIT tensors matched the checkpoint; CPU LEAPP parity was exact on 32 inputs.
+Read-only preflight had zero missed deadlines. User reported overly aggressive
+motion and requested stop. SIGINT arrived after normal motion completion/holding,
+during NPZ compression; trace may be incomplete. Motors remained ON holding.
+The 0.12 rad shoulder range is three times the earlier 0.04 range; this change
+had not been adequately validated physically before the full trial.
+
+Added conservative deployment defaults: target slew <=5 degrees/s and target
+lead <=2 degrees from measured positions, all six simulation-coordinate joints.
+No catch-up jumps after delayed ticks. If the slew and measured-position bounds
+cannot both hold, reject the command and use existing error shutdown. These are
+setpoint bounds, NOT guarantees of physical speed or force. The policy and its
+current simulation training do not include this filter, so this is a diagnostic
+controller, not a qualified training-matched fix. Small-command stalls may recur.
+No servo gains, joint map, calibration, or exported policy scales were changed.
+
+15 deployment tests passed (OpenCV supplied in a temporary uv overlay; initial
+base-environment run skipped for missing cv2); Ruff passed. Tests cover stalled
+joints, direction reversal, delayed ticks, envelope violations and invalid limits.
+User confirmed clear path; returned home at 3 degrees/s commanded slew, motors
+holding. Report: `outputs/shoulder_response_20261009/limited_retry_home.json`.
+Prepared a five-second limited retry pending user object placement/readiness.
+
+User confirmed readiness; five-second limited rollout completed normally:
+600 control steps, zero missed 120 Hz deadlines. Maximum recorded target step
+0.041667 degrees; maximum target lead 1.937 degrees. Joint net motion in
+pan/lift/elbow/wrist-flex/wrist-roll/gripper order: [15.38,24.62,0.53,-16.18,
+4.57,13.71] degrees. This verifies command limits, not physical success. Elbow
+moved very little, consistent with the earlier small-command stall. Motors remain
+ON holding. Awaiting user's visual assessment before any further motion.
+Evidence: `full_trial_01/limited_rollout.log`, `limited_rollout.npz`, and
+`limited_summary.json` under `outputs/shoulder_response_20261009/`.
+
+### Training with bounded targets and the preliminary elbow fit
+
+User found the limited five-second rollout controlled but still far from the
+vial. Confirmed the 2° target-lead cap cannot overcome the measured elbow stall;
+merely waiting longer or retraining under that cap is not a solution.
+
+Preliminary elbow model: authored stiffness/damping unchanged, Coulomb friction
+multiplier 0.8, and firm friction impedance [0.9999,0.9999,0.001,0.5,2]. This
+reproduces the home-pose 2° stalled and 3° moving traces with mean RMSE 0.083°
+(0.002° and 0.164° individually). Validated by constructing an authored asset,
+not only runtime overrides. Two traces do not identify unique dynamics and no
+held-out physical elbow test has been done. Compact evidence is tracked at
+`docs/sim2real/elbow_response_20261009.json`.
+
+Transfer simulation now uses the same target recurrence as deployment: target
+slew 5°/s, maximum lead 7°, and an episode termination if measured motion makes
+these bounds incompatible. Elbow action range is 0.07 rad (4.01°); shoulder
+remains 0.12 rad (6.88°). These larger lead limits are SIMULATION CANDIDATES,
+not approved real-arm settings. Their slow build-up still needs bounded physical
+validation for breakaway motion. The last physical retry used a 2° cap.
+
+Export contract now records trained controller limits; deployment rejects a
+mismatch. Existing bundles retain conservative diagnostic defaults. 27 focused
+tests passed, including sim/real recurrence parity through stalled/tracking
+joints, reversals and partial reset. No further real-arm motion was commanded.
+Old campaign supervisor paused while its current training child finishes; do
+not interpret old-controller qualification as qualification of this controller.
+New baseline evaluation is under `outputs/bounded_controller_20261009/`.
+
+New-controller baseline (old model_695, noisy 256 worlds, 30 s): 3/256 placement
+(1.17%), 27.73% grasp, 16.02% lift, 98.83% timeout; zero unsafe rack impacts,
+2/256 prolonged jaw/support contact. Do not call the old policy usable with the
+new controller. Extended Transfer training/evaluation episode length to 60 s
+for the slower trajectories; this has not yet been independently evaluated.
+Replacement campaign queued at `outputs/bounded_controller_20261009/vision_finetune`:
+seed 530, vision PPO initialized from best evaluated old checkpoint model_695,
+2048 environments, 64 steps/update, learning rate 1e-4, entropy 0.001, up to eight
+100-update blocks with independent clean/noisy evaluation. Full colliders and
+physics/visual DR retained. Old training child finishes its checkpoint before
+replacement starts; old campaign is explicitly marked stopped for controller change.
+
+Automated range-0.12 campaign completion (UTC 2026-10-10 00:56:22):
+
+```json
+{
+  "campaign_status": "stopped_for_elbow_and_bounded_controller",
+  "physical_qualification": "pending",
+  "best_checkpoint": "/home/mhaiderbhai/code/IsaacLabTutorial/outputs/shoulder_response_20261009/range012/vision_finetune/block_03/logs/rsl_rl/so101_vial_camera/2026-10-09_17-31-11_transfer_vision_522_3/model_695.pt",
+  "best_development_rate": 0.92578125,
+  "export_status": "not exported: simulation gates not passed"
+}
+```
+This records simulation/export status only; no real-arm motion was started.
+
+Replacement training started at 2026-10-10 00:56:11 UTC after the old child
+finished. Old latest checkpoint preserved and campaign marked stopped; best
+old evaluated checkpoint model_695 initializes the new run. A completion watcher
+will only export after the clean/noisy and independent qualification gates pass,
+with action scales [0.033,0.12,0.07,0.033,0.033,0.02] and controller contract
+5°/s / 7° maximum lead. Export remains explicitly NOT cleared for real hardware.
+Focused checks: 27 controller/deployment/export/config tests plus 20 campaign/
+evaluation tests passed. Ruff and diff-whitespace checks passed.
+
+Initial replacement training updates completed without controller-envelope
+terminations or runtime errors (about 5.2 seconds/update after startup). These
+are startup checks, not a success-rate result. First independent evaluation
+follows the 100-update block; the campaign remains unqualified.
+
+Status check during bounded-controller block 01: iteration 770/795 (about 75%
+through this block), recent completed-training-episode success metric ~28.4%,
+controller-envelope terminations zero. Independent clean/noisy evaluation has
+not run yet, so this is not a qualification rate. Training continues; no robot
+motion initiated by this status check.
+
+Bounded-controller block 01 independent evaluation: clean 85/256 placement
+(33.20%), 55.47% grasp, 44.14% lift; noisy 84/256 (32.81%), 48.05% grasp,
+38.67% lift. Both had zero unsafe rack-impact episodes and zero >1s jaw/support
+contact episodes. Successful episodes averaged 41.8/41.5 simulated seconds.
+These 60-second evaluations are not directly comparable to the earlier 30-second
+baseline. Block 02 started at 2026-10-10 01:21:40 UTC. Still unqualified;
+no real motion. User requested continuing progress reports.
+
+Bounded-controller block 02 independent evaluation: clean 128/256 (50.00%)
+placement, noisy 112/256 (43.75%), up from 33.20%/32.81%. Clean/noisy unsafe
+rack impacts: 0/256 and 1/256. Prolonged jaw/support contact: 1/256 and 0/256.
+Successful episodes averaged 40.0/41.6 seconds. `lift_rate` means clearing the
+rack top, not merely leaving the mat; stable released placement is checked
+separately. Block 03 began at 2026-10-10 01:48:04 UTC. Not qualified. GPU sharing
+with a separate mustafa_isaaclab job made wall-clock estimates variable; that
+process was left untouched. No hardware commands during monitoring.
+
+Bounded-controller block 03: clean 149/256 placement (58.20%), noisy 138/256
+(53.91%). Grasp rates 75.78%/76.56%. Unsafe rack impacts 1/256 clean and zero
+noisy; prolonged jaw/support contact zero in both. Mean successful duration
+39.8/40.5 s. Block 04 began at 2026-10-10 02:04:08 UTC. Still below qualification;
+no hardware motion. Recurring progress reports delivered during monitoring.
+
+Bounded-controller block 04: clean 170/256 (66.41%), noisy 162/256 (63.28%)
+placement. Grasp 83.59%/82.81%. Unsafe rack impacts zero in both; prolonged
+jaw/support contact 1/256 clean, zero noisy. Successful durations 38.7/40.5 s.
+Recent training controller-envelope termination metric became nonzero at ~0.05%;
+no corresponding hardware motion occurred. Block 05 began 2026-10-10 02:15:05 UTC.
+Still unqualified; full independent 1024-world confirmation gates have not run.
+
+Bounded-controller block 05: clean and noisy both 186/256 placement (72.66%).
+Grasp 87.11%/85.55%; unsafe rack impacts zero in both. Prolonged jaw/support
+contact 2/256 clean and zero noisy. Successful durations 39.4/38.6 s. Block 06
+began 2026-10-10 02:27:08 UTC. Not qualified, no hardware motion.
+
+Bounded-controller block 06: clean 197/256 (76.95%), noisy 190/256 (74.22%)
+placement. Grasp 91.41%/89.84%; unsafe rack impacts zero in both. Prolonged
+jaw/support contact 1/256 clean, zero noisy. Successful durations 38.4/39.0 s.
+Block 07 began 2026-10-10 02:38:19 UTC. Gains have slowed; still unqualified.
+No hardware motion during recurring progress monitoring.
+
+Bounded-controller block 07: clean 203/256 (79.30%), noisy 200/256 (78.12%)
+placement. Grasp 91.80%/91.41%; unsafe rack impacts zero in both, prolonged
+jaw/support contact 1/256 in each. Successful durations 37.7/38.5 s. Block 08
+(the last planned block) began 2026-10-10 02:49:43 UTC. Gains are slowing; still
+below 95% qualification. No hardware motion during recurring progress reports.
+
+Automated bounded-controller campaign completion (UTC 2026-10-10 03:01:12):
+
+```json
+{
+  "campaign_status": "budget_exhausted_unqualified",
+  "physical_qualification": "pending",
+  "best_checkpoint": "/home/mhaiderbhai/code/IsaacLabTutorial/outputs/bounded_controller_20261009/vision_finetune/block_08/logs/rsl_rl/so101_vial_camera/2026-10-09_19-49-46_transfer_vision_530_8/model_1487.pt",
+  "best_development_rate": 0.79296875,
+  "export_status": "not exported: simulation gates not passed"
+}
+```
+This records simulation/export status only; no real-arm motion was started.
+
+Final bounded-controller block 08: clean 203/256 (79.30%), noisy 209/256
+(81.64%) placement. Grasp 93.36%/92.19%; unsafe rack impacts zero in both.
+Prolonged jaw/support contact 1/256 clean and 3/256 noisy (1.17%, above the 1%
+gate). Successful durations ~37.4 s in both. Campaign completed with
+`budget_exhausted_unqualified`; no export was made. Best checkpoint is model_1487
+in block_08. No independent 1024-world qualification audits were triggered
+because development gates were not met. No real-world success is established.
+Next investigation should inspect the remaining post-grasp/timeout failures and
+prolonged support contact rather than assuming more identical training will
+resolve them. Recurring status monitoring covered all eight blocks.

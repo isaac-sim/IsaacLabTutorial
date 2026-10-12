@@ -535,3 +535,49 @@ camera/serial bus has been tested here. See [deployment instructions](DEPLOYMENT
 Raw RGB is the export default. Use `--normalize-intensity` only for an actor trained with
 max-channel normalization. This flag records the preprocessing contract; it does not change the
 neural network.
+
+## Mat-contact follow-up on the robot computer — 2026-10-09
+
+Physical trials reached the vial but pushed the jaws onto the mat without securing
+it. Two held-pose measurements placed real tips roughly 10 mm higher than the old
+model. The source base seating mesh is at Z=30.08145 mm while the desk is at 35 mm.
+Transfer scenes now raise the robot root by 4.91855 mm, seating the foot on the
+bare tabletop. This geometric correction explains only part of the measured
+mismatch; the remaining offset has not been applied to hardware calibration.
+Historical non-Transfer reproduction scenes are unchanged.
+
+Transfer training now penalizes filtered jaw/table-or-mat force above 0.25 N (cost
+saturates at 2.25 N, weight -8); vial and rack contacts are excluded. Independent
+audits report peak force and contact duration. Qualification also rejects runs
+where more than 1% of episodes accumulate over one second above 1 N on the support.
+These are initial engineering thresholds, requiring review against measured
+hardware behavior. Home-only starts avoid reusing invalidated downstream grasp
+reset rows after the mounting correction. Prior published success rates describe
+the old mounting geometry, not this new campaign.
+
+See `outputs/mat_clearance_20261009/` and the canonical SO101 sim2real guide for
+actor recovery provenance, baseline evaluation and subsequent training evidence.
+
+### Follower shoulder response measured 2026-10-09
+
+Transfer tasks use the follower-specific nominal shoulder fit (stiffness x0.22,
+drive damping x0.10, friction x0.40 relative to USD), with harder shoulder friction
+impedance to reproduce static stalls. Existing gain/friction/damping DR scales
+these corrected nominal values. Nominal non-Transfer tasks are unchanged.
+The shoulder action range is 0.12 rad; export must preserve the evaluated range.
+See `shoulder_response_20261009.json` and the canonical sim2real log for measured
+curves and the held-out-pose check. This fit covers only bounded upward motions,
+not a complete actuator characterization.
+
+### Bounded-controller follow-up
+
+Current Transfer tasks use 60-second episodes, a 5 degrees/s target slew limit,
+a 7-degree maximum target lead, and termination on incompatible target bounds.
+The elbow action scale is 0.07 rad. Its preliminary home-pose response fit uses
+unchanged stiffness/damping, friction x0.8, and firm friction impedance; see
+`elbow_response_20261009.json`. The fit lacks held-out physical validation.
+Exports must include the exact action scales and controller limits used in
+evaluation. These are simulation candidates, not cleared physical settings.
+The latest campaign reached 79.3% clean / 81.6% noisy placement and failed
+qualification. Local generated evidence was archived outside the checkout;
+see the current-status section of the canonical sim2real guide.

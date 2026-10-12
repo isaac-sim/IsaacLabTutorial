@@ -10,9 +10,12 @@ from isaaclab_tutorial.utils import train_transfer
 
 
 @pytest.mark.parametrize("qualification_rate", [0.96, 0.80])
+@pytest.mark.parametrize("support_rate", [0.005, 0.02])
 @pytest.mark.parametrize("warm_start", [True, False])
 @pytest.mark.parametrize("kind", ["state", "vision"])
-def test_campaign_gpu_scope_and_independent_qualification(tmp_path, monkeypatch, qualification_rate, warm_start, kind):
+def test_campaign_gpu_scope_and_independent_qualification(
+    tmp_path, monkeypatch, qualification_rate, support_rate, warm_start, kind
+):
     checkpoint = tmp_path / "initial.pt"
     checkpoint.write_bytes(b"checkpoint")
     output = tmp_path / "campaign"
@@ -26,7 +29,7 @@ def test_campaign_gpu_scope_and_independent_qualification(tmp_path, monkeypatch,
             "--kind",
             kind,
             "--full-colliders",
-            *(["--checkpoint", str(checkpoint)] if warm_start else ["--uniform-starts"]),
+            *(["--checkpoint", str(checkpoint)] if warm_start else []),
             "--output",
             str(output),
             "--seed",
@@ -53,9 +56,12 @@ def test_campaign_gpu_scope_and_independent_qualification(tmp_path, monkeypatch,
         if "train" in command:
             assert "agent.num_steps_per_env=32" in command
             assert ("--checkpoint" in command) == warm_start
-            assert ("--reset_optimizer" in command) == warm_start
+            assert (
+                "agent.algorithm.class_name=isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start:FreshOptimizerPPO"
+                in command
+            ) == warm_start
             if not warm_start:
-                assert "env.events.reset_from_dataset.params.phase_weights=[1,1,1,1,1,1,1,1]" in command
+                assert not any("phase_weights=" in arg for arg in command)
             model = cwd / "logs/rsl_rl/test/run/model_199.pt"
             model.parent.mkdir(parents=True)
             model.write_bytes(b"trained checkpoint")
@@ -70,6 +76,7 @@ def test_campaign_gpu_scope_and_independent_qualification(tmp_path, monkeypatch,
                             "episodes": count,
                             "successes": int(count * rate),
                             "success_rate": rate,
+                            "jaw_support_over_1s_rate": support_rate,
                         }
                     }
                 )
@@ -80,9 +87,11 @@ def test_campaign_gpu_scope_and_independent_qualification(tmp_path, monkeypatch,
     train_transfer.main()
     manifest = json.loads((output / "campaign.json").read_text())
     expected = [256, 256, 1024, 1024, 1024, 1024] if kind == "vision" else [256, 1024, 1024]
+    if support_rate > 0.01:
+        expected = [256, 256] if kind == "vision" else [256]
     assert len(audits) == len(expected) and len({seed for _, seed in audits}) == len(expected)
     assert [count for count, _ in audits] == expected
-    if qualification_rate >= 0.95:
+    if qualification_rate >= 0.95 and support_rate <= 0.01:
         assert manifest["status"] == "qualified"
         assert "selected_checkpoint" in manifest
     else:

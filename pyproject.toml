@@ -16,9 +16,9 @@ dependencies = ["isaaclab"]
 # preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
 ovphysx = ["ovphysx"]
 ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
-leapp = ["leapp==0.7.1"]
+leapp = ["leapp==0.7.2"]
 # Hardware deployment uses the isolated inline environment in utils/deploy.py.
-sim2real = ["leapp==0.7.1"]
+sim2real = ["leapp==0.7.2"]
 
 [project.entry-points."isaaclab.tasks"]
 so101-vial-place = "isaaclab_tutorial.tasks"
@@ -36,21 +36,12 @@ url = "https://pypi.nvidia.com"
 explicit = true
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/StafaH/IsaacLab.git", rev = "a5edcec21741e98c5918f4c8ae88341fcd357a5f", subdirectory = "tools/wheel_builder" }
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "release/3.0.0", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 
 [tool.uv]
-# Match the numerical stack required by the pinned Isaac Lab revision.
 environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
-override-dependencies = [
-  "mujoco~=3.12.0",
-  "mujoco-warp~=3.12.0",
-  "newton[sim]==1.6.1",
-  "newton-usd-schemas>=0.5.0",
-  "torch==2.13.0",
-  "torchvision==0.28.0",
-]
 
 [tool.uv.build-backend]
 module-name = "isaaclab_tutorial"

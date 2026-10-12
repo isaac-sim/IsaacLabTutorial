@@ -90,6 +90,10 @@ def test_command_delay_uses_previous_command_and_resets_only_selected_rows():
     action._previous_command = torch.tensor([[0.1], [0.2]])
     action._command_gain = torch.ones(2, 1)
     action._joint_names = ["gripper"]
+    action._joint_ids = [0]
+    action._asset = SimpleNamespace(data=SimpleNamespace(joint_pos=torch.zeros(2, 1)))
+    action._limited_target = torch.zeros(2, 1)
+    action.envelope_violation = torch.zeros(2, dtype=torch.bool)
     action.cfg = SimpleNamespace(gain_range=(1.0, 1.0), delay_probability=0.25)
     with patch.object(RelativeJointPositionAction, "process_actions") as process:
         action.process_actions(torch.tensor([[0.3], [0.4]]))

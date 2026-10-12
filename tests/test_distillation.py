@@ -40,3 +40,23 @@ def test_teacher_warmup_progress_survives_checkpoint_resume(monkeypatch):
     algorithm.num_updates = 0
     assert algorithm.load(saved, None, True)
     assert algorithm.num_updates == 123
+
+
+def test_weights_only_initialization_keeps_fresh_optimizer():
+    algorithm = object.__new__(BoundedTeacherDistillation)
+    algorithm._raw_student = torch.nn.Linear(2, 1)
+    algorithm._raw_teacher = torch.nn.Linear(2, 1)
+    algorithm.optimizer = torch.optim.Adam(algorithm._raw_student.parameters(), lr=0.0002)
+    student, teacher = torch.nn.Linear(2, 1), torch.nn.Linear(2, 1)
+    checkpoint = {
+        "student_state_dict": student.state_dict(),
+        "teacher_state_dict": teacher.state_dict(),
+        "iter": 12,
+    }
+    assert algorithm.load(checkpoint, None, True)
+    assert algorithm.teacher_loaded
+    assert algorithm.num_updates == 12
+    assert not algorithm.optimizer.state
+    assert algorithm.optimizer.param_groups[0]["lr"] == 0.0002
+    torch.testing.assert_close(algorithm._raw_student.weight, student.weight)
+    torch.testing.assert_close(algorithm._raw_teacher.weight, teacher.weight)

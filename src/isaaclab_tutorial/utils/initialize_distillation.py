@@ -1,7 +1,7 @@
 """Warm-start a visual student with a frozen PPO state teacher.
 
 Run with ``python -m isaaclab_tutorial.utils.initialize_distillation --help``.
-Train the resulting checkpoint with ``--reset_optimizer``. Image history must
+BoundedTeacherDistillation loads this weights-only checkpoint with a fresh optimizer. Image history must
 also match ``env.observations.wrist_rgb.image.params.history_length``.
 """
 
@@ -55,7 +55,7 @@ def main() -> None:
     parser.add_argument("--history", type=int, default=1)
     args = parser.parse_args()
     initialize_distillation(args.teacher, args.student, args.output, args.history)
-    print(f"Wrote {args.output}; use --reset_optimizer when starting training.")
+    print(f"Wrote {args.output}; load with the BoundedTeacherDistillation algorithm.")
 
 
 if __name__ == "__main__":

@@ -84,6 +84,7 @@ def _install_episode_counter(target: int) -> list[str]:
                 "env_step_code_sha256": hashlib.sha256(marshal.dumps(step_code)).hexdigest() if step_code else None,
                 "episode_length_s": getattr(cfg, "episode_length_s", None),
                 "is_finite_horizon": getattr(cfg, "is_finite_horizon", None),
+                "robot_initial_position": list(cfg.scene.robot.init_state.pos),
                 "observation_corruption": {
                     name: group.enable_corruption
                     for name, group in vars(cfg.observations).items()
@@ -171,6 +172,12 @@ def _install_episode_counter(target: int) -> list[str]:
                 successes_by_hole[hole] += 1
         progress = env._so101_terminal_progress[done_ids]
         peak_force = env._so101_terminal_max_rack_force[done_ids]
+        support_force = getattr(env, "_so101_terminal_max_support_force", None)
+        support_time = getattr(env, "_so101_terminal_support_contact_time", None)
+        if support_force is not None:
+            sums["support_force"] = sums.get("support_force", 0.0) + float(support_force[done_ids].sum())
+            sums["support_time"] = sums.get("support_time", 0.0) + float(support_time[done_ids].sum())
+            sums["support_over_1s"] = sums.get("support_over_1s", 0.0) + int((support_time[done_ids] > 1).sum())
         counts["episodes"] += int(done_ids.numel())
         counts["successes"] += int(success.sum())
         counts["grasped"] += int(progress[:, 0].sum())
@@ -195,6 +202,14 @@ def _install_episode_counter(target: int) -> list[str]:
                         "lifted": bool(progress[index, 1]),
                         "inserted": bool(progress[index, 2]),
                         "peak_rack_force_n": float(peak_force[index]),
+                        **(
+                            {
+                                "peak_jaw_support_force_n": float(support_force[env_id]),
+                                "jaw_support_contact_time_s": float(support_time[env_id]),
+                            }
+                            if support_force is not None
+                            else {}
+                        ),
                     }
                 )
 
@@ -217,6 +232,12 @@ def _install_episode_counter(target: int) -> list[str]:
             }
             if terminal_hole is not None:
                 summary["successes_by_hole"] = successes_by_hole
+            if support_force is not None:
+                summary.update(
+                    mean_peak_jaw_support_force_n=sums["support_force"] / episodes,
+                    mean_jaw_support_contact_time_s=sums["support_time"] / episodes,
+                    jaw_support_over_1s_rate=sums["support_over_1s"] / episodes,
+                )
             print("SO101_EVAL_RESULT=" + json.dumps(summary, sort_keys=True), flush=True)
             if output := os.environ.get("SO101_EVALUATION_OUTPUT"):
                 path = Path(output)

@@ -85,3 +85,36 @@ def test_label_is_visual_only_and_keeps_measured_colliders():
 
     assert colliders(original) == colliders(labeled)
     assert not labeled.GetPrimAtPath("/Vial/Label").HasAPI(UsdPhysics.CollisionAPI)
+
+
+@pytest.mark.parametrize("kind", ["state", "vision"])
+def test_transfer_base_seats_on_table_and_support_contacts_exclude_objects(kind):
+    from isaaclab_tutorial.tasks.place_vial.config.so101.robust_env_cfg import (
+        BASE_SEATING_Z,
+        TABLETOP_Z,
+        SO101VialCameraTransferEnvCfg,
+        SO101VialTransferEnvCfg,
+    )
+
+    cfg = (SO101VialTransferEnvCfg if kind == "state" else SO101VialCameraTransferEnvCfg)()
+    assert cfg.scene.robot.init_state.pos[2] + BASE_SEATING_Z == pytest.approx(TABLETOP_Z)
+    for name in ("fixed_jaw_support", "moving_jaw_support"):
+        assert getattr(cfg.scene, name).filter_prim_paths_expr == ["{ENV_REGEX_NS}/Desk", "{ENV_REGEX_NS}/Support"]
+    assert cfg.rewards.jaw_support_force.weight < 0
+    assert cfg.scene.robot.spawn.shoulder_response == (0.22, 0.1, 0.4)
+    assert cfg.actions.arm_action.scale["shoulder_lift"] == 0.12
+    assert cfg.actions.arm_action.scale["elbow_flex"] == 0.07
+    assert cfg.scene.robot.spawn.elbow_response == (1.0, 1.0, 0.8)
+    assert cfg.episode_length_s == 60.0
+    for term in (cfg.actions.arm_action, cfg.actions.gripper_action):
+        assert term.target_rate_deg_s == 5.0
+        assert term.max_target_offset_deg == 7.0
+    assert cfg.rewards.approach_progress.params["height_offset"] == 0.008
+    assert cfg.events.reset_from_dataset.params["phase_weights"] == (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+
+def test_transfer_camera_preserves_camera_housing_visibility_override():
+    from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import _spawn_minimal_so101_for_wrist_camera
+    from isaaclab_tutorial.tasks.place_vial.config.so101.robust_env_cfg import TransferCameraSceneCfg
+
+    assert TransferCameraSceneCfg().robot.spawn.func is _spawn_minimal_so101_for_wrist_camera

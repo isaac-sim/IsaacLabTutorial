@@ -6,15 +6,21 @@ from pathlib import Path
 import isaaclab.sim as sim_utils
 from isaaclab.assets import RigidObjectCfg, VisualMaterialCfg
 from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim.utils import clone
 from isaaclab.utils.configclass import configclass
 from pxr import Sdf
 
 from isaaclab_tutorial.tasks.place_vial import mdp
-from isaaclab_tutorial.tasks.place_vial.mdp.actions import RobustRelativeJointPositionActionCfg
+from isaaclab_tutorial.tasks.place_vial.mdp.actions import (
+    RobustRelativeJointPositionActionCfg,
+    target_envelope_violation,
+)
 
-from .env_cfg import ARM_JOINTS, JOINTS, WORKSHOP_CONTACT_MATERIAL, SO101SceneCfg
+from .env_cfg import ARM_JOINTS, JOINTS, WORKSHOP_CONTACT_MATERIAL, MeasuredSO101SpawnCfg, SO101SceneCfg
 from .sim2real_env_cfg import (
     CameraSim2RealEventsCfg,
     CameraSim2RealSceneCfg,
@@ -193,17 +199,54 @@ def _support_cfg():
     )
 
 
+# Authored lowest seating-face Z in base_so101_v2, measured from the USD mesh.
+# Place that face on the 35 mm tabletop; the mat is only under the task objects.
+BASE_SEATING_Z = 0.030081447775408447
+TABLETOP_Z = 0.035
+BASE_HEIGHT_CORRECTION = TABLETOP_Z - BASE_SEATING_Z
+
+
+def _jaw_support_sensor(link):
+    return ContactSensorCfg(
+        prim_path=f"{{ENV_REGEX_NS}}/Robot/{link}",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Desk", "{ENV_REGEX_NS}/Support"],
+        history_length=1,
+    )
+
+
 @configclass
 class TransferStateSceneCfg(SO101SceneCfg):
     support: RigidObjectCfg = _support_cfg()
+    fixed_jaw_support = _jaw_support_sensor("gripper")
+    moving_jaw_support = _jaw_support_sensor("moving_jaw_so101_v1")
+
+    def __post_init__(self):
+        self.robot.init_state.pos = (-0.05, 0.0, BASE_HEIGHT_CORRECTION)
 
 
 @configclass
 class TransferCameraSceneCfg(RobustCameraSceneCfg):
     support: RigidObjectCfg = _support_cfg()
+    fixed_jaw_support = _jaw_support_sensor("gripper")
+    moving_jaw_support = _jaw_support_sensor("moving_jaw_so101_v1")
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.robot.init_state.pos = (-0.05, 0.0, BASE_HEIGHT_CORRECTION)
 
 
 def _transfer_actions(cfg):
+    # Slow setpoint motion needs time for both the approach and rack placement.
+    cfg.episode_length_s = 60.0
+    # Effective fit to this follower's free-space shoulder response at two poses.
+    # These are simulator parameters, not writes to the physical motor's gains.
+    cfg.scene.robot.spawn = MeasuredSO101SpawnCfg(
+        **vars(cfg.scene.robot.spawn), shoulder_response=(0.22, 0.1, 0.4), elbow_response=(1.0, 1.0, 0.8)
+    )
+    cfg.rewards.jaw_support_force = RewTerm(
+        func=mdp.jaw_support_force_cost, weight=-8.0, params={"free_force": 0.25, "force_span": 2.0}
+    )
+    cfg.rewards.approach_progress.params["height_offset"] = 0.008
     for name, joints, scale in (("arm_action", ARM_JOINTS, 0.033), ("gripper_action", ["gripper"], 0.02)):
         setattr(
             cfg.actions,
@@ -214,8 +257,14 @@ def _transfer_actions(cfg):
                 preserve_order=True,
                 scale={joint: scale for joint in joints},
                 use_zero_offset=True,
+                target_rate_deg_s=5.0,
+                max_target_offset_deg=7.0,
             ),
         )
+    # 0.040 rad stalled on hardware; 0.10 still saturated in high-friction lift audits.
+    cfg.actions.arm_action.scale["shoulder_lift"] = 0.12
+    cfg.actions.arm_action.scale["elbow_flex"] = 0.07
+    cfg.terminations.target_envelope = DoneTerm(func=target_envelope_violation)
 
 
 @configclass

@@ -26,6 +26,7 @@ def _environment(monkeypatch, positions):
     scene = {"vial": vial, "rack": rack}
 
     class Scene(dict):
+        sensors = {}
         env_origins = torch.zeros(count, 3)
 
     env = SimpleNamespace(

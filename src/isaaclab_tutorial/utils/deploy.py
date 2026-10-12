@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.12,<3.13"
-# dependencies = ["leapp==0.7.1", "lerobot[feetech]==0.6.1", "torch==2.10.0", "torchvision==0.25.0"]
+# dependencies = ["leapp==0.7.2", "lerobot[feetech]==0.6.1", "torch==2.10.0", "torchvision==0.25.0"]
 # [tool.uv.sources]
 # torch = { index = "pytorch-cpu" }
 # torchvision = { index = "pytorch-cpu" }
@@ -33,6 +33,18 @@ import torch
 JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
 
 
+def finish_motor_control(robot, *, hold: bool) -> None:
+    """Hold fresh measured encoder positions only after a normal diagnostic stop."""
+    holding = False
+    try:
+        if hold:
+            position = robot.bus.sync_read("Present_Position", normalize=False)
+            robot.bus.sync_write("Goal_Position", position, normalize=False)
+            holding = True
+    finally:
+        robot.bus.disconnect(disable_torque=not holding)
+
+
 def require_start_pose(measured: np.ndarray, reference: dict) -> None:
     expected = np.asarray(reference["position"], dtype=float)
     tolerance = float(reference["tolerance_rad"])
@@ -41,6 +53,31 @@ def require_start_pose(measured: np.ndarray, reference: dict) -> None:
     error = np.abs(measured - expected)
     if not np.isfinite(measured).all() or (error > tolerance).any():
         raise ValueError(f"Move to the training home pose before execution; errors in degrees: {np.degrees(error)}")
+
+
+class TargetLimiter:
+    """Diagnostic setpoint limits; these do not guarantee physical motor speed."""
+
+    def __init__(self, initial, rate_deg_s, offset_deg):
+        if not all(math.isfinite(v) and v > 0 for v in (rate_deg_s, offset_deg)):
+            raise ValueError("Target rate and offset must be positive and finite")
+        self.previous = np.asarray(initial, dtype=float).copy()
+        self.rate = math.radians(rate_deg_s)
+        self.offset = math.radians(offset_deg)
+
+    def limit(self, requested, measured, dt):
+        if not math.isfinite(dt) or dt <= 0:
+            raise ValueError("Invalid control interval")
+        if not np.isfinite(requested).all() or not np.isfinite(measured).all():
+            raise ValueError("Non-finite limiter input")
+        # Never catch up with a large target jump after a delayed control tick.
+        step = self.rate * min(dt, 1 / 120)
+        lower = np.maximum(self.previous - step, measured - self.offset)
+        upper = np.minimum(self.previous + step, measured + self.offset)
+        if (lower > upper).any():
+            raise RuntimeError("Measured motion exceeded target envelope; stopping")
+        self.previous = np.clip(requested, lower, upper)
+        return self.previous.copy()
 
 
 class JointMap:
@@ -208,11 +245,39 @@ def main():
     parser.add_argument("--duration", type=float, default=30)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument(
+        "--target-rate-deg-s",
+        type=float,
+        default=5.0,
+        help="Diagnostic target slew limit; not a physical speed guarantee",
+    )
+    parser.add_argument(
+        "--max-target-offset-deg",
+        type=float,
+        default=2.0,
+        help="Maximum target lead from measured joints; changes training semantics",
+    )
+    parser.add_argument(
+        "--hold-at-end",
+        action="store_true",
+        help="After normal duration expiry, hold measured pose with torque ON; errors/Ctrl+C still release torque",
+    )
+    parser.add_argument(
+        "--trace", type=Path, help="Save joint/action trace and policy-resolution RGB frames to a new NPZ file"
+    )
+    parser.add_argument(
         "--start-pose", type=Path, help="JSON position (six radians) and tolerance_rad; checked before motion"
     )
     args = parser.parse_args()
     if not math.isfinite(args.duration) or args.duration <= 0:
         parser.error("duration must be positive and finite")
+    if args.hold_at_end and not args.execute:
+        parser.error("--hold-at-end requires --execute")
+    if not all(math.isfinite(v) and v > 0 for v in (args.target_rate_deg_s, args.max_target_offset_deg)):
+        parser.error("Target rate and offset must be positive and finite")
+    if args.trace:
+        args.trace.parent.mkdir(parents=True, exist_ok=True)
+        if args.trace.exists():
+            parser.error("trace already exists; choose a new filename")
     map_data = json.loads(args.joint_map.read_text())
     mapping = JointMap(map_data)
     start_pose = json.loads(args.start_pose.read_text()) if args.start_pose else None
@@ -222,15 +287,24 @@ def main():
     from lerobot.robots.so_follower import SO101Follower, SO101FollowerConfig
 
     torch.set_num_threads(1)
+    contract = json.loads(args.bundle.with_name("contract.json").read_text())
+    trained_limiter = contract.get("target_limiter")
+    if trained_limiter is not None and (
+        args.target_rate_deg_s != trained_limiter["rate_deg_s"]
+        or args.max_target_offset_deg != trained_limiter["max_offset_deg"]
+    ):
+        parser.error("Controller limits must match the exported training contract")
     policy = VisualPolicy(
         InferenceManager(str(args.bundle.resolve())),
-        json.loads(args.bundle.with_name("contract.json").read_text()),
+        contract,
         mapping,
     )
     robot = SO101Follower(SO101FollowerConfig(port=args.port, id=args.id, use_degrees=True))
     camera = LatestCamera(args.camera)
     elapsed_steps, missed, inference_ms = [], 0, []
     motors_configured = False
+    completed = False
+    trace_steps, trace_frames, trace_frame_times = [], [], []
     try:
         # Bus-only connect avoids configuring/torquing the arm in the default dry run.
         robot.bus.connect()
@@ -269,6 +343,8 @@ def main():
         policy.history.clear()
         policy.action.fill(0)
         previous_time = time.monotonic()
+        limiter = TargetLimiter(previous, args.target_rate_deg_s, args.max_target_offset_deg)
+        trace_start = previous_time
         end = previous_time + args.duration
         next_tick, next_policy = previous_time, previous_time
         while time.monotonic() < end:
@@ -282,6 +358,9 @@ def main():
                 if not args.execute:
                     target = mapping.positions(robot.bus.sync_read("Goal_Position"))
                 policy.infer(camera.frame(), measured, velocity, target)
+                if args.trace:
+                    trace_frames.append(policy.history[-1].squeeze(0).permute(1, 2, 0).numpy().copy())
+                    trace_frame_times.append(tick - trace_start)
                 inference_ms.append(1000 * (time.monotonic() - start))
                 next_policy += 1 / 30
                 if next_policy <= tick:
@@ -289,10 +368,13 @@ def main():
             if time.monotonic() - tick > 0.1:
                 raise RuntimeError("Joint-feedback step exceeded 100 ms; refusing a stale command")
             target = policy.target(measured)
+            target = limiter.limit(target, measured, max(tick - previous_time, 1e-6))
             if args.execute:
                 sent = robot.send_action(mapping.commands(target))
                 target = mapping.positions({name: sent[f"{name}.pos"] for name in JOINTS})
             previous, previous_time = measured, tick
+            if args.trace:
+                trace_steps.append(np.concatenate(([tick - trace_start], measured, target, policy.action)))
             elapsed_steps.append(1000 * (time.monotonic() - tick))
             next_tick += 1 / 120
             remaining = next_tick - time.monotonic()
@@ -301,10 +383,54 @@ def main():
             else:
                 missed += 1
                 next_tick = time.monotonic()
+        completed = True
     finally:
-        camera.close()
-        if robot.bus.is_connected:
-            robot.bus.disconnect(disable_torque=motors_configured)
+        try:
+            camera.close()
+        finally:
+            try:
+                if robot.bus.is_connected:
+                    if motors_configured:
+                        finish_motor_control(robot, hold=completed and args.hold_at_end)
+                        if completed and args.hold_at_end:
+                            print("Diagnostic stop: motors remain ON, holding measured pose; serial port released.")
+                    else:
+                        robot.bus.disconnect(disable_torque=False)
+            finally:
+                if args.trace:
+                    # Keep compression and disk writes outside the motor-control loop.
+                    with args.trace.open("xb") as trace_file:
+                        np.savez_compressed(
+                            trace_file,
+                            steps=np.asarray(trace_steps).reshape(-1, 19),
+                            columns=np.asarray(
+                                ["time_s"]
+                                + [
+                                    f"{kind}/{joint}"
+                                    for kind in ("measured_rad", "target_rad", "action")
+                                    for joint in JOINTS
+                                ]
+                            ),
+                            rgb=np.asarray(trace_frames, dtype=np.float32),
+                            frame_time_s=np.asarray(trace_frame_times),
+                            metadata=json.dumps(
+                                {
+                                    "mode": "execute" if args.execute else "read_only",
+                                    "bundle": str(args.bundle.resolve()),
+                                    "joint_map": map_data,
+                                    "effective_limits": mapping.limits.tolist(),
+                                    "action_scale": policy.scale.tolist(),
+                                    "target_rate_deg_s": args.target_rate_deg_s,
+                                    "max_target_offset_deg": args.max_target_offset_deg,
+                                    "controller_status": (
+                                        "training-matched limits"
+                                        if trained_limiter is not None
+                                        else "diagnostic limits; not training-matched"
+                                    ),
+                                }
+                            ),
+                        )
+                    print(f"Rollout trace: {args.trace}")
     print(
         json.dumps(
             {

@@ -89,6 +89,18 @@ def _contact(env: ManagerBasedRLEnv, name: str, threshold: float = 0.05) -> torc
     return _contact_magnitude(env, name) > threshold
 
 
+def jaw_support_force(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Largest jaw/table-or-mat force, excluding vial and rack contacts [N]."""
+    return torch.maximum(_contact_magnitude(env, "fixed_jaw_support"), _contact_magnitude(env, "moving_jaw_support"))
+
+
+def jaw_support_force_cost(env: ManagerBasedRLEnv, free_force: float = 1.0, force_span: float = 5.0) -> torch.Tensor:
+    """Penalize either jaw pushing on the support, excluding vial and rack contact."""
+    if free_force < 0 or force_span <= 0:
+        raise ValueError("Support force allowance must be nonnegative and span positive")
+    return ((jaw_support_force(env) - free_force) / force_span).clamp(0.0, 1.0)
+
+
 def bilateral_contact(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Whether the vial has simultaneous physical contact with both jaws."""
     return _contact(env, "fixed_jaw_contact") & _contact(env, "moving_jaw_contact")
@@ -216,11 +228,15 @@ class PlacementHistoryTerm(ManagerTermBase):
         super().__init__(cfg, env)
         self.progress = _history(env)
         self._max_rack_force = torch.zeros(self.num_envs, device=self.device)
+        self._max_support_force = torch.zeros_like(self._max_rack_force)
+        self._support_contact_time = torch.zeros_like(self._max_rack_force)
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
         self.progress.reset(env_ids)
         ids = slice(None) if env_ids is None else env_ids
         self._max_rack_force[ids] = 0.0
+        self._max_support_force[ids] = 0.0
+        self._support_contact_time[ids] = 0.0
         grasped = getattr(self._env, "_so101_reset_grasped", None)
         lifted = getattr(self._env, "_so101_reset_lifted", None)
         if grasped is not None:
@@ -243,6 +259,14 @@ class PlacementHistoryTerm(ManagerTermBase):
         success = self.progress.update(holding, cleared, inserted, seated, env.episode_length_buf)
 
         log = env.extras.setdefault("log", {})
+        if "fixed_jaw_support" in env.scene.sensors:
+            force = jaw_support_force(env)
+            self._max_support_force.copy_(torch.maximum(self._max_support_force, force))
+            self._support_contact_time.add_((force > 1.0).float() * env.step_dt)
+            log["Safety/jaw_support_contact_time_s"] = self._support_contact_time.mean()
+            log["Safety/peak_jaw_support_force_n"] = self._max_support_force.mean()
+            env._so101_terminal_max_support_force = self._max_support_force.clone()
+            env._so101_terminal_support_contact_time = self._support_contact_time.clone()
         log["Metrics/grasp_rate"] = self.progress.grasped.float().mean()
         log["Metrics/lift_rate"] = self.progress.lifted.float().mean()
         log["Metrics/insertion_rate"] = self.progress.inserted.float().mean()
@@ -336,8 +360,12 @@ class ApproachProgressReward(ManagerTermBase):
         ids = slice(None) if env_ids is None else env_ids
         self._has_previous[ids] = False
 
-    def __call__(self, env: ManagerBasedRLEnv, scale: float = 0.01) -> torch.Tensor:
-        distance = _finite_error(torch.linalg.vector_norm(grasp_center_w(env) - vial_grasp_point_w(env), dim=-1))
+    def __call__(self, env: ManagerBasedRLEnv, scale: float = 0.01, height_offset: float = 0.0) -> torch.Tensor:
+        target = vial_grasp_point_w(env)
+        # Raise the pad-centre approach target to favour a shallower pinch. This
+        # changes shaping only: grasp/lift milestones still require physical proof.
+        target = target + target.new_tensor((0.0, 0.0, height_offset))
+        distance = _finite_error(torch.linalg.vector_norm(grasp_center_w(env) - target, dim=-1))
         progress = ((self._previous_distance - distance) / scale).clamp(-1.0, 1.0)
         active = self._has_previous & ~_history(env).grasped
         self._previous_distance.copy_(distance)

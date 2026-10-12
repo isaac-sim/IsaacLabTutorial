@@ -1,5 +1,6 @@
 """Joint-space generator action and calibrated policy gripper action."""
 
+import math
 from collections.abc import Sequence
 
 import torch
@@ -132,6 +133,8 @@ class RobustRelativeJointPositionAction(SoftLimitRelativeGripperAction):
         super().__init__(cfg, env)
         self._previous_command = torch.zeros_like(self._raw_actions)
         self._command_gain = torch.ones_like(self._raw_actions)
+        self._limited_target = _tensor(self._asset.data.joint_pos)[:, self._joint_ids].clone()
+        self.envelope_violation = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if not hasattr(env, "_so101_command_delay"):
             env._so101_command_delay = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
 
@@ -139,6 +142,8 @@ class RobustRelativeJointPositionAction(SoftLimitRelativeGripperAction):
         super().reset(env_ids)
         ids = slice(None) if env_ids is None else env_ids
         self._previous_command[ids] = 0.0
+        self._limited_target[ids] = _tensor(self._asset.data.joint_pos)[ids][:, self._joint_ids]
+        self.envelope_violation[ids] = False
         self._command_gain[ids] = torch.empty_like(self._command_gain[ids]).uniform_(*self.cfg.gain_range)
         # Arm is ordered before the jaw in ActionsCfg and owns the shared draw.
         if "gripper" not in self._joint_names:
@@ -154,9 +159,39 @@ class RobustRelativeJointPositionAction(SoftLimitRelativeGripperAction):
         RelativeJointPositionAction.process_actions(self, command * self._command_gain)
         self._previous_command.copy_(actions)
 
+    def seed_joint_target(self, env_ids, joint_target):
+        super().seed_joint_target(env_ids, joint_target)
+        self._limited_target[env_ids] = joint_target
+        self.envelope_violation[env_ids] = False
+
+    def apply_actions(self):
+        if self.cfg.target_rate_deg_s is None:
+            return super().apply_actions()
+        measured = _tensor(self._asset.data.joint_pos)[:, self._joint_ids]
+        limits = _tensor(self._asset.data.soft_joint_pos_limits)[:, self._joint_ids]
+        requested = (measured + self.processed_actions).clamp(limits[..., 0], limits[..., 1])
+        step = math.radians(self.cfg.target_rate_deg_s) * min(self._env.physics_dt, 1 / 120)
+        offset = math.radians(self.cfg.max_target_offset_deg)
+        lower = torch.maximum(self._limited_target - step, measured - offset)
+        upper = torch.minimum(self._limited_target + step, measured + offset)
+        invalid = (lower > upper).any(dim=-1)
+        self.envelope_violation.logical_or_(invalid)
+        self._limited_target.copy_(torch.where(invalid[:, None], measured, requested.clamp(lower, upper)))
+        self._asset.set_joint_position_target_index(target=self._limited_target, joint_ids=self._joint_ids)
+
+
+def target_envelope_violation(env):
+    """End a rollout that the deployment controller would reject."""
+    return (
+        env.action_manager.get_term("arm_action").envelope_violation
+        | env.action_manager.get_term("gripper_action").envelope_violation
+    )
+
 
 @configclass
 class RobustRelativeJointPositionActionCfg(SoftLimitRelativeGripperActionCfg):
     class_type: type = RobustRelativeJointPositionAction
     gain_range: tuple[float, float] = (0.9, 1.1)
     delay_probability: float = 0.25
+    target_rate_deg_s: float | None = None
+    max_target_offset_deg: float = 2.0

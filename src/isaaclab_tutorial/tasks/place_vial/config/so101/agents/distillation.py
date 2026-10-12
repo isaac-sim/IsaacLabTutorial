@@ -28,6 +28,8 @@ class BoundedTeacherDistillation(Distillation):
         return saved
 
     def load(self, loaded_dict: dict, load_cfg: dict | None, strict: bool) -> bool:
+        if load_cfg is None and "student_state_dict" in loaded_dict and "optimizer_state_dict" not in loaded_dict:
+            load_cfg = {"student": True, "teacher": True, "iteration": True, "optimizer": False}
         resume = super().load(loaded_dict, load_cfg, strict)
         if resume:
             self.num_updates = loaded_dict.get("teacher_rollout_updates", loaded_dict.get("iter", 0))

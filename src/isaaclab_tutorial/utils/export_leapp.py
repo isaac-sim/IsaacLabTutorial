@@ -31,6 +31,8 @@ def export_visual_actor(
     history: int = 2,
     normalize_intensity: bool = False,
     action_scale: tuple[float, ...] = (0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
+    target_rate_deg_s: float | None = None,
+    max_target_offset_deg: float | None = None,
 ) -> Path:
     """Bundle an RSL-RL visual TorchScript export and verify LEAPP runtime parity on CPU.
 
@@ -41,6 +43,12 @@ def export_visual_actor(
 
     if history < 1:
         raise ValueError("history must be positive")
+    if (target_rate_deg_s is None) != (max_target_offset_deg is None):
+        raise ValueError("Supply both controller limits or neither")
+    if target_rate_deg_s is not None and not all(
+        math.isfinite(v) and v > 0 for v in (target_rate_deg_s, max_target_offset_deg)
+    ):
+        raise ValueError("Controller limits must be positive and finite")
     if len(action_scale) != 6 or any(not math.isfinite(value) or value <= 0 for value in action_scale):
         raise ValueError("Expected six positive finite action scales matching the evaluated policy")
     output = output.resolve()
@@ -108,6 +116,9 @@ def export_visual_actor(
                 "policy_hz": 30,
                 "relative_target_hz": 120,
                 "action_scale": list(action_scale),
+                "target_limiter": None
+                if target_rate_deg_s is None
+                else {"rate_deg_s": target_rate_deg_s, "max_offset_deg": max_target_offset_deg},
                 "parity_samples": len(examples),
                 "max_absolute_error": max_error,
                 "leapp_version": leapp.__version__,
@@ -124,12 +135,14 @@ def main():
     parser.add_argument("--model", type=Path, required=True, help="RSL-RL exported visual policy.pt, not a checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="New LEAPP bundle directory")
     parser.add_argument("--history", type=int, default=2)
+    parser.add_argument("--target-rate-deg-s", type=float)
+    parser.add_argument("--max-target-offset-deg", type=float)
     parser.add_argument(
         "--action-scale",
         type=float,
         nargs=6,
         default=(0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
-        help="Evaluated per-joint scales in contract joint order; shoulder-authority runs use 0.04 as the second value",
+        help="Per-joint scales from the evaluated task; use its exact shoulder scale, not an older bundle's value",
     )
     parser.add_argument(
         "--normalize-intensity",
@@ -139,7 +152,15 @@ def main():
     )
     args = parser.parse_args()
     print(
-        export_visual_actor(args.model, args.output, args.history, args.normalize_intensity, tuple(args.action_scale))
+        export_visual_actor(
+            args.model,
+            args.output,
+            args.history,
+            args.normalize_intensity,
+            tuple(args.action_scale),
+            args.target_rate_deg_s,
+            args.max_target_offset_deg,
+        )
     )
 
 

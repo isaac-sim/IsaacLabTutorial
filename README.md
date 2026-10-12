@@ -98,7 +98,7 @@ use separate values of `CUDA_VISIBLE_DEVICES` for parallel experiments.
 Distill the randomized teacher using RSL-RL's DAgger runner. The student acts; the frozen teacher
 labels visited states. Labels are clipped to the same `[-1, 1]` range as executed actions.
 This initializes a **new random visual student** and loads only the frozen state teacher.
-Do **not** pass `--reset_optimizer` when initializing a new student directly from a PPO teacher.
+The standard checkpoint loader selects teacher-only initialization for a PPO checkpoint.
 After the randomized-state stage, update `STATE_CHECKPOINT` to its resulting checkpoint.
 
 ```bash
@@ -114,7 +114,7 @@ CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
 
 To reuse a visual encoder with a new teacher, create a distillation checkpoint. This also supports
 expanding a one-frame encoder to a two-frame history without changing its initial response to
-repeated frames. Then train that checkpoint with `--reset_optimizer` and the matching history.
+repeated frames. The task loads these weights with a fresh optimizer; use the matching image history.
 
 ```bash
 uv run python -m isaaclab_tutorial.utils.initialize_distillation \
@@ -137,15 +137,20 @@ uv run python -m isaaclab_tutorial.utils.initialize_ppo \
 CUDA_VISIBLE_DEVICES=1 uv run isaaclab train --rl_library rsl_rl \
   --task IsaacTutorial-Place-Vial-SO101-Camera-Sim2Real \
   --agent rsl_rl_ppo_cfg_entry_point --num_envs 2048 \
-  --checkpoint "$PPO_INITIALIZATION" --reset_optimizer --max_iterations 200 \
+  --checkpoint "$PPO_INITIALIZATION" --max_iterations 200 \
   --seed 46 --run_name visual_ppo --visualizer none \
   presets=newton_mjwarp,newton_renderer \
   env.observations.wrist_rgb.image.params.history_length=2 \
   env.observations.wrist_rgb.image.params.normalize_intensity=False \
+  agent.algorithm.class_name=isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start:FreshOptimizerPPO \
   agent.algorithm.learning_rate=1e-4 agent.algorithm.schedule=fixed \
   agent.algorithm.gamma=0.999 agent.algorithm.entropy_coef=0.001 \
   env.events.reset_from_dataset.params.phase_weights=[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 ```
+
+Select `FreshOptimizerPPO` only for the initial weight transfer. For later continuation,
+omit that override so ordinary PPO restores optimizer moments and learning-rate state.
+The transfer campaign handles this distinction automatically.
 
 This fresh-teacher recipe was validated with 400 distillation and 200 PPO updates, audited in
 200-update distillation and 100-update PPO blocks. It scored 91.31% on both fresh clean and noisy

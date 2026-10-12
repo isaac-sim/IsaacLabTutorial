@@ -78,7 +78,7 @@ def main():
                 run_name,
                 "--checkpoint",
                 str(args.checkpoint.resolve()),
-                "--reset_optimizer",
+                "agent.algorithm.class_name=isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start:FreshOptimizerPPO",
                 "presets=newton_mjwarp",
             ]
             if variant == "full":

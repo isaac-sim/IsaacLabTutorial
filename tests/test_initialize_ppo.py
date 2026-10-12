@@ -50,3 +50,31 @@ def test_distilled_actor_and_state_critic_load_into_ppo(tmp_path):
 def test_invalid_exploration_scale_fails_before_loading(tmp_path, std):
     with pytest.raises(ValueError, match="action_std"):
         initialize_ppo(tmp_path / "teacher.pt", tmp_path / "student.pt", tmp_path / "output.pt", std)
+
+
+def test_warm_start_retains_fresh_optimizer_and_resume_restores_moments():
+    from isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start import FreshOptimizerPPO
+
+    actor, critic = nn.Linear(2, 1), nn.Linear(2, 1)
+    source_optimizer = torch.optim.Adam([*actor.parameters(), *critic.parameters()], lr=0.01)
+    (actor(torch.ones(1, 2)) + critic(torch.ones(1, 2))).sum().backward()
+    source_optimizer.step()
+    checkpoint = {
+        "actor_state_dict": actor.state_dict(),
+        "critic_state_dict": critic.state_dict(),
+        "optimizer_state_dict": source_optimizer.state_dict(),
+    }
+    restored = FreshOptimizerPPO.__new__(FreshOptimizerPPO)
+    restored._raw_actor, restored._raw_critic = nn.Linear(2, 1), nn.Linear(2, 1)
+    restored.rnd = None
+    restored.optimizer = torch.optim.Adam(
+        [*restored._raw_actor.parameters(), *restored._raw_critic.parameters()], lr=0.0001
+    )
+    assert restored.load(checkpoint, None, True)
+    assert not restored.optimizer.state
+    assert restored.optimizer.param_groups[0]["lr"] == 0.0001
+    torch.testing.assert_close(restored._raw_actor.weight, actor.weight)
+    torch.testing.assert_close(restored._raw_critic.weight, critic.weight)
+    assert PPO.load(restored, checkpoint, None, True)
+    assert restored.optimizer.state
+    assert restored.optimizer.param_groups[0]["lr"] == 0.01

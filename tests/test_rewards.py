@@ -78,3 +78,42 @@ def test_approach_progress_pays_distance_covered_and_stops_after_the_grasp(monke
     assert reward(SimpleNamespace(), scale=0.01).tolist() == [1.0, 0.0], "clipped, and inactive once grasped"
     distance += 0.01
     assert reward(SimpleNamespace(), scale=0.01).tolist() == [-1.0, 0.0], "moving away is penalised"
+
+
+def test_support_cost_allows_light_contact_and_penalizes_either_jaw():
+    def sensor(values):
+        forces = torch.zeros((4, 1, 1, 3))
+        forces[:, 0, 0, 2] = torch.tensor(values)
+        return SimpleNamespace(
+            cfg=SimpleNamespace(filter_prim_paths_expr=["Support"]), data=SimpleNamespace(force_matrix_w=forces)
+        )
+
+    env = SimpleNamespace(
+        num_envs=4,
+        scene=SimpleNamespace(
+            sensors={
+                "fixed_jaw_support": sensor([0.0, 0.5, 3.5, 0.0]),
+                "moving_jaw_support": sensor([0.0, 1.0, 0.0, 12.0]),
+            }
+        ),
+    )
+    torch.testing.assert_close(terms.jaw_support_force_cost(env), torch.tensor([0.0, 0.0, 0.5, 1.0]))
+    torch.testing.assert_close(
+        terms.jaw_support_force_cost(env, free_force=0.25, force_span=2.0),
+        torch.tensor([0.0, 0.375, 1.0, 1.0]),
+    )
+
+
+def test_shallow_approach_rewards_motion_to_raised_target(monkeypatch):
+    reward = terms.ApproachProgressReward.__new__(terms.ApproachProgressReward)
+    reward._previous_distance = torch.zeros(1)
+    reward._has_previous = torch.zeros(1, dtype=torch.bool)
+    pad = torch.tensor([[0.0, 0.0, 0.020]])
+    monkeypatch.setattr(terms, "_history", lambda env: SimpleNamespace(grasped=torch.tensor([False])))
+    monkeypatch.setattr(terms, "grasp_center_w", lambda env: pad)
+    monkeypatch.setattr(terms, "vial_grasp_point_w", lambda env: torch.zeros(1, 3))
+    assert reward(None, height_offset=0.008).item() == 0.0
+    pad[:, 2] = 0.008
+    assert reward(None, height_offset=0.008).item() == 1.0
+    pad[:, 2] = 0.0
+    assert reward(None, height_offset=0.008).item() == pytest.approx(-0.8)

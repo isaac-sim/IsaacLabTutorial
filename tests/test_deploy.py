@@ -105,3 +105,61 @@ def test_start_pose_rejects_wrong_home_and_invalid_reference():
         require_start_pose(np.full(6, np.nan), reference)
     with pytest.raises(ValueError, match="reference"):
         require_start_pose(np.zeros(6), {"position": [0] * 5, "tolerance_rad": 0.1})
+
+
+@pytest.mark.parametrize("hold", [False, True])
+def test_diagnostic_stop_holds_measured_raw_position_only_when_requested(hold):
+    from unittest.mock import Mock
+
+    from isaaclab_tutorial.utils.deploy import finish_motor_control
+
+    robot = SimpleNamespace(bus=Mock())
+    position = {name: 2048 for name in JOINTS}
+    robot.bus.sync_read.return_value = position
+    finish_motor_control(robot, hold=hold)
+    if hold:
+        robot.bus.sync_read.assert_called_once_with("Present_Position", normalize=False)
+        robot.bus.sync_write.assert_called_once_with("Goal_Position", position, normalize=False)
+    else:
+        robot.bus.sync_read.assert_not_called()
+        robot.bus.sync_write.assert_not_called()
+    robot.bus.disconnect.assert_called_once_with(disable_torque=not hold)
+
+
+@pytest.mark.parametrize("operation", ["sync_read", "sync_write"])
+def test_diagnostic_hold_failure_releases_torque(operation):
+    from unittest.mock import Mock
+
+    from isaaclab_tutorial.utils.deploy import finish_motor_control
+
+    robot = SimpleNamespace(bus=Mock())
+    getattr(robot.bus, operation).side_effect = RuntimeError("Bus failed")
+    with pytest.raises(RuntimeError, match="Bus failed"):
+        finish_motor_control(robot, hold=True)
+    robot.bus.disconnect.assert_called_once_with(disable_torque=True)
+
+
+def test_target_limiter_bounds_stall_reversal_and_delayed_tick():
+    from isaaclab_tutorial.utils.deploy import TargetLimiter
+
+    limiter = TargetLimiter(np.zeros(6), 5, 2)
+    measured = np.zeros(6)
+    previous = measured.copy()
+    for _ in range(1000):
+        target = limiter.limit(np.ones(6), measured, 1 / 120)
+        assert np.max(np.abs(target - previous)) <= np.radians(5 / 120) + 1e-12
+        assert np.max(np.abs(target - measured)) <= np.radians(2) + 1e-12
+        previous = target
+    np.testing.assert_allclose(target, np.full(6, np.radians(2)))
+    reversed_target = limiter.limit(-np.ones(6), measured, 1.0)
+    np.testing.assert_allclose(target - reversed_target, np.full(6, np.radians(5 / 120)))
+    with pytest.raises(RuntimeError, match="envelope"):
+        limiter.limit(np.ones(6), np.ones(6), 1 / 120)
+
+
+@pytest.mark.parametrize("rate,offset", [(0, 2), (5, -1), (float("nan"), 2), (5, float("inf"))])
+def test_target_limiter_rejects_invalid_limits(rate, offset):
+    from isaaclab_tutorial.utils.deploy import TargetLimiter
+
+    with pytest.raises(ValueError):
+        TargetLimiter(np.zeros(6), rate, offset)

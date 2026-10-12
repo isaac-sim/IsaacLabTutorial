@@ -6,7 +6,6 @@ import math
 from typing import Any
 
 import isaaclab.sim as sim_utils
-import newton
 import torch
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -28,11 +27,10 @@ from isaaclab.visualizers import VisualizerCfg
 from isaaclab_assets.robots import so101
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
 from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
-from isaaclab_newton.sim.schemas import NewtonArticulationCfg
 from isaaclab_ov.physics import OvPhysxCfg
 from isaaclab_physx.physics import PhysxCfg
 from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
-from isaaclab_physx.sim.spawners.materials import RigidBodyMaterialCfg as PhysxRigidBodyMaterialCfg
+from isaaclab_physx.sim.spawners.materials import PhysxRigidBodyMaterialCfg
 from isaaclab_tasks.utils import PresetCfg, preset
 from pxr import Gf, Sdf, Usd, UsdPhysics, UsdShade
 
@@ -127,6 +125,15 @@ def _apply_camera_clipping_range(stage: Any, robot_prim_path: str) -> None:
     camera.GetAttribute("clippingRange").Set(Gf.Vec2f(0.001, 5.0))
 
 
+@configclass
+class MeasuredSO101SpawnCfg(sim_utils.UsdFileCfg):
+    """Optional follower-specific joint fits; legacy tasks retain the asset gains."""
+
+    # Multipliers on authored stiffness, drive damping and Coulomb friction.
+    shoulder_response: tuple[float, float, float] | None = None
+    elbow_response: tuple[float, float, float] | None = None
+
+
 @clone
 def _spawn_so101_with_camera_overrides(
     prim_path: str,
@@ -138,6 +145,25 @@ def _spawn_so101_with_camera_overrides(
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
     stage = prim.GetStage()
+    for joint, response in (
+        ("shoulder_lift", getattr(cfg, "shoulder_response", None)),
+        ("elbow_flex", getattr(cfg, "elbow_response", None)),
+    ):
+        if response is None:
+            continue
+        joint_prim = stage.GetPrimAtPath(f"{prim_path}/joints/{joint}")
+        for name, factor in zip(
+            ("drive:angular:physics:stiffness", "drive:angular:physics:damping", "newton:friction"),
+            response,
+            strict=True,
+        ):
+            attribute = joint_prim.GetAttribute(name)
+            attribute.Set(attribute.Get() * factor)
+        # Default soft friction creeps under sub-threshold commands. The physical
+        # follower stays still; author this before construction so resets retain it.
+        joint_prim.CreateAttribute("mjc:solimpfriction", Sdf.ValueTypeNames.FloatArray).Set(
+            [0.9999, 0.9999, 0.001, 0.5, 2.0]
+        )
     # Workshop inclinometer correction: shift the joint coordinate and frame together.
     elbow = stage.GetPrimAtPath(f"{prim_path}/joints/elbow_flex")
     elbow.GetAttribute("physics:localRot0").Set(Gf.Quatf(0.7454748, Gf.Vec3f(-6.239807e-16, -2.6585315e-16, 0.6665338)))
@@ -281,12 +307,6 @@ SO101_CFG = so101.SO101_CFG.replace(
         func=_spawn_so101_with_camera_overrides,
         # The asset instances its collision meshes; binding the contact material needs real prims.
         make_uninstanceable=True,
-        articulation_props=[
-            properties.replace(self_collision_enabled=False)
-            if isinstance(properties, NewtonArticulationCfg)
-            else properties.replace(enabled_self_collisions=False)
-            for properties in so101.SO101_CFG.spawn.articulation_props
-        ],
         variants={
             "Robot": "robot",
             "Sensor": "sensors",
@@ -362,9 +382,6 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
         builder.shape_material_mu_rolling[shape_index] = _ROLLING_FRICTION
         builder.shape_material_mu_torsional[shape_index] = _TORSIONAL_FRICTION
 
-    # Prototype builders register these attributes, but Newton's cloner does
-    # not currently carry that registration to the main builder.
-    newton.solvers.SolverMuJoCo.register_custom_attributes(builder)
     for name, value in (("mujoco:geom_solimp", _SOLIMP), ("mujoco:geom_solref", _SOLREF), ("mujoco:condim", _CONDIM)):
         attribute = builder.custom_attributes.get(name)
         if attribute is None:

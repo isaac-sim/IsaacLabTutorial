@@ -1,9 +1,55 @@
 # Isaac Lab dependency changes
 
-The tutorial now pins `StafaH/IsaacLab:fix/review-simulation-training-fixes` at
+## October 12 release-3.0 migration
+
+The tutorial follows the official `isaac-sim/IsaacLab` `release/3.0.0` branch.
+`uv.lock` fixes this checkout to
+[`6ea915c135`](https://github.com/isaac-sim/IsaacLab/commit/6ea915c1354c8ba1254d56ecae8e59ada6479ea6).
+Use `uv sync --locked --extra sim2real --group dev` to reproduce it. Branch updates
+require an intentional lockfile update; ordinary locked installs retain this commit.
+
+Removed redundant local accommodations:
+
+- The fork dependency and all six numerical-stack overrides. The release owns its
+  dependencies, including PyTorch 2.11 / torchvision 0.26, Newton 1.6.1 and Warp 1.17.
+- Manual MuJoCo builder-attribute registration: the release's Newton manager registers
+  solver attributes when creating builders. Task-specific contact values remain.
+- Repeated disabling of SO101 self-collisions: the upstream SO101 configuration now
+  disables them on both Newton and PhysX. Configuration tests still check this invariant.
+- The deprecated PhysX material alias is replaced with `PhysxRigidBodyMaterialCfg`.
+
+LEAPP is aligned with the release at 0.7.2, including the isolated deployment script.
+The custom export remains because it packages the hardware loop's explicit RGB/history,
+proprioception and controller contract; native camera export support does not replace that contract.
+Per-environment image projection/randomization and camera-housing exclusion remain task behavior,
+as do the measured elbow/gripper geometry, base seating and provisional actuator fits.
+
+The release does **not** include the fork's `--reset_optimizer` CLI flag. Warm-start PPO
+now selects `FreshOptimizerPPO`, a small algorithm extension using RSL-RL's public `load_cfg`
+interface. It retains actor/critic weights and iteration but starts a fresh optimizer.
+The campaign selects it only for block one; subsequent blocks resume ordinary PPO optimizer
+state. Initialized distillation checkpoints without optimizer state load their teacher/student
+weights through the existing custom distillation algorithm. Historical commands below and in
+the experiment log using the old flag apply only to the old fork; use the updated README or
+`train_transfer` for the release.
+
+This dependency migration does not qualify an existing checkpoint for hardware. The latest
+bounded-controller policy remains below the acceptance threshold.
+
+Validation on the release pin: the complete test suite passed (161 tests), followed by
+a passing additional weights-only distillation regression test. Ruff, formatting, spelling
+and lockfile checks passed. The 16-environment randomized camera Transfer task completed
+two fresh PPO updates and one checkpoint warm-start update using `FreshOptimizerPPO` on
+CUDA with Newton rendering. These are compatibility smoke checks, not policy qualification.
+Logs and generated models are archived outside Git under
+`../IsaacLabTutorial-artifacts/cleanup-20261012/release-validation/`.
+
+## Historical October 8 fork pin
+
+The previous tutorial dependency was `StafaH/IsaacLab:fix/review-simulation-training-fixes` at
 [`a5edcec217`](https://github.com/StafaH/IsaacLab/commit/a5edcec21741e98c5918f4c8ae88341fcd357a5f),
 the inspected head of [PR #8379](https://github.com/isaac-sim/IsaacLab/pull/8379).
-The exact revision is pinned in `pyproject.toml` and `uv.lock`.
+The following records describe that version, not the current release pin.
 
 ## October 8 dependency update
 

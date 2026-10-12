@@ -44,11 +44,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--teacher", required=True, type=Path, help="State PPO checkpoint supplying the critic")
     parser.add_argument("--student", required=True, type=Path, help="Distillation checkpoint supplying the actor")
-    parser.add_argument("--output", required=True, type=Path, help="New PPO checkpoint; use --reset_optimizer to load")
+    parser.add_argument(
+        "--output", required=True, type=Path, help="New PPO checkpoint; load with the FreshOptimizerPPO algorithm"
+    )
     parser.add_argument("--action-std", type=float, default=0.1)
     args = parser.parse_args()
     initialize_ppo(args.teacher, args.student, args.output, args.action_std)
-    print(f"Wrote {args.output}; train with --reset_optimizer and the student's image preprocessing/history.")
+    print(
+        f"Wrote {args.output}; train with "
+        "agent.algorithm.class_name="
+        "isaaclab_tutorial.tasks.place_vial.config.so101.agents.warm_start:FreshOptimizerPPO "
+        "and the student's image preprocessing/history."
+    )
 
 
 if __name__ == "__main__":

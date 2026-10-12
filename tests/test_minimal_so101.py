@@ -50,8 +50,7 @@ def test_minimal_config_changes_only_spawn_function_and_is_default():
                 "robot": {
                     "spawn": {
                         "func": (
-                            "isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg:"
-                            "_spawn_so101_with_camera_overrides"
+                            "isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg:_spawn_so101_with_camera_overrides"
                         )
                     }
                 }
