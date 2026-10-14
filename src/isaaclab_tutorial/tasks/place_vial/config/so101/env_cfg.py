@@ -195,12 +195,16 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
         for shape_index in range(num_shapes):
             attribute.values[shape_index] = value
 
+    # The vial's cap is wider than its body, so on its side it rolls in circles unless the desk resists rolling.
+    rolling = (_ROLLING_FRICTION, _ROLLING_FRICTION)
+    torsional = (_TORSIONAL_FRICTION, _TORSIONAL_FRICTION)
     support = sim.stage.GetPrimAtPath("/World/envs/env_0/Support")
     if support:
-        rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
-        torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
-        if rolling is not None and torsional is not None:
-            configure_support_rolling_contacts(builder, tuple(rolling), tuple(torsional))
+        support_rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
+        support_torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
+        if support_rolling is not None and support_torsional is not None:
+            rolling, torsional = tuple(support_rolling), tuple(support_torsional)
+    configure_support_rolling_contacts(builder, rolling, torsional)
 
 
 def configure_support_rolling_contacts(builder, rolling_range, torsional_range) -> None:
