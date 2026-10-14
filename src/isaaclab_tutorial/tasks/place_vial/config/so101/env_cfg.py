@@ -745,7 +745,7 @@ class PhysicsCfg(PresetCfg):
             integrator="implicitfast",
             njmax=300,
             nconmax=200,
-            cone="elliptic",
+            cone="pyramidal",
             impratio=10.0,
             update_data_interval=2,
             iterations=100,
