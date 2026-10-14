@@ -241,6 +241,10 @@ def main():
     start_pose = json.loads(args.start_pose.read_text()) if args.start_pose else None
     if args.execute and not mapping.verified:
         parser.error("--execute requires a physically verified joint map")
+    if args.execute and not map_data.get("calibration_sha256"):
+        parser.error("--execute requires a joint map bound to the calibration file (calibration_sha256)")
+    if args.execute and start_pose is None:
+        parser.error("--execute requires --start-pose")
     from leapp import InferenceManager
     from lerobot.robots.so_follower import SO101Follower, SO101FollowerConfig
 

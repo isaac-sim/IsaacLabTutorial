@@ -194,8 +194,8 @@ with fresh image and action history.
 
 | Flag | Effect |
 | --- | --- |
-| `--execute` | Sends motor commands. Requires `verified: true`. Before enabling torque it checks the calibration hash, joint limits and start pose, then seeds each motor goal with its current position. |
-| `--start-pose FILE` | With `--execute`, refuses to start unless every joint is within `tolerance_rad` of home. Always pass it. |
+| `--execute` | Sends motor commands. Requires `verified: true`, a `calibration_sha256`, and `--start-pose`. Before enabling torque it checks the calibration hash, joint limits and start pose, then seeds each motor goal with its current position. |
+| `--start-pose FILE` | Required with `--execute`; refuses to start unless every joint is within `tolerance_rad` of home. |
 | `--trace NEW.npz` | Saves the 120 Hz measured/target/action trace and the policy-resolution RGB frames, including on Ctrl+C. The file must not already exist. |
 | `--hold-at-end` | After a *normal* timeout, keeps torque on and holds the measured pose. Errors and Ctrl+C still release torque. |
 
