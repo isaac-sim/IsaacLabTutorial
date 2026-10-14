@@ -166,8 +166,7 @@ class GeneratorCfg:
     """Reset generator quotas and physical validation settings."""
 
     poses_per_phase: int = 128
-    # Larger batches can overflow Newton's triangle-pair buffer.
-    batch_size: int = 128
+    batch_size: int = 1024
     seed: int = 42
     articulation_settle_steps: int = 8
     grasp_close_steps: int = 90
@@ -2146,7 +2145,7 @@ def generate_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate physics-validated SO-101 vial reset poses.")
     parser.add_argument("--output", type=Path, default=RESET_DATASET)
     parser.add_argument("--poses_per_phase", type=int, default=128)
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=1024)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max_attempts_per_phase", type=int, default=32_768)
     parser.add_argument("--branch_seed_count", type=int, default=32)
