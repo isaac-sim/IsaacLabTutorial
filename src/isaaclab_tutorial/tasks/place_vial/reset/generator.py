@@ -18,25 +18,65 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     TABLETOP_VIAL_POSITION,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
+from isaaclab_tutorial.tasks.place_vial.mdp.geometry import hole_relative_positions, inside_bounds
+from isaaclab_tutorial.tasks.place_vial.mdp.observations import jaw_contact_flags as contact_state
+from isaaclab_tutorial.tasks.place_vial.mdp.task import (
+    HARD_RACK_IMPACT_FORCE,
+    RACK_CLEARANCE_HEIGHT,
+    RACK_RIM_HEIGHT,
+    SEATED_LOWER,
+    SEATED_UPPER,
+    VIAL_AXIS_MAX,
+    VIAL_AXIS_MIN,
+    VIAL_GRASP_OFFSET,
+    VIAL_RADIUS,
+    VIAL_REST_HEIGHT,
+    fingertip_positions_w,
+    grasp_center_w,
+    gripper_openness,
+    jaw_contacts,
+    vial_grasp_point_w,
+    vial_in_rack,
+    vial_upright,
+)
+from isaaclab_tutorial.tasks.place_vial.mdp.task import contact_force as _contact_magnitude
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
 
 TABLETOP_VIAL_POSITION_HALF_RANGE = (0.030, 0.040)
 
 
-# Validity checks that only the generator applies. They are stricter than the task's physical milestones because
-# generated states seed training and evaluation, so every row must be an unambiguous instance of its phase.
+def bilateral_contact(env) -> torch.Tensor:
+    fixed, moving = jaw_contacts(env)
+    return fixed & moving
+
+
+def unsafe_rack_contact(env) -> torch.Tensor:
+    return _contact_magnitude(env, "vial_rack_contact") > HARD_RACK_IMPACT_FORCE
+
+
+def vial_lowest_height_in_rack(env) -> torch.Tensor:
+    return vial_in_rack(env)[2]
+
+
+def _placement_values(env):
+    """Rack-local vial position, uprightness, linear and angular speed, and whether it is released and seated."""
+    position = vial_in_rack(env)[0]
+    vial = env.scene["vial"]
+    fixed, moving = jaw_contacts(env)
+    released = ~(fixed | moving) & (gripper_openness(env) > 0.20)
+    placed = inside_bounds(hole_relative_positions(position), SEATED_LOWER, SEATED_UPPER).any(dim=-1)
+    linear_speed = torch.linalg.vector_norm(vial.data.root_lin_vel_w.torch, dim=-1)
+    angular_speed = torch.linalg.vector_norm(vial.data.root_ang_vel_w.torch, dim=-1)
+    return position, vial_upright(env), linear_speed, angular_speed, released, placed
+
+
+# Generator-only validity checks, stricter than the task milestones so every row is unambiguous.
 _HELD_INSERTION_ALIGNMENT = 0.985
 _RACK_XY_BOUNDS = (-0.031, 0.091, -0.031, 0.091)
 
 
 def _rack_clearance_violation(env) -> torch.Tensor:
     """Return unsafe rack-overflight states: a held vial below the rim anywhere except the target opening."""
-    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-        RACK_CLEARANCE_HEIGHT,
-        _placement_values,
-        bilateral_contact,
-        vial_lowest_height_in_rack,
-    )
 
     local = _placement_values(env)[0]
     x_min, x_max, y_min, y_max = _RACK_XY_BOUNDS
@@ -48,11 +88,6 @@ def _rack_clearance_violation(env) -> torch.Tensor:
 
 def _undesired_rack_contact(env) -> torch.Tensor:
     """Return a soft vial/rack force cost, reduced inside the intended insertion corridor."""
-    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-        HARD_RACK_IMPACT_FORCE,
-        _contact_magnitude,
-        _placement_values,
-    )
 
     local, alignment, *_ = _placement_values(env)
     insertion_corridor = (torch.linalg.vector_norm(local[:, :2], dim=-1) < 0.014) & (alignment > 0.88)
@@ -62,11 +97,6 @@ def _undesired_rack_contact(env) -> torch.Tensor:
 
 def _held_insertion_ready(env) -> torch.Tensor:
     """Whether a held vial is centred, upright, slow, and engaged with the target opening above its seat."""
-    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-        RACK_RIM_HEIGHT,
-        _placement_values,
-        vial_lowest_height_in_rack,
-    )
 
     local, alignment, speed, _, _, _ = _placement_values(env)
     centered = torch.linalg.vector_norm(local[:, :2], dim=-1) < 0.004
@@ -233,12 +263,6 @@ def _represented_lift(
 ) -> torch.Tensor:
     """Seed lift history only after the vial physically cleared the rack."""
     from isaaclab_tutorial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset, quat_rotate_xyzw
-    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-        RACK_CLEARANCE_HEIGHT,
-        VIAL_AXIS_MAX,
-        VIAL_AXIS_MIN,
-        VIAL_RADIUS,
-    )
 
     axis = quat_rotate_xyzw(
         vial_pose[:, 3:7],
@@ -248,8 +272,7 @@ def _represented_lift(
         vial_pose[:, 2] - rack_z + cylinder_lowest_offset(axis[:, 2], VIAL_AXIS_MIN, VIAL_AXIS_MAX, VIAL_RADIUS)
     )
     lifted_now = lowest_in_rack >= RACK_CLEARANCE_HEIGHT
-    # Every later phase is connected through the terminal lift state. Its
-    # current pose may descend again, but the milestone is irreversible.
+    # Phases after the lift have been lifted even if the vial is now lower.
     historically_lifted = phase >= 4
     return represented_grasp & (lifted_now | historically_lifted)
 
@@ -268,7 +291,6 @@ class _Generator:
         self.num_envs = env.num_envs
         self.gripper_body_id = self.robot.find_bodies("gripper", preserve_order=True)[0]
         self.moving_body_id = self.robot.find_bodies("moving_jaw_so101_v1", preserve_order=True)[0]
-        self.action_term = env.action_manager.get_term("joint_delta")
         self._zeros = torch.zeros((self.num_envs, 6), device=self.device)
         self.rejections = {name: 0 for name in PHASE_NAMES}
         self.last_diagnostics: dict[str, float] = {}
@@ -283,10 +305,7 @@ class _Generator:
         self._seed_banks: dict[str, dict[str, torch.Tensor]] = {}
         self._target_vial_quaternion = torch.zeros((self.num_envs, 4), device=self.device)
         self._target_vial_quaternion[:, 3] = 1.0
-        # Environment construction has not run a reset yet, so its live
-        # gripper coordinate may still be zero rather than the configured
-        # open command. Pose the articulation explicitly before measuring the
-        # aperture center used by the IK objective.
+        # Pose the gripper open before measuring the aperture centre; the env has not been reset yet.
         open_geometry_position = _tensor(self.robot.data.default_joint_pos).clone()
         open_geometry_position[:, -1] = PREGRASP_GRIPPER_POSITION
         self._write_robot(open_geometry_position)
@@ -295,8 +314,7 @@ class _Generator:
         self.env.scene.update(self.env.physics_dt)
         self.grasp_tcp_offset = self._pregrasp_center_offset()
         self._build_ik()
-        # This is the normal close command observed on the real robot, not a
-        # mechanical-limit command and not an actuator or contact override.
+        # The real robot's close command.
         self.gripper_closed_position = GRASP_GRIPPER_POSITION
         gripper_joint_id = self.robot.find_joints("gripper", preserve_order=True)[0][0]
         lower, upper = self.ik_joint_limits[gripper_joint_id].tolist()
@@ -307,15 +325,8 @@ class _Generator:
             )
 
     def _pregrasp_center_offset(self) -> torch.Tensor:
-        """Measure the collision-pad midpoint in the pregrasp frame.
-
-        This is derived from the loaded robot geometry at runtime. Centering
-        the open jaw aperture on the vial prevents either finger from sweeping
-        the tabletop object during the validated approach.
-        """
+        """Measure the open-jaw pad midpoint in the gripper frame, used to centre the jaws on the vial."""
         from isaaclab.utils.math import quat_apply_inverse
-
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import grasp_center_w
 
         position = _tensor(self.robot.data.body_pos_w)[:, self.gripper_body_id].squeeze(1)
         quaternion = _tensor(self.robot.data.body_quat_w)[:, self.gripper_body_id].squeeze(1)
@@ -329,8 +340,9 @@ class _Generator:
 
     def _build_ik(self) -> None:
         """Build the same batched Newton IK machinery used by reference reset generators."""
-        import isaaclab.sim as sim_utils
         import warp as wp
+
+        import isaaclab.sim as sim_utils
         from isaaclab import cloner
         from isaaclab_newton.cloner import copy_newton_clone_source
         from isaaclab_newton.controllers.ik import (
@@ -397,9 +409,7 @@ class _Generator:
                     name=objective_name,
                     body_offset_pos=tuple(float(value) for value in self.grasp_tcp_offset),
                     position_weight=100.0,
-                    # The arm has five task DOFs. Position dominates while the
-                    # rotation term keeps the long vial offset controllable;
-                    # grasp axis feasibility is checked explicitly below.
+                    # Five-DoF arm: position dominates, rotation keeps the long vial offset controllable.
                     rotation_weight=1.0,
                 ),
                 NewtonIKJointLimitObjectiveCfg(weight=1.0),
@@ -417,23 +427,15 @@ class _Generator:
             pose[:, :2] += torch.empty((self.num_envs, 2), device=self.device).uniform_(
                 -0.006, 0.006, generator=self.random
             )
-            # Values are rack-local root heights. The rack itself is 40 mm
-            # above the world origin, so adding 155--190 mm here needlessly
-            # pushed the five-DoF arm beyond its accurate workspace. This band
-            # remains at least 17 mm above the rail-clearance requirement.
+            # Rack-local root heights within the arm's accurate workspace, above the rail clearance.
             pose[:, 2] += torch.empty(self.num_envs, device=self.device).uniform_(0.115, 0.140, generator=self.random)
-            # Preserve the upright orientation reached during the physical
-            # reorientation. A vial is yaw-symmetric, so imposing a new random
-            # yaw here only asks the wrist to spin for no task benefit.
+            # Keep the reached orientation; the vial is yaw-symmetric.
             pose[:, 3:7] = self._target_vial_quaternion
         else:
             pose[:, :2] += torch.empty((self.num_envs, 2), device=self.device).uniform_(
                 -0.0010, 0.0010, generator=self.random
             )
-            # Insert enough of the body for the hole to guide the free vial
-            # during release. The grasp stays on the cap: at these root
-            # heights its center is still 144--152 mm above the rack frame,
-            # leaving both fingertips well clear of the 73 mm rim.
+            # Deep enough for the hole to guide the released vial, with the fingertips clear of the rim.
             pose[:, 2] += torch.empty(self.num_envs, device=self.device).uniform_(0.052, 0.060, generator=self.random)
             pose[:, 3:7] = self._target_vial_quaternion
         return pose
@@ -445,16 +447,10 @@ class _Generator:
         *,
         move_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Rotate a center-grasped, lifted vial toward a reachable upright pose.
-
-        The endpoint is solved once and approached through slow joint-position
-        interpolation. The vial stays fully dynamic, and measured alignment
-        and bilateral contact decide whether the trajectory is retained.
-        """
+        """Rotate a grasped, lifted vial toward a reachable upright pose through slow joint interpolation."""
         from isaaclab.utils.math import quat_apply, quat_from_angle_axis, quat_mul
 
         from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
         start_pose = torch.cat(
             (
@@ -490,8 +486,6 @@ class _Generator:
         target_height = torch.maximum(start_pose[:, 2], torch.full_like(start_pose[:, 2], 0.095))
         endpoint_pose[:, 2] = target_height
         # Pull slightly toward the robot and away from the rack while rotating.
-        # Axial spin is task-irrelevant for the round vial, but changes which
-        # wrist branch the five-DoF arm can reach.
         for spin in (0.0, 0.5 * math.pi, -0.5 * math.pi, math.pi):
             spin_angle = torch.full((self.num_envs,), spin, device=self.device)
             spin_quaternion = quat_from_angle_axis(spin_angle, upright_axis)
@@ -523,16 +517,12 @@ class _Generator:
         self.candidate_diagnostics["reorient_endpoint_valid_rate"] = float(endpoint_found.float().mean())
         self._target_vial_quaternion.copy_(endpoint_pose[:, 3:7])
 
-        # Exact intermediate object poses over-constrain a five-DoF arm.
-        # Instead, slowly interpolate its ordinary position command to the
-        # reachable endpoint. The mat supplies the passive pivot reaction and
-        # measured physics—not interpolation—sets the vial trajectory.
+        # Interpolate the joint command to the reachable endpoint; the mat supplies the pivot reaction.
         start_target = target.clone()
         steps_per_waypoint = self.cfg.transition_steps
         settle_steps = max(1, self.cfg.contact_settle_steps // 3)
         terminal_mask = connected_valid & move_mask & torch.isclose(progress, torch.ones_like(progress))
-        # Repeating the endpoint gives the original finite-stiffness drives
-        # time to converge under load without commanding an overshoot.
+        # Repeat the endpoint so the drives converge under load.
         for waypoint in (0.125, 0.250, 0.375, 0.500, 0.625, 0.750, 0.875, 1.000, 1.000, 1.000):
             waypoint_progress = torch.minimum(progress, torch.full_like(progress, waypoint))
             proposed = torch.lerp(start_target, endpoint_target, waypoint_progress.unsqueeze(-1))
@@ -580,12 +570,6 @@ class _Generator:
         )
 
         from isaaclab_tutorial.tasks.place_vial.mdp.geometry import cylinder_lowest_offset
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-            VIAL_AXIS_MAX,
-            VIAL_AXIS_MIN,
-            VIAL_RADIUS,
-            VIAL_REST_HEIGHT,
-        )
 
         if move_mask is None:
             move_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
@@ -642,12 +626,7 @@ class _Generator:
                 desired_pose,
                 target,
                 position_tolerance=0.015,
-                # The first supported-pivot waypoint moves the cap through a
-                # roughly 20 mm arc. On this short five-DoF arm that ordinary
-                # Cartesian move can require about one radian distributed
-                # across the arm. Keep a generous discontinuity guard while
-                # selecting the nearest valid IK branch below; 0.45 rad
-                # incorrectly rejected every physically connected waypoint.
+                # The first pivot waypoint can need about one radian of joint motion.
                 max_joint_delta=1.5,
             )
             waypoint_valid = self.candidate_ik_valid.clone()
@@ -662,7 +641,6 @@ class _Generator:
                 self.candidate_diagnostics[f"{label}_reached_rate"] = float(reached_waypoint[terminal].float().mean())
         if bool(terminal.any()):
             from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
-            from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
             self.candidate_diagnostics["pivot_terminal_ik_rate"] = float(reached_waypoint[terminal].float().mean())
             self.candidate_diagnostics["pivot_terminal_alignment_mean"] = float(
@@ -671,10 +649,7 @@ class _Generator:
             self.candidate_diagnostics["pivot_terminal_bilateral_rate"] = float(
                 bilateral_contact(self.env)[terminal].float().mean()
             )
-        # A failed stochastic solve holds the last valid joint target and is
-        # retried at the next waypoint. Only rows that never found a valid
-        # loaded command are rejected here; final contact, lift, alignment,
-        # and stability remain mandatory in ``_valid``.
+        # Failed solves keep the last valid target; reject only rows that never found one.
         self.candidate_ik_valid.copy_(source_valid & (~move_mask | reached_waypoint))
         return target
 
@@ -687,15 +662,9 @@ class _Generator:
         position_tolerance: float | None = None,
         max_joint_delta: float | None = None,
     ) -> torch.Tensor:
-        """Solve a grasp-center pose that places the vial at a desired pose.
-
-        ``reference_vial_pose_w`` describes the vial-to-gripper transform to
-        preserve.  During approach generation it is a virtual vial centered
-        between the open jaws; after grasping it defaults to the live, dynamic
-        vial pose.  The object itself is never moved while the robot approaches
-        the real tabletop start.
-        """
+        """Solve the gripper pose that puts the vial at a desired pose, keeping the reference vial-to-gripper offset."""
         import warp as wp
+
         from isaaclab.utils.math import combine_frame_transforms, quat_apply, subtract_frame_transforms
 
         if reference_vial_pose_w is None:
@@ -803,9 +772,7 @@ class _Generator:
                 "ik_nearest_joint_delta_mean_rad": float(continuity.amin(-1).mean()),
             }
         )
-        # Loaded-object paths must remain on the current kinematic branch.
-        # Selecting a distant lower-cost IK solution makes joint interpolation
-        # perform a wrist flip even when both endpoint poses are correct.
+        # Stay on the current IK branch to avoid wrist flips while loaded.
         valid_cost = continuity.masked_fill(~seed_valid, torch.inf)
         valid = seed_valid.any(-1)
         fallback = torch.nan_to_num(costs, nan=torch.inf, posinf=torch.inf, neginf=torch.inf).argmin(-1)
@@ -813,9 +780,7 @@ class _Generator:
         rows = torch.arange(self.num_envs, device=self.device)
         solved = joint_q[rows, selected][:, self.ik_coordinate_ids].clone()
         solved[:, -1] = self.gripper_closed_position
-        # Rejected IK rows still share the live simulator batch. Keep them at
-        # their finite seed pose so one invalid fallback cannot destabilize
-        # otherwise independent candidates or poison the next sample batch.
+        # Keep rejected rows at their finite seed pose so they cannot destabilize the batch.
         solved[~valid] = seed_joint_position[~valid]
         self.candidate_ik_valid &= valid
         return solved
@@ -834,9 +799,7 @@ class _Generator:
             ),
             dim=-1,
         ).clone()
-        # Preserve the measured orientation. Imposing a fresh full quaternion
-        # on a five-DoF arm can rotate the gripper between otherwise reachable
-        # endpoints, even though vial yaw has no task meaning.
+        # Keep the measured orientation; vial yaw has no task meaning.
         desired_pose[:, 3:7] = start_pose[:, 3:7]
         settle_steps = max(1, self.cfg.contact_settle_steps // 6)
 
@@ -874,7 +837,6 @@ class _Generator:
     ) -> torch.Tensor:
         """Translate a loaded grasp through measured Cartesian waypoints."""
         from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import grasp_center_w, vial_grasp_point_w
 
         if move_mask is None:
             move_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
@@ -892,9 +854,7 @@ class _Generator:
             waypoint_progress = torch.minimum(progress, torch.full_like(progress, waypoint))
             desired_pose = start_pose.clone()
             desired_pose[:, :3] += translation * waypoint_progress.unsqueeze(-1)
-            # Re-solve against the live, loaded transform at every waypoint.
-            # This is ordinary closed-loop position control through the
-            # identified configured drives; the vial is never written or constrained.
+            # Re-solve against the live vial pose at every waypoint.
             self.candidate_ik_valid.fill_(True)
             proposed = self._solve_vial_pose(desired_pose, target, max_joint_delta=0.45)
             waypoint_valid = connected_valid & (~active | self.candidate_ik_valid)
@@ -903,10 +863,7 @@ class _Generator:
             self._move_robot(target, self.cfg.transition_steps)
             self._simulate(settle_steps, target)
             centered = torch.linalg.vector_norm(grasp_center_w(self.env) - vial_grasp_point_w(self.env), dim=-1) < 0.05
-            # Stop advancing a row as soon as the load leaves the jaws. This
-            # prevents the Cartesian solver from chasing a dropped vial across
-            # the table; the measured terminal state may still be regrasped if
-            # the release happened only after the vial reached upright.
+            # Stop rows whose vial has left the jaws.
             if stop_if_separated:
                 active &= centered
             if stop_when_upright:
@@ -927,9 +884,8 @@ class _Generator:
     ) -> torch.Tensor:
         """Solve an open-jaw pose centered on the vial's physical grasp point."""
         import warp as wp
-        from isaaclab.utils.math import combine_frame_transforms, quat_apply, quat_from_matrix
 
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import VIAL_GRASP_OFFSET
+        from isaaclab.utils.math import combine_frame_transforms, quat_apply, quat_from_matrix
 
         offset = vial_pose.new_tensor(VIAL_GRASP_OFFSET).expand(self.num_envs, -1)
         target_position = vial_pose[:, :3] + quat_apply(vial_pose[:, 3:7], offset)
@@ -943,17 +899,12 @@ class _Generator:
         )
         if target_quaternion is None:
             world_up = vial_pose.new_tensor((0.0, 0.0, 1.0)).expand_as(vial_axis)
-            # Choose the same cap-first wrist branch used in the workshop
-            # demonstrations.  The opposite, cylinder-symmetric solution is
-            # kinematically valid but starts with the wrist rolled by roughly
-            # pi radians and cannot continue through the supported pickup.
+            # Use the workshop's cap-first wrist branch; the mirrored solution cannot continue the pickup.
             pad_sign = torch.ones(self.num_envs, device=self.device)
             pad_axis = vial_axis * pad_sign.unsqueeze(-1)
             closing_axis = torch.linalg.cross(pad_axis, world_up, dim=-1)
             closing_norm = torch.linalg.vector_norm(closing_axis, dim=-1, keepdim=True)
-            # For an upright vial, vial axis and world-up are parallel. Use a
-            # horizontal closing direction instead of normalizing a zero
-            # cross-product; pad +Y remains aligned with the vial.
+            # For an upright vial, use a horizontal closing direction.
             fallback_closing = vial_pose.new_tensor((1.0, 0.0, 0.0)).expand_as(closing_axis)
             closing_axis = torch.where(
                 closing_norm > 1.0e-4,
@@ -961,8 +912,7 @@ class _Generator:
                 fallback_closing,
             )
             gripper_up = torch.linalg.cross(closing_axis, pad_axis, dim=-1)
-            # Rotation-matrix columns are gripper +X (closing), +Y (the
-            # fingertip pad's long direction), and +Z (up/approach).
+            # Columns: gripper +X (closing), +Y (pad length), +Z (approach).
             target_quaternion = quat_from_matrix(torch.stack((closing_axis, pad_axis, gripper_up), dim=-1))
         self.ik_pose_objective.position_objective.set_target_positions(
             wp.from_torch(target_position.contiguous(), dtype=wp.vec3)
@@ -993,9 +943,7 @@ class _Generator:
         actual_tcp = actual_tcp.reshape(self.num_envs, seeds, 3)
         position_error = torch.linalg.vector_norm(actual_tcp - target_position[:, None], dim=-1)
 
-        # The SO-101 pads close along gripper +X. A cylinder grasp is viable
-        # when that direction is perpendicular to the vial's long axis; spin
-        # around the cylinder is intentionally left free.
+        # The pads close along gripper +X, which must be perpendicular to the vial axis.
         closing_axis = gripper_pose.new_tensor((1.0, 0.0, 0.0)).expand(self.num_envs, seeds, -1)
         closing_axis = quat_apply(gripper_pose[:, :, 3:7].reshape(-1, 4), closing_axis.reshape(-1, 3))
         closing_axis = closing_axis.reshape(self.num_envs, seeds, 3)
@@ -1074,16 +1022,8 @@ class _Generator:
         *,
         corrections: int = 1,
     ) -> torch.Tensor:
-        """Use bounded Cartesian feedback to center the dynamic open jaws.
-
-        Finite-stiffness position drives have pose-dependent steady-state
-        error under gravity. This controller changes only normal joint
-        position commands; every correction is simulated with the original
-        USD actuator and the vial remains fully dynamic.
-        """
+        """Centre the open jaws on the vial with bounded Cartesian feedback on the joint targets."""
         from isaaclab.utils.math import quat_apply
-
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import vial_grasp_point_w
 
         bias = torch.zeros((self.num_envs, 3), device=self.device)
         for _ in range(corrections):
@@ -1122,13 +1062,7 @@ class _Generator:
         move_mask: torch.Tensor | None = None,
         corrections: int = 3,
     ) -> torch.Tensor:
-        """Track one loaded Cartesian pose with bounded servo feedback.
-
-        The first IK solution establishes reachability. Later solutions are
-        optional feedback corrections for finite drive deflection: a row keeps
-        its last reachable target when a correction would cross an IK margin,
-        and the final physics checks decide whether the motion succeeded.
-        """
+        """Track a Cartesian pose while carrying the vial, correcting drive deflection with bounded feedback."""
         if move_mask is None:
             move_mask = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
         required_valid = self.candidate_ik_valid.clone()
@@ -1179,7 +1113,6 @@ class _Generator:
     def _regrasp_upright_vial(self, target: torch.Tensor, terminal: torch.Tensor) -> torch.Tensor:
         """Open and physically regrasp terminal upright pivot candidates."""
         from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact, grasp_center_w, vial_grasp_point_w
 
         alignment = vertical_alignment(_tensor(self.vial.data.root_quat_w))
         speed = torch.linalg.vector_norm(_tensor(self.vial.data.root_lin_vel_w), dim=-1)
@@ -1239,11 +1172,7 @@ class _Generator:
             self.env.sim.step()
             self.env.scene.update(self.env.physics_dt)
             if self._track_safety:
-                from isaaclab_tutorial.tasks.place_vial.mdp.terms import unsafe_rack_contact
-
-                # Endpoint validation is insufficient: a candidate can hit a
-                # rail, rebound, and look calm after settling. Preserve every
-                # violation along the transport/insertion rollout.
+                # Record violations along the whole rollout, not just at the endpoint.
                 if self._track_clearance:
                     self.candidate_clearance_violation |= _rack_clearance_violation(self.env).bool()
                 self.candidate_rack_contact |= _undesired_rack_contact(self.env) > 0.0
@@ -1252,13 +1181,6 @@ class _Generator:
     def _record_grasp_diagnostics(self, prefix: str) -> None:
         """Record finite measurements for IK-valid grasp candidates only."""
         from isaaclab.utils.math import quat_apply
-
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-            contact_state,
-            fingertip_positions_w,
-            grasp_center_w,
-            vial_grasp_point_w,
-        )
 
         fixed, moving = fingertip_positions_w(self.env)
         vial_point = vial_grasp_point_w(self.env)
@@ -1296,7 +1218,6 @@ class _Generator:
         self.robot.write_joint_position_to_sim_index(position=joint_position)
         self.robot.write_joint_velocity_to_sim_index(velocity=self._zeros)
         self.robot.set_joint_position_target_index(target=joint_position)
-        self.action_term._joint_target.copy_(joint_position)
 
     def _write_vial(self, local_pose: torch.Tensor) -> None:
         world_pose = local_pose.clone()
@@ -1305,13 +1226,7 @@ class _Generator:
         self.vial.write_root_velocity_to_sim_index(root_velocity=self._zeros)
 
     def _commit_reset_state(self) -> None:
-        """Commit explicit state writes before advancing Newton physics.
-
-        Rejection sampling deliberately visits failed candidates. Clearing the
-        scene's cached asset/sensor state and evaluating forward kinematics
-        prevents a rejected world's stale body or contact buffers from being
-        observed as the next finite candidate.
-        """
+        """Write pending state and refresh kinematics so rejected candidates leave no stale buffers."""
         self.env.scene.reset()
         self.env.scene.write_data_to_sim()
         self.env.sim.forward()
@@ -1352,7 +1267,6 @@ class _Generator:
         self._write_robot(joint_position)
         self._write_vial(local_pose)
         self.robot.set_joint_position_target_index(target=target)
-        self.action_term._joint_target.copy_(target)
         self._commit_reset_state()
         if settle_steps is None:
             settle_steps = max(1, self.cfg.contact_settle_steps // 3)
@@ -1374,12 +1288,7 @@ class _Generator:
         phase: int,
         progress: torch.Tensor,
     ) -> torch.Tensor:
-        """Replay one sparse real-robot segment through the Sys-ID drives.
-
-        Only robot position targets are replayed. The vial remains a free
-        rigid body, so later rejection checks—not the recording—determine its
-        pose, contacts, stability, and clearance.
-        """
+        """Replay one recorded real-robot joint segment; the vial stays a free rigid body."""
         waypoints = target.new_tensor(WORKSHOP_TASK_WAYPOINTS[phase])
         limits = self.ik_joint_limits
         if not bool(((waypoints >= limits[:, 0]) & (waypoints <= limits[:, 1])).all()):
@@ -1430,9 +1339,7 @@ class _Generator:
 
     def _canonical_home_joint_positions(self) -> torch.Tensor:
         """Return the exact operational pose used to begin every full task."""
-        # Phase zero is the public start distribution, not an approach
-        # curriculum. Keeping this pose exact prevents canonical evaluation
-        # from beginning with the vial already at or between the jaws.
+        # Home starts stay exact so evaluation never begins with the vial between the jaws.
         base = self._zeros.new_tensor(WORKSHOP_INITIAL_JOINT_POSITION).repeat(self.num_envs, 1)
         limits = _tensor(self.robot.data.soft_joint_pos_limits)
         return base.clamp(limits[..., 0], limits[..., 1])
@@ -1444,9 +1351,7 @@ class _Generator:
         pose[:, :2] += (
             torch.empty((self.num_envs, 2), device=self.device).uniform_(-1.0, 1.0, generator=self.random) * half_range
         )
-        # The workshop randomizes roll about the vial axis, not its tabletop
-        # heading. A modest yaw band covers setup error without presenting the
-        # cap beyond the small arm's reliable continuation workspace.
+        # Modest heading range that keeps the cap within the arm's reliable workspace.
         yaw_range = self.cfg.home_heading_range if phase == 0 else self.cfg.approach_heading_range
         yaw = torch.empty(self.num_envs, device=self.device).uniform_(*yaw_range, generator=self.random)
         half = 0.5 * yaw
@@ -1460,14 +1365,7 @@ class _Generator:
         self,
         phase: int | None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Move the open gripper toward a stationary tabletop vial.
-
-        Phase 0 is the exact operational home pose, phase 1 spans physical jaw
-        closure, and ``None`` reaches the open
-        pregrasp endpoint before seeding a load-bearing grasp. All rows
-        belong to one connected task trajectory beginning at the same
-        distribution used for evaluation.
-        """
+        """Move the open gripper from home toward the resting vial (phase 0 home, phase 1 jaw closure)."""
         start = self._canonical_home_joint_positions()
         start[:, -1] = PREGRASP_GRIPPER_POSITION
         self._park_vial()
@@ -1475,9 +1373,7 @@ class _Generator:
         self._commit_reset_state()
         self._simulate(self.cfg.articulation_settle_steps, start)
 
-        # First let the dynamic vial find its real resting height and
-        # orientation. IK must target this measured pose, not the authored
-        # collision-free spawn pose several millimetres above the mat.
+        # Let the vial settle so IK targets its resting pose.
         self._write_vial(self._tabletop_pose(0))
         self._commit_reset_state()
         self._simulate(self.cfg.contact_settle_steps, start)
@@ -1513,10 +1409,7 @@ class _Generator:
 
         self._write_robot(start)
         if phase is None or phase in (0, 1):
-            # Home-to-overhead motion is reset initialization, not part of the
-            # manipulation horizon. Keep the vial parked while the arm makes
-            # that unconstrained joint-space sweep, then establish the real
-            # tabletop state before the validated descent begins.
+            # Park the vial while the arm sweeps from home to overhead.
             self._park_vial()
             self._write_robot(overhead)
             overhead_command = self._settle_configuration(overhead)
@@ -1527,10 +1420,7 @@ class _Generator:
             self._write_vial(local_pose)
             self._simulate(self.cfg.contact_settle_steps, overhead_command)
         if phase in (0, 1):
-            # Calibrate the terminal command using the same dynamic,
-            # finite-stiffness approach that seeds the grasp phase. Restore
-            # the scene afterwards so every serialized candidate is reached
-            # through its own physical descent/closure rollout.
+            # Calibrate the terminal command with the same approach that seeds the grasp phase.
             for step in range(1, self.cfg.transition_steps + 1):
                 blend = step / self.cfg.transition_steps
                 self._simulate(1, torch.lerp(overhead_command, pregrasp_command, blend))
@@ -1543,11 +1433,8 @@ class _Generator:
             self._simulate(self.cfg.contact_settle_steps, overhead_command)
             self._write_vial(local_pose)
             self._simulate(self.cfg.contact_settle_steps, overhead_command)
-        # Measure all later drift from this physically settled start state.
         initial_world_position = _tensor(self.vial.data.root_pos_w).clone()
         if phase == 0:
-            # Canonical episodes always begin at home. The policy must execute
-            # the complete home-to-overhead-to-pregrasp approach itself.
             fraction = torch.zeros(self.num_envs, device=self.device)
             first_progress = (2.0 * fraction).clamp_max(1.0)
             second_progress = (2.0 * fraction - 1.0).clamp(0.0, 1.0)
@@ -1556,10 +1443,7 @@ class _Generator:
             target = torch.where((fraction < 0.5).unsqueeze(-1), first_target, target)
         else:
             if phase == 1:
-                # Phase one is the continuous physical jaw-closure segment.
-                # Phase two begins only after an independent load-bearing
-                # proof lift, so weak static grasps are never serialized as
-                # proven grasp resets.
+                # Grasp rows require a load-bearing proof lift.
                 closure_fraction = torch.rand(self.num_envs, device=self.device, generator=self.random)
                 arm_fraction = torch.ones_like(closure_fraction)
                 fraction = (1.0 + closure_fraction) / 3.0
@@ -1568,8 +1452,6 @@ class _Generator:
                 arm_fraction = fraction
             target = torch.lerp(overhead, pregrasp, arm_fraction.unsqueeze(-1))
         if phase is None:
-            # A load-bearing grasp seed must be reached through the same
-            # collision-aware descent available to the policy.
             for step in range(1, self.cfg.transition_steps + 1):
                 blend = step / self.cfg.transition_steps
                 self._simulate(1, torch.lerp(overhead_command, pregrasp_command, blend))
@@ -1577,8 +1459,6 @@ class _Generator:
             self._simulate(self.cfg.contact_settle_steps, target)
             target = self._center_open_gripper(target, self._last_pregrasp_quaternion.clone())
             from isaaclab.utils.math import quat_apply
-
-            from isaaclab_tutorial.tasks.place_vial.mdp.terms import vial_grasp_point_w
 
             gripper_position = _tensor(self.robot.data.body_pos_w)[:, self.gripper_body_id].squeeze(1)
             gripper_quaternion = _tensor(self.robot.data.body_quat_w)[:, self.gripper_body_id].squeeze(1)
@@ -1597,9 +1477,6 @@ class _Generator:
                     self.candidate_diagnostics[f"pregrasp_live_tcp_error_{axis}_mean_m"] = float(value)
         elif phase in (0, 1):
             if phase == 0:
-                # Restore and settle the exact home start with the vial on the
-                # table. A zero fraction intentionally executes no hidden
-                # portion of either approach leg.
                 self._write_robot(start)
                 self._write_vial(local_pose)
                 self._commit_reset_state()
@@ -1641,8 +1518,6 @@ class _Generator:
             self._simulate(self.cfg.contact_settle_steps // 3, target)
             self._simulate(self.cfg.contact_settle_steps, target)
         else:
-            # Earlier reset phases represent stable points along the approach
-            # rather than an open-loop planner rollout.
             self._write_robot(target)
             self._simulate(self.cfg.contact_settle_steps // 3, target)
         if phase is not None:
@@ -1651,15 +1526,6 @@ class _Generator:
         return valid, target, local_pose, initial_world_position
 
     def _valid(self, phase: int, initial_vial_position: torch.Tensor) -> torch.Tensor:
-        from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-            VIAL_REST_HEIGHT,
-            _placement_values,
-            bilateral_contact,
-            contact_state,
-            fingertip_positions_w,
-            grasp_center_w,
-            vial_grasp_point_w,
-        )
 
         joint_position = _tensor(self.robot.data.joint_pos)
         joint_velocity = _tensor(self.robot.data.joint_vel)
@@ -1683,11 +1549,7 @@ class _Generator:
         gripper_quaternion = _tensor(self.robot.data.body_quat_w)[:, self.gripper_body_id].squeeze(1)
         grasp_offset = quat_apply_inverse(gripper_quaternion, grasp_center_w(self.env) - gripper_position)
         if phase == 3:
-            # Servo-command fraction is not physical task progress: under a
-            # finite-force load the vial can lag a nominally terminal joint
-            # command. Label lift rows by the motion Newton actually reached
-            # so a terminal-lift curriculum is genuinely adjacent to the
-            # first reorientation states.
+            # Label lift difficulty by the measured vial motion, not the command fraction.
             lift_progress = measured_lift_progress(vial_position[:, 2], initial_vial_position[:, 2])
             self.candidate_difficulty.copy_((3.0 + lift_progress) / 7.0)
         self.last_diagnostics = {
@@ -1787,8 +1649,7 @@ class _Generator:
                 stable = (table_stable | closed_grasp) & (distance < 0.100)
                 proof_segment = self.candidate_difficulty > PREGRASP_PROOF_DIFFICULTY
                 proof_progress = (3.0 * (7.0 * self.candidate_difficulty - 1.0) - 2.0).clamp(0.0, 1.0)
-                # During the supported pivot the root barely rises; the
-                # cap-side grasp point is the part deliberately lifted.
+                # During the pivot the cap end rises, not the root.
                 measured_lift = vial_grasp_point[:, 2] - initial_vial_position[:, 2]
                 proof_valid = closed_grasp & (measured_lift > 0.006 * proof_progress)
                 stable &= ~proof_segment | proof_valid
@@ -1860,10 +1721,7 @@ class _Generator:
                 & calm
                 & ~self.candidate_unsafe
                 & placed
-                # Match the task's physical success criterion.  The real
-                # four-hole rack permits a few degrees of passive tilt after
-                # release; demanding >0.94 rejected stable seated samples and
-                # would teach the policy to keep pressing on the vial.
+                # Same alignment threshold as task success.
                 & (alignment > 0.90)
                 & (speed < 0.08)
                 & (angular_speed < 1.0)
@@ -1872,29 +1730,17 @@ class _Generator:
         distance = torch.linalg.vector_norm(vial_grasp_point - grasp_center_w(self.env), dim=-1)
         stable_grasp = contact
         if phase < 4:
-            # The proof, lift, and reorientation phases must begin at the
-            # intended cap/shoulder grasp. During reorientation the light vial
-            # can slide axially while remaining physically enclosed by both
-            # jaws. A distance to one authored point is no longer a valid
-            # retention test after that slide; live bilateral vial contact and
-            # the dynamic stability checks below are the physical criteria.
+            # The vial may slide axially in the jaws, so require bilateral contact rather than a grasp-point distance.
             stable_grasp &= distance < self.cfg.contact_distance
         stable_grasp &= placement_speed < 0.15
         stable_grasp &= torch.linalg.vector_norm(_tensor(self.vial.data.root_ang_vel_w), dim=-1) < 1.0
         if phase == 3:
-            # Lift is its own physical milestone.  Do not require the vial to
-            # follow an authored orientation schedule while it leaves the mat.
             stable_grasp &= vial_grasp_point[:, 2] > initial_vial_position[:, 2] + 0.006
         if phase == 4:
             progress = (self.candidate_difficulty * 7.0 - 4.0).clamp(0.0, 1.0)
-            # Reorientation must make progress and finish upright, but the
-            # dynamic vial is free to lag the commanded real-robot trajectory.
             stable_grasp &= alignment > (progress - 0.12).clamp_min(0.0)
         if phase == 5:
-            # Keep the entire connected reorient/transport segment. Requiring
-            # candidates to be upright and near the rack here would collapse
-            # the reset distribution back to an endpoint cluster and leave the
-            # policy no states on which to learn that transition.
+            # Keep intermediate reorient/transport states, not just endpoints.
             stable_grasp &= vial_position[:, 2] > 0.050
         if phase == 6:
             _, alignment, speed, _, _, _ = _placement_values(self.env)
@@ -1933,8 +1779,6 @@ class _Generator:
                 )
             close_target = target.clone()
             close_target[:, -1] = self.gripper_closed_position
-            # Grasp reset states represent a completed, load-bearing close.
-            # Pregrasp states already cover learning the closing transition.
             close_fraction = torch.ones(self.num_envs, device=self.device)
             target[:, -1] = torch.lerp(target[:, -1], close_target[:, -1], close_fraction)
             self._move_robot(target, self.cfg.grasp_close_steps)
@@ -1942,9 +1786,7 @@ class _Generator:
             self._record_grasp_diagnostics("closed")
 
             if phase == 2:
-                # A bilateral table contact is not yet evidence of a usable
-                # grasp. Raise the dynamic vial clear of its support before a
-                # state may enter the dataset or seed the lift phase.
+                # Prove the grasp by lifting the vial clear of the desk.
                 proof_translation = target.new_tensor((-0.005, -0.002, 0.010)).expand(self.num_envs, -1)
                 target = self._translate_grasped_vial(
                     target,
@@ -1960,19 +1802,13 @@ class _Generator:
                 segment_fraction = torch.empty(self.num_envs, device=self.device).uniform_(
                     0.02, 0.98, generator=self.random
                 )
-                # Randomize terminal rows instead of tying them to fixed
-                # environment indices. Asset randomization and restored grasp
-                # seeds can make some indices consistently more viable than
-                # others, and every viable endpoint must have a chance to seed
-                # the next connected phase.
+                # Shuffle which rows seed the next phase.
                 terminal_rows = torch.rand(self.num_envs, device=self.device, generator=self.random) < 0.5
                 terminal_rows[-1] = True
                 segment_fraction[terminal_rows] = 1.0
             else:
                 segment_fraction = torch.ones(self.num_envs, device=self.device)
-            # A viable reset must have a collision-free history, not merely a
-            # calm endpoint. Track unintended rack contact from the first
-            # loaded lift waypoint through insertion.
+            # Track rack contact from the first loaded lift waypoint through insertion.
             if next_phase >= 3:
                 self._track_safety = True
                 self._track_clearance = False
@@ -1994,11 +1830,7 @@ class _Generator:
             else:
                 target = self._follow_workshop_segment(target, next_phase, segment_fraction)
                 if next_phase == 4:
-                    # The sparse real waypoint reaches the upright basin, but
-                    # finite drive deflection leaves a repeatable residual
-                    # tilt in Newton. Close that error with measured Cartesian
-                    # feedback so later reset branches can physically enter
-                    # the slot. The vial remains fully dynamic throughout.
+                    # Correct the residual tilt from drive deflection with Cartesian feedback.
                     terminal_rows = torch.isclose(segment_fraction, torch.ones_like(segment_fraction))
                     target = self._correct_upright_endpoint(target, terminal_rows)
             if phase > next_phase:
@@ -2024,7 +1856,6 @@ class _Generator:
         self._write_robot(joint_position)
         self._write_vial(local_pose)
         self.robot.set_joint_position_target_index(target=target)
-        self.action_term._joint_target.copy_(target)
         self._commit_reset_state()
         self._track_safety = True
         self._track_clearance = True
@@ -2036,8 +1867,7 @@ class _Generator:
         release_target[:, -1] = RELEASE_GRIPPER_POSITION
         target = torch.lerp(target, release_target, segment_fraction.unsqueeze(-1))
         self._move_robot(target, self.cfg.grasp_close_steps)
-        # Give the released vial time to traverse the real slot under gravity.
-        # The old 0.75 s check accepted rim engagement before seating.
+        # Give the released vial time to drop into the hole.
         self._simulate(2 * self.cfg.contact_settle_steps, target)
         self.candidate_difficulty.fill_(1.0)
         return self._valid(7, initial_world_position), target
@@ -2053,9 +1883,7 @@ class _Generator:
         self._track_clearance = False
         if phase == 7 and not hasattr(self, "release_seed_joint_position"):
             valid, target = self._connected_candidate(6, terminal_insert=True)
-            # Release branches must begin from the same physically verified
-            # held insertion used online. A centered but tilted vial can lodge
-            # on the tight rim and never descend after the jaws open.
+            # Release only from verified held insertions; a tilted vial can lodge on the rim.
             valid &= _held_insertion_ready(self.env)
             if not valid.any():
                 return valid, target
@@ -2079,10 +1907,7 @@ class _Generator:
         if phase >= 2:
             valid, target = self._connected_candidate(phase)
             if phase == 2:
-                # Exercise the exact serialization path used by the reset
-                # dataset without broadcasting one lucky proposal over the
-                # batch. Every accepted row remains a distinct dynamically
-                # reached grasp and must survive its own zero-velocity restore.
+                # Restore each row exactly as the reset dataset will and require it to stay stable.
                 connected_valid = valid.clone()
                 connected_diagnostics = self.last_diagnostics.copy()
                 joint_position = _tensor(self.robot.data.joint_pos).detach().clone()
@@ -2096,13 +1921,10 @@ class _Generator:
                 self._write_robot(joint_position)
                 self._write_vial(local_pose)
                 self.robot.set_joint_position_target_index(target=target)
-                self.action_term._joint_target.copy_(target)
                 self._commit_reset_state()
                 self.candidate_ik_valid.fill_(True)
                 self._simulate(self.cfg.contact_settle_steps, target)
-                # Reconstruct the table-rest reference used by the proof-lift
-                # test. The restored pose itself must remain at least 6 mm
-                # above it while carrying the vial at zero initial velocity.
+                # The restored pose must stay at least 6 mm above the desk-rest height.
                 initial_world_position = local_pose[:, :3] + self.env.scene.env_origins
                 initial_world_position[:, 2] -= 0.012
                 restore_valid = self._valid(phase, initial_world_position)
@@ -2111,12 +1933,6 @@ class _Generator:
                 self.last_diagnostics["connected_valid_count"] = float(connected_valid.sum())
                 self.last_diagnostics["restore_valid_count"] = float(restore_valid.sum())
                 if bool(connected_valid.any()):
-                    from isaaclab_tutorial.tasks.place_vial.mdp.terms import (
-                        bilateral_contact,
-                        grasp_center_w,
-                        vial_grasp_point_w,
-                    )
-
                     restore_contact = bilateral_contact(self.env)
                     restore_distance = torch.linalg.vector_norm(
                         grasp_center_w(self.env) - vial_grasp_point_w(self.env), dim=-1
@@ -2127,10 +1943,7 @@ class _Generator:
                     self.last_diagnostics["restore_connected_centered_rate"] = float(
                         (restore_distance[connected_valid] < 0.030).float().mean()
                     )
-                # A serialized row must retain both proofs: the connected
-                # dynamic rollout lifted the vial, and the exact restored
-                # snapshot remains a stable bilateral grasp. Never replace
-                # the real proof with the synthetic restore reference alone.
+                # Require both the rollout's lift proof and a stable grasp after restore.
                 valid = connected_valid & restore_valid
             seed_name = {2: "grasp", 3: "lift", 4: "reorient", 5: "transport"}.get(phase)
             if seed_name is not None:
@@ -2142,9 +1955,7 @@ class _Generator:
                         torch.full_like(self.candidate_difficulty, terminal_difficulty),
                     )
                 if phase == 4:
-                    # Intermediate reorientation rows may legitimately lag
-                    # the command. Only near-upright endpoints may seed
-                    # transport; later segments preserve this orientation.
+                    # Only near-upright reorientation rows may seed transport.
                     from isaaclab_tutorial.tasks.place_vial.mdp.geometry import vertical_alignment
 
                     terminal &= vertical_alignment(_tensor(self.vial.data.root_quat_w)) > _HELD_INSERTION_ALIGNMENT
@@ -2160,10 +1971,7 @@ class _Generator:
             for name in ("joint_position", "joint_target", "vial_pose", "phase", "difficulty", "grasped", "lifted")
         }
         for phase, phase_name in enumerate(PHASE_NAMES):
-            # Each transition bank must be fed by independently generated
-            # physical roots, beginning with the grasp itself. Otherwise a
-            # large batched rollout merely clones one lucky grasp and cannot
-            # explore downstream mechanical outcomes.
+            # Seed each phase from independently generated grasps, not clones of one.
             required_seed = {2: "grasp", 3: "lift", 4: "reorient", 5: "transport"}.get(phase)
 
             def branch_ready(name: str | None = required_seed) -> bool:
@@ -2278,7 +2086,6 @@ class _Generator:
                 rows["vial_pose"].append(vial_pose)
                 rows["phase"].append(torch.full((count,), phase, device=self.device, dtype=torch.long))
                 rows["difficulty"].append(self.candidate_difficulty[take].detach().clone())
-                from isaaclab_tutorial.tasks.place_vial.mdp.terms import bilateral_contact
 
                 live_grasp = bilateral_contact(self.env)[take]
                 represented_grasp = live_grasp | (phase >= 3)
@@ -2305,6 +2112,33 @@ class _Generator:
         return states, self.rejections
 
 
+def _parse_args(parser: argparse.ArgumentParser, argv: list[str] | None) -> argparse.Namespace:
+    """Parse arguments, also accepting the ``presets=a,b`` form used by the ``isaaclab`` CLI."""
+    args, unknown = parser.parse_known_args(argv)
+    for token in unknown:
+        if not token.startswith("presets="):
+            parser.error(f"unrecognized arguments: {token}")
+        args.presets = token.removeprefix("presets=")
+    return args
+
+
+def _generator_env_cfg(num_envs: int, device: str, presets: str):
+    """The nominal state task, driven directly: no dataset resets, rewards, terminations or vial randomization."""
+    from isaaclab_tasks.utils.hydra import resolve_presets
+
+    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialEnvCfg
+
+    env_cfg = resolve_presets(SO101VialEnvCfg(), presets.split(","))
+    env_cfg.scene.num_envs = num_envs
+    env_cfg.sim.device = device
+    env_cfg.events.reset_from_dataset = None
+    env_cfg.events.vial_material = None
+    env_cfg.events.vial_mass.params["mass_distribution_params"] = (0.02, 0.02)
+    env_cfg.rewards = None
+    env_cfg.terminations = None
+    return env_cfg
+
+
 def generate_main(argv: list[str] | None = None) -> int:
     """CLI entry point for reset generation."""
     from isaaclab.app import add_launcher_args, launch_simulation
@@ -2319,13 +2153,11 @@ def generate_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--vial_position_half_range", type=float, nargs=2, default=TABLETOP_VIAL_POSITION_HALF_RANGE)
     parser.add_argument("--home_heading_range", type=float, nargs=2, default=TABLETOP_VIAL_HEADING_RANGE)
     parser.add_argument("--approach_heading_range", type=float, nargs=2, default=(-0.12, 0.12))
-    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated backend presets")
+    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated presets; presets=a,b also works")
     add_launcher_args(parser)
-    args = parser.parse_args(argv)
+    args = _parse_args(parser, argv)
 
     from isaaclab.envs import ManagerBasedRLEnv
-
-    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
 
     cfg = GeneratorCfg(
         poses_per_phase=args.poses_per_phase,
@@ -2337,13 +2169,8 @@ def generate_main(argv: list[str] | None = None) -> int:
         home_heading_range=tuple(args.home_heading_range),
         approach_heading_range=tuple(args.approach_heading_range),
     )
-    env_cfg = SO101VialGeneratorEnvCfg()
-    env_cfg.scene.num_envs = cfg.batch_size
-    env_cfg.sim.device = args.device
+    env_cfg = _generator_env_cfg(cfg.batch_size, args.device, args.presets)
     env_cfg.seed = cfg.seed
-    from isaaclab_tasks.utils.hydra import resolve_presets
-
-    env_cfg = resolve_presets(env_cfg, args.presets.split(","))
     with launch_simulation(env_cfg, args):
         env = ManagerBasedRLEnv(env_cfg)
         try:
@@ -2374,20 +2201,13 @@ def view_main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dataset", type=Path, default=RESET_DATASET)
     parser.add_argument("--steps_per_pose", type=int, default=45)
     parser.add_argument("--cycles", type=int, default=1)
-    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated backend presets")
+    parser.add_argument("--presets", default="newton_mjwarp", help="Comma-separated presets; presets=a,b also works")
     add_launcher_args(parser)
-    args = parser.parse_args(argv)
+    args = _parse_args(parser, argv)
 
     from isaaclab.envs import ManagerBasedRLEnv
 
-    from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import SO101VialGeneratorEnvCfg
-
-    env_cfg = SO101VialGeneratorEnvCfg()
-    env_cfg.scene.num_envs = 1
-    env_cfg.sim.device = args.device
-    from isaaclab_tasks.utils.hydra import resolve_presets
-
-    env_cfg = resolve_presets(env_cfg, args.presets.split(","))
+    env_cfg = _generator_env_cfg(1, args.device, args.presets)
     with launch_simulation(env_cfg, args):
         env = ManagerBasedRLEnv(env_cfg)
         try:
@@ -2397,7 +2217,6 @@ def view_main(argv: list[str] | None = None) -> int:
             robot = env.scene["robot"]
             vial = env.scene["vial"]
             zeros = torch.zeros((1, 6), device=env.device)
-            action_term = env.action_manager.get_term("joint_delta")
             for _ in range(args.cycles):
                 for row in order.tolist():
                     joint_position = states["joint_position"][row : row + 1]
@@ -2413,14 +2232,13 @@ def view_main(argv: list[str] | None = None) -> int:
                     rack_pose[:, :3] += env.scene.env_origins
                     rack.write_root_pose_to_sim_index(root_pose=rack_pose)
                     rack.write_root_velocity_to_sim_index(root_velocity=zeros)
-                    action_term._joint_target.copy_(joint_target)
                     print(
                         f"[RESET] row={row} phase={PHASE_NAMES[int(states['phase'][row])]} "
                         f"difficulty={float(states['difficulty'][row]):.3f}",
                         flush=True,
                     )
                     for _ in range(args.steps_per_pose):
-                        if not env.sim.is_headless_or_exist_active_visualizer():
+                        if not env.sim.is_running():
                             return 0
                         robot.set_joint_position_target_index(target=joint_target)
                         env.scene.write_data_to_sim()

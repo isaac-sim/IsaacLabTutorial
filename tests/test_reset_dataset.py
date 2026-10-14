@@ -7,7 +7,7 @@ import torch
 
 from isaaclab_tutorial.assets import RESET_DATASET
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import WORKSHOP_INITIAL_JOINT_POSITION
-from isaaclab_tutorial.tasks.place_vial.mdp.events import _ids, _phase_balanced_row_weights
+from isaaclab_tutorial.tasks.place_vial.mdp.events import phase_balanced_row_weights
 from isaaclab_tutorial.tasks.place_vial.reset import dataset as reset_dataset
 from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
 from isaaclab_tutorial.tasks.place_vial.reset.dataset import PHASE_NAMES, load_reset_dataset, save_reset_dataset
@@ -99,50 +99,24 @@ def test_reset_dataset_rejects_malformed_artifacts(tmp_path, field, value, messa
 def test_phase_weights_are_spread_uniformly_over_each_phase_rows():
     phase = torch.tensor([0, 0, 0, 0, 1, 1])
 
-    row_weights = _phase_balanced_row_weights(phase, phase_weights=(1.0, 3.0))
+    row_weights = phase_balanced_row_weights(phase, phase_weights=(1.0, 3.0))
 
     assert row_weights[phase == 0].tolist() == pytest.approx([0.25] * 4)
     assert row_weights[phase == 1].tolist() == pytest.approx([1.5] * 2)
 
 
 def test_phase_weights_reject_a_requested_phase_with_no_rows():
-    with pytest.raises(ValueError, match="no eligible rows for phases \\[1\\]"):
-        _phase_balanced_row_weights(torch.tensor([0, 0, 2]), phase_weights=(1.0, 1.0, 1.0))
+    with pytest.raises(ValueError, match="no dataset rows"):
+        phase_balanced_row_weights(torch.tensor([0, 0, 2]), phase_weights=(1.0, 1.0, 1.0))
     with pytest.raises(ValueError, match="exactly 3 values"):
-        _phase_balanced_row_weights(torch.tensor([0, 1, 2]), phase_weights=(1.0, 1.0))
-
-
-@pytest.mark.parametrize(
-    ("phase", "message"),
-    (
-        (torch.tensor([], dtype=torch.long), "nonempty"),
-        (torch.tensor([0.0]), "nonnegative integers"),
-        (torch.tensor([-1]), "nonnegative integers"),
-    ),
-)
-def test_phase_weights_reject_malformed_phase_columns(phase, message):
-    with pytest.raises(ValueError, match=message):
-        _phase_balanced_row_weights(phase, phase_weights=(1.0,))
-
-
-def test_reset_ids_are_validated():
-    env = SimpleNamespace(num_envs=3, device="cpu")
-
-    assert _ids(env, None).tolist() == [0, 1, 2]
-    assert _ids(env, 1).tolist() == [1]
-    with pytest.raises(ValueError, match="lie in"):
-        _ids(env, [-1])
-    with pytest.raises(ValueError, match="duplicates"):
-        _ids(env, [1, 1])
-    with pytest.raises(ValueError, match="integers"):
-        _ids(env, [1.0])
+        phase_balanced_row_weights(torch.tensor([0, 1, 2]), phase_weights=(1.0, 1.0))
 
 
 def test_bundled_artifact_supports_both_reset_distributions():
     states = load_reset_dataset(RESET_DATASET)["states"]
 
     for phase_weights in (CANONICAL_START, ALL_PHASES):
-        row_weights = _phase_balanced_row_weights(states["phase"], phase_weights)
+        row_weights = phase_balanced_row_weights(states["phase"], phase_weights)
         assert torch.isfinite(row_weights).all()
         assert row_weights.sum() == pytest.approx(sum(phase_weights))
 
@@ -192,13 +166,12 @@ def test_home_jitter_preserves_clearance_and_non_home_rows():
     rack.data.default_root_pose.torch = rack_pose
     scene = Scene(robot=MagicMock(), vial=MagicMock(), rack=rack)
     scene.env_origins = torch.zeros(count, 3)
-    env = SimpleNamespace(
-        num_envs=count, device="cpu", cfg=SimpleNamespace(seed=4101), scene=scene, action_manager=MagicMock()
-    )
-    cfg = EventTermCfg(func=ResetFromDataset, mode="reset", params={"dataset_path": str(RESET_DATASET)})
+    env = SimpleNamespace(num_envs=count, device="cpu", cfg=SimpleNamespace(seed=4101), scene=scene)
+    params = {"dataset_path": str(RESET_DATASET), "phase_weights": ALL_PHASES}
+    cfg = EventTermCfg(func=ResetFromDataset, mode="reset", params=params)
     term = ResetFromDataset(cfg, env)
     for _ in range(4):
-        term(env, None, str(RESET_DATASET), sequential=True, home_position_noise=0.02, home_rack_clearance=0.001)
+        term(env, None, **params, sequential=True, home_position_noise=0.02, home_rack_clearance=0.001)
         rows = env._so101_reset_row
         original = term.states["vial_pose"][rows]
         home = term.states["phase"][rows] == 0

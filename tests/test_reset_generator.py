@@ -8,7 +8,7 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     TABLETOP_VIAL_HEADING_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
-from isaaclab_tutorial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
+from isaaclab_tutorial.tasks.place_vial.mdp.task import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
 from isaaclab_tutorial.tasks.place_vial.reset.generator import (
     PREGRASP_PROOF_DIFFICULTY,
     TABLETOP_VIAL_POSITION_HALF_RANGE,
@@ -108,3 +108,19 @@ def test_insertion_and_release_resets_preserve_historical_lift():
     assert _represented_lift(6, vial_pose, rack_z, torch.ones(1, dtype=torch.bool)).item()
     assert _represented_lift(7, vial_pose, rack_z, torch.ones(1, dtype=torch.bool)).item()
     assert not _represented_lift(7, vial_pose, rack_z, torch.zeros(1, dtype=torch.bool)).item()
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    ((["presets=newton_mjwarp"], "newton_mjwarp"), (["--presets", "physx"], "physx"), ([], "newton_mjwarp")),
+)
+def test_reset_scripts_accept_the_isaaclab_presets_syntax(argv, expected):
+    import argparse
+
+    from isaaclab_tutorial.tasks.place_vial.reset.generator import _parse_args
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--presets", default="newton_mjwarp")
+    assert _parse_args(parser, argv).presets == expected
+    with pytest.raises(SystemExit):
+        _parse_args(parser, ["--bogus"])

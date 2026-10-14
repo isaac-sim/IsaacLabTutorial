@@ -19,9 +19,7 @@ def test_leapp_bundle_responds_to_new_images_and_joint_inputs(tmp_path):
     source = tmp_path / "source.pt"
     torch.jit.script(_VisualActor()).save(str(source))
     scales = (0.033, 0.04, 0.033, 0.033, 0.033, 0.02)
-    path = export_visual_actor(
-        source, tmp_path / "bundle", action_scale=scales, target_rate_deg_s=5.0, max_target_offset_deg=7.0
-    )
+    path = export_visual_actor(source, tmp_path / "bundle", action_scale=scales)
     runtime = leapp.InferenceManager(str(path))
     inputs = {"policy/proprioception": torch.zeros(1, 24), "policy/wrist_rgb": torch.zeros(1, 6, 48, 64)}
     zero = runtime.run_policy(inputs)["policy/action"].cpu().clone()
@@ -36,6 +34,5 @@ def test_leapp_bundle_responds_to_new_images_and_joint_inputs(tmp_path):
     assert contract["image_shape"] == [1, 6, 48, 64]
     assert contract["image_preprocessing"] == "RGB_uint8_divided_by_255"
     assert contract["action_scale"] == list(scales)
-    assert contract["target_limiter"] == {"rate_deg_s": 5.0, "max_offset_deg": 7.0}
     with pytest.raises(FileExistsError):
-        export_visual_actor(source, path.parent)
+        export_visual_actor(source, path.parent, action_scale=scales)

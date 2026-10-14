@@ -119,11 +119,7 @@ def _install_episode_counter(target: int) -> list[str]:
                 if getattr(cfg, "events", None) is not None
                 else {},
                 "action_parameters": {
-                    name: {
-                        key: getattr(action, key)
-                        for key in ("scale", "joint_names", "gain_range", "delay_probability")
-                        if hasattr(action, key)
-                    }
+                    name: {key: getattr(action, key) for key in ("scale", "joint_names") if hasattr(action, key)}
                     for name, action in vars(cfg.actions).items()
                     if hasattr(action, "scale")
                 }
@@ -137,7 +133,6 @@ def _install_episode_counter(target: int) -> list[str]:
             for key, attribute in (
                 ("rack_pose", "_so101_reset_rack_pose"),
                 ("support_height_m", "_so101_support_height"),
-                ("command_delay_steps", "_so101_command_delay"),
                 ("encoder_bias_rad", "_so101_encoder_bias"),
             ):
                 value = getattr(self.unwrapped, attribute, None)
@@ -184,7 +179,10 @@ def _install_episode_counter(target: int) -> list[str]:
         counts["lifted"] += int(progress[:, 1].sum())
         counts["inserted"] += int(progress[:, 2].sum())
         counts["unsafe_rack_contact"] += int(progress[:, 3].sum())
-        counts["vial_lost"] += int(env.termination_manager.get_term("vial_lost")[done_ids].sum())
+        vial_lost = env.termination_manager.get_term("vial_dropped") | env.termination_manager.get_term(
+            "vial_out_of_bounds"
+        )
+        counts["vial_lost"] += int(vial_lost[done_ids].sum())
         counts["timed_out"] += int(env.termination_manager.get_term("time_out")[done_ids].sum())
         sums["peak_rack_force"] += float(peak_force.sum())
         sums["time_to_success"] += float(env._so101_terminal_time_to_success_s[done_ids][success].sum())

@@ -1,7 +1,6 @@
-"""Package the visual actor for LEAPP, with explicit image and proprioception inputs.
+"""Package the exported visual actor as a LEAPP bundle with explicit image and proprioception inputs.
 
-The custom robot loop owns image preprocessing/history and joint-target updates. This
-avoids treating unannotated camera reads in a generic environment export as constants.
+Image preprocessing, frame history and joint-target updates are done by ``deploy.py``, not the bundle.
 """
 
 from __future__ import annotations
@@ -10,6 +9,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import tempfile
 from pathlib import Path
 
@@ -28,11 +28,8 @@ class _FlatVisualActor(torch.nn.Module):
 def export_visual_actor(
     model_path: Path,
     output: Path,
+    action_scale: tuple[float, ...],
     history: int = 2,
-    normalize_intensity: bool = False,
-    action_scale: tuple[float, ...] = (0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
-    target_rate_deg_s: float | None = None,
-    max_target_offset_deg: float | None = None,
 ) -> Path:
     """Bundle an RSL-RL visual TorchScript export and verify LEAPP runtime parity on CPU.
 
@@ -43,12 +40,6 @@ def export_visual_actor(
 
     if history < 1:
         raise ValueError("history must be positive")
-    if (target_rate_deg_s is None) != (max_target_offset_deg is None):
-        raise ValueError("Supply both controller limits or neither")
-    if target_rate_deg_s is not None and not all(
-        math.isfinite(v) and v > 0 for v in (target_rate_deg_s, max_target_offset_deg)
-    ):
-        raise ValueError("Controller limits must be positive and finite")
     if len(action_scale) != 6 or any(not math.isfinite(value) or value <= 0 for value in action_scale):
         raise ValueError("Expected six positive finite action scales matching the evaluated policy")
     output = output.resolve()
@@ -69,13 +60,11 @@ def export_visual_actor(
             raise ValueError(f"Expected six SO-101 actions, got {tuple(example_output.shape)}")
         leapp.start(str(output))
         try:
-            # The prebuilt backend records the interface and copies the validated model.
             proprioception, wrist_rgb = examples[0]
             traced_proprioception, traced_rgb = leapp.annotate.input_tensors(
                 "policy", {"proprioception": proprioception, "wrist_rgb": wrist_rgb}
             )
-            # None-backend annotations describe an existing model, rather than retracing its operations.
-            # Preserve both input edges and the representative output; independent runtime checks follow.
+            # Tie the output to both inputs so LEAPP records them; parity is checked against the actor below.
             representative = example_output + 0 * traced_proprioception[:, :6] + 0 * traced_rgb.sum()
             leapp.annotate.output_tensors(
                 "policy",
@@ -103,11 +92,7 @@ def export_visual_actor(
                 "history_length": history,
                 "history_order": "oldest_first_repeat_initial_frame",
                 "image_shape": [1, 3 * history, 48, 64],
-                "image_preprocessing": (
-                    "RGB_float_divided_by_pixel_max_channel_min_1e-6"
-                    if normalize_intensity
-                    else "RGB_uint8_divided_by_255"
-                ),
+                "image_preprocessing": "RGB_uint8_divided_by_255",
                 "proprioception": ["joint_pos", "joint_vel", "joint_target", "previous_clipped_action"],
                 "joint_order": ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"],
                 "joint_units": "radians",
@@ -116,9 +101,6 @@ def export_visual_actor(
                 "policy_hz": 30,
                 "relative_target_hz": 120,
                 "action_scale": list(action_scale),
-                "target_limiter": None
-                if target_rate_deg_s is None
-                else {"rate_deg_s": target_rate_deg_s, "max_offset_deg": max_target_offset_deg},
                 "parity_samples": len(examples),
                 "max_absolute_error": max_error,
                 "leapp_version": leapp.__version__,
@@ -135,33 +117,17 @@ def main():
     parser.add_argument("--model", type=Path, required=True, help="RSL-RL exported visual policy.pt, not a checkpoint")
     parser.add_argument("--output", type=Path, required=True, help="New LEAPP bundle directory")
     parser.add_argument("--history", type=int, default=2)
-    parser.add_argument("--target-rate-deg-s", type=float)
-    parser.add_argument("--max-target-offset-deg", type=float)
     parser.add_argument(
         "--action-scale",
         type=float,
         nargs=6,
-        default=(0.033, 0.033, 0.033, 0.033, 0.033, 0.02),
-        help="Per-joint scales from the evaluated task; use its exact shoulder scale, not an older bundle's value",
-    )
-    parser.add_argument(
-        "--normalize-intensity",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Record max-channel normalization instead of the default raw RGB; this does not change the actor",
+        required=True,
+        help="Per-joint action scales of the trained task (actions.*.scale in the run's params/env.yaml)",
     )
     args = parser.parse_args()
-    print(
-        export_visual_actor(
-            args.model,
-            args.output,
-            args.history,
-            args.normalize_intensity,
-            tuple(args.action_scale),
-            args.target_rate_deg_s,
-            args.max_target_offset_deg,
-        )
-    )
+    # Run the parity check on CPU; LEAPP otherwise picks CUDA when it is available.
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    print(export_visual_actor(args.model, args.output, tuple(args.action_scale), args.history))
 
 
 if __name__ == "__main__":

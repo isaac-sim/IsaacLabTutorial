@@ -137,29 +137,3 @@ def test_diagnostic_hold_failure_releases_torque(operation):
     with pytest.raises(RuntimeError, match="Bus failed"):
         finish_motor_control(robot, hold=True)
     robot.bus.disconnect.assert_called_once_with(disable_torque=True)
-
-
-def test_target_limiter_bounds_stall_reversal_and_delayed_tick():
-    from isaaclab_tutorial.utils.deploy import TargetLimiter
-
-    limiter = TargetLimiter(np.zeros(6), 5, 2)
-    measured = np.zeros(6)
-    previous = measured.copy()
-    for _ in range(1000):
-        target = limiter.limit(np.ones(6), measured, 1 / 120)
-        assert np.max(np.abs(target - previous)) <= np.radians(5 / 120) + 1e-12
-        assert np.max(np.abs(target - measured)) <= np.radians(2) + 1e-12
-        previous = target
-    np.testing.assert_allclose(target, np.full(6, np.radians(2)))
-    reversed_target = limiter.limit(-np.ones(6), measured, 1.0)
-    np.testing.assert_allclose(target - reversed_target, np.full(6, np.radians(5 / 120)))
-    with pytest.raises(RuntimeError, match="envelope"):
-        limiter.limit(np.ones(6), np.ones(6), 1 / 120)
-
-
-@pytest.mark.parametrize("rate,offset", [(0, 2), (5, -1), (float("nan"), 2), (5, float("inf"))])
-def test_target_limiter_rejects_invalid_limits(rate, offset):
-    from isaaclab_tutorial.utils.deploy import TargetLimiter
-
-    with pytest.raises(ValueError):
-        TargetLimiter(np.zeros(6), rate, offset)

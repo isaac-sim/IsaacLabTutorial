@@ -155,8 +155,7 @@ def home(robot, mapping, goal, execute=False, speed_deg_s=5.0, report_path=None)
             else:
                 stable_since = None
             if now >= deadline:
-                # Feedback is fresh and the tracking guard passed. Stop pursuing the goal and
-                # hold the measured position rather than dropping a nearly homed arm.
+                # Hold the measured pose rather than dropping a nearly homed arm.
                 if settling_since is not None and np.max(np.abs(goal - measured)) <= math.radians(10):
                     native_hold = (measured - mapping.offset) / mapping.scale
                     robot.bus.sync_write("Goal_Position", dict(zip(JOINTS, native_hold.tolist(), strict=True)))

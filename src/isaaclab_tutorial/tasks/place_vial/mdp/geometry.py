@@ -84,12 +84,9 @@ def symmetric_axial_keypoint_error(
 def tabletop_vial_overlaps_rack(
     vial_pose: torch.Tensor, rack_pose: torch.Tensor, clearance: float = 0.0
 ) -> torch.Tensor:
-    """Conservative XY overlap of a resting vial with the rack's lower deck.
+    """Conservative XY overlap of a vial lying on the desk with the rack's base, for reset sampling.
 
-    The horizontal body and cap are tested separately against the deck with the
-    separating-axis test. A small tilt expands their projected axial extents.
-    Conservative bounds cover the measured cylinders and rounded bottom, and the rack base.
-    This is a tabletop reset check, not an insertion/collision predicate.
+    The vial body and cap are tested separately against the base with the separating-axis test.
     """
     position = rack_local_position(vial_pose[:, :3], rack_pose[:, :3], rack_pose[:, 3:])
     world_axis = quat_rotate_xyzw(vial_pose[:, 3:], vial_pose.new_tensor((0.0, 0.0, 1.0)).expand(len(vial_pose), -1))

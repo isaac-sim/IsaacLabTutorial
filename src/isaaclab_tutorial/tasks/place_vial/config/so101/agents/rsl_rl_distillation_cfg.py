@@ -1,6 +1,11 @@
 """State-teacher to wrist-camera-student distillation configuration."""
 
+import torch
+from rsl_rl.algorithms import Distillation
+from tensordict import TensorDict
+
 from isaaclab.utils.configclass import configclass
+
 from isaaclab_rl.rsl_rl import (
     RslRlCNNModelCfg,
     RslRlDistillationAlgorithmCfg,
@@ -8,17 +13,16 @@ from isaaclab_rl.rsl_rl import (
     RslRlMLPModelCfg,
 )
 
-from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import (
-    WRIST_CAMERA_CNN_CFG,
-    BoundedGaussianDistributionCfg,
-)
+from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import BoundedGaussianDistributionCfg
 
 
-@configclass
-class BoundedTeacherDistillationCfg(RslRlDistillationAlgorithmCfg):
-    """Optional teacher rollout warm-up, measured in training iterations."""
+class BoundedTeacherDistillation(Distillation):
+    """RSL-RL distillation whose labels are the teacher's actions clipped to [-1, 1], as the env applies them."""
 
-    teacher_rollout_steps: int = 0
+    def act(self, obs: TensorDict) -> torch.Tensor:
+        actions = super().act(obs)
+        self.transition.privileged_actions = self.transition.privileged_actions.clamp(-1.0, 1.0)
+        return actions
 
 
 @configclass
@@ -34,7 +38,10 @@ class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
     obs_groups = {"student": ["wrist_rgb", "proprioception"], "teacher": ["teacher_state"]}
     clip_actions = 1.0
     student = RslRlCNNModelCfg(
-        cnn_cfg=WRIST_CAMERA_CNN_CFG,
+        # Compact encoder for the 64 x 48 wrist image.
+        cnn_cfg=RslRlCNNModelCfg.CNNCfg(
+            output_channels=[16, 32, 32], kernel_size=[5, 3, 3], stride=[2, 2, 2], activation="elu"
+        ),
         hidden_dims=[256, 128],
         activation="elu",
         obs_normalization=True,
@@ -47,8 +54,10 @@ class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
         obs_normalization=True,
         distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
     )
-    algorithm = BoundedTeacherDistillationCfg(
-        class_name="isaaclab_tutorial.tasks.place_vial.config.so101.agents.distillation:BoundedTeacherDistillation",
+    algorithm = RslRlDistillationAlgorithmCfg(
+        class_name=(
+            "isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_distillation_cfg:BoundedTeacherDistillation"
+        ),
         num_learning_epochs=4,
         learning_rate=5.0e-4,
         gradient_length=1,

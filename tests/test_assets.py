@@ -39,9 +39,9 @@ def test_text_usd_dependencies_resolve():
 
 def test_rack_uses_detailed_visuals_and_a_primitive_four_hole_collider():
     wrapper = RACK_USD.read_text()
-    source = (RACK_USD.parent / "Vial_rack_simple.usda").read_text()
+    source = (RACK_USD.parent / "rack_simple.usda").read_text()
 
-    assert "@./Vial_rack_simple.usda@</World>" in wrapper
+    assert "@./rack_simple.usda@</World>" in wrapper
     assert "double3 xformOp:translate = (-0.0298317129, -0.0298575352, 0)" in wrapper
     assert 'over "Mesh"' in wrapper
     assert "bool physics:collisionEnabled = false" in wrapper

@@ -1,93 +1,103 @@
-"""Wrist-camera observation variant of the SO-101 vial task."""
+"""Wrist-camera variant of the SO-101 vial placement task, distilled from the state teacher.
 
+It adds the wrist camera to :class:`~.env_cfg.SO101VialEnvCfg`. With ``presets=sim2real`` it uses the state task's
+physical randomization plus appearance and camera randomization.
+"""
+
+import math
+
+from isaaclab.assets import VisualMaterialCfg
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import CameraCfg
 from isaaclab.sim import PinholeCameraCfg
-from isaaclab.sim.utils import clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.utils.noise import UniformNoiseCfg
-from pxr import UsdGeom
 
+from isaaclab_tasks.utils import preset
+from isaaclab_tasks.utils.presets import MultiBackendRendererCfg
+
+from isaaclab_tutorial.assets import VIAL_LABELED_USD
 from isaaclab_tutorial.tasks.place_vial import mdp
-from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
+
+from .env_cfg import (
     CriticStateGroupCfg,
+    EventsCfg,
     PolicyStateGroupCfg,
+    Sim2RealEventsCfg,
     SO101SceneCfg,
     SO101VialEnvCfg,
-    _remove_non_gripper_colliders,
-    _spawn_so101_with_camera_overrides,
-)
-from isaaclab_tutorial.tasks.place_vial.config.so101.visuals import (
-    CAMERA_BACKGROUND_COLOR,
-    workshop_camera_renderer_cfg,
 )
 
 
-@clone
-def _spawn_so101_for_wrist_camera(prim_path, cfg, translation=None, orientation=None, **kwargs):
-    prim = _spawn_so101_with_camera_overrides(
-        prim_path, cfg, translation=translation, orientation=orientation, **kwargs
-    )
-    # Mount randomization moves the optical frame, not the housing mesh. The camera cannot
-    # see its own housing in reality; exclude only its visual assembly, retaining collisions
-    # and both gripper jaws. Newton ray tracing does not apply the camera's near clipping plane.
-    housing = prim.GetStage().GetPrimAtPath(f"{prim_path}/gripper/visuals/camera_mount")
-    UsdGeom.Imageable(housing).MakeInvisible()
-    return prim
+def _camera_renderer_cfg() -> MultiBackendRendererCfg:
+    """Enable the supported shadow settings on both standalone renderers."""
+    cfg = MultiBackendRendererCfg()
+    cfg.newton_renderer.enable_shadows = True
+    cfg.default.enable_shadows = True
+    cfg.ovrtx.enable_shadows = True
+    return cfg
 
 
-@clone
-def _spawn_minimal_so101_for_wrist_camera(prim_path, cfg, translation=None, orientation=None, **kwargs):
-    prim = _spawn_so101_for_wrist_camera(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
-    _remove_non_gripper_colliders(prim)
-    return prim
+# The camera renders an 80 x 60 overscan of the 64 x 48 policy view, so varied intrinsics still see real pixels.
+POLICY_IMAGE_SIZE = (48, 64)
+_FOCAL_LENGTH = 13.6
+_HORIZONTAL_APERTURE = 20.955 * 80 / 64
+WRIST_FOCAL_LENGTH_PIXELS = 80 * _FOCAL_LENGTH / _HORIZONTAL_APERTURE
 
 
 @configclass
 class SO101CameraSceneCfg(SO101SceneCfg):
-    """SO-101 scene with the same rectified pinhole wrist camera on every renderer."""
+    """SO-101 scene with the rectified pinhole wrist camera and handles to the randomized visual materials."""
 
     wrist_camera = CameraCfg(
-        # Inherit the asset pose and use an explicit nominal pinhole. Sim2Real samples
-        # per-environment projection in the image term; native Newton distortion is shared.
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wowrobo_2MP_camera/pinhole",
-        spawn=PinholeCameraCfg(focal_length=13.6, horizontal_aperture=20.955),
+        spawn=PinholeCameraCfg(focal_length=_FOCAL_LENGTH, horizontal_aperture=_HORIZONTAL_APERTURE),
         offset=CameraCfg.OffsetCfg(convention="opengl"),
         data_types=["rgb"],
-        width=64,
-        height=48,
+        width=80,
+        height=60,
         update_period=1.0 / 30.0,
         update_latest_camera_pose=True,
-        renderer_cfg=workshop_camera_renderer_cfg(),
-        background_color=CAMERA_BACKGROUND_COLOR,
+        renderer_cfg=_camera_renderer_cfg(),
+        background_color=(0.3, 0.3, 0.3),
     )
 
+    # The Newton renderer only reads material color.
+    robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
+    desk_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Desk/Looks/Wood", spawn=None)
+    rack_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Rack/WorkshopVisual/Looks/OmniPBR", spawn=None)
+    vial_body_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Vial_plastic", spawn=None)
+    vial_cap_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Vial_cap", spawn=None)
+    vial_label_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Label", spawn=None)
+
     def __post_init__(self):
-        self.robot.spawn.func = _spawn_minimal_so101_for_wrist_camera
+        self.robot.spawn.hide_camera_housing = True
+        self.vial.spawn.usd_path = str(VIAL_LABELED_USD)
 
 
 @configclass
 class WristImageCfg(ObsGroup):
-    """Domain-randomized wrist RGB observations."""
+    """Two-frame wrist RGB history with episode-consistent photometric (and, for sim2real, intrinsics) variation."""
 
     image = ObsTerm(
-        func=mdp.DomainRandomizedCameraImage,
+        func=mdp.wrist_rgb,
         params={
             "sensor_cfg": SceneEntityCfg("wrist_camera"),
             "exposure_range": (0.75, 1.25),
             "contrast_range": (0.85, 1.15),
             "white_balance_range": (0.90, 1.10),
             "brightness_range": (-0.05, 0.05),
-            "gamma_range": (1.0, 1.0),
-            "normalize_intensity": False,
-            "data_type": "rgb",
-            "encode_srgb": False,
-            "shift_pixels": 0,
-            "blur_range": (0.0, 0.0),
-            "history_length": 1,
-            "dropout_probability": 0.0,
+            "gamma_range": preset(default=(1.0, 1.0), sim2real=(0.85, 1.15)),
+            "blur_range": preset(default=(0.0, 0.0), sim2real=(0.0, 0.5)),
+            "history_length": 2,
+            "projection_size": POLICY_IMAGE_SIZE,
+            "focal_length_pixels": WRIST_FOCAL_LENGTH_PIXELS,
+            "focal_scale_range": preset(default=(1.0, 1.0), sim2real=(0.95, 1.05)),
+            "principal_point_pixels": preset(default=0.0, sim2real=1.5),
+            "radial_distortion_range": preset(default=(0.0, 0.0), sim2real=(-0.04, 0.04)),
         },
         noise=UniformNoiseCfg(n_min=-0.025, n_max=0.025),
     )
@@ -98,10 +108,10 @@ class WristImageCfg(ObsGroup):
 
 @configclass
 class ProprioceptionCfg(ObsGroup):
-    """Proprioceptive observations available on the real robot."""
+    """Proprioceptive observations available on the real robot, in the encoders' (possibly biased) coordinates."""
 
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.encoder_joint_pos,
         params={"asset_cfg": SceneEntityCfg("robot")},
         noise=UniformNoiseCfg(n_min=-0.01, n_max=0.01),
     )
@@ -110,7 +120,11 @@ class ProprioceptionCfg(ObsGroup):
         params={"asset_cfg": SceneEntityCfg("robot")},
         noise=UniformNoiseCfg(n_min=-0.02, n_max=0.02),
     )
-    joint_target = ObsTerm(func=mdp.joint_target, noise=UniformNoiseCfg(n_min=-0.005, n_max=0.005))
+    joint_target = ObsTerm(
+        func=mdp.encoder_joint_target,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+        noise=UniformNoiseCfg(n_min=-0.005, n_max=0.005),
+    )
     previous_action = ObsTerm(func=mdp.last_action)
 
     def __post_init__(self):
@@ -120,26 +134,52 @@ class ProprioceptionCfg(ObsGroup):
 
 @configclass
 class CameraObservationsCfg:
-    """Deployable actor inputs plus the privileged asymmetric-critic state."""
+    """Deployable student inputs, the state teacher's inputs (distillation labels), and the privileged critic."""
 
     wrist_rgb: WristImageCfg = WristImageCfg()
     proprioception: ProprioceptionCfg = ProprioceptionCfg()
+    teacher_state: PolicyStateGroupCfg = PolicyStateGroupCfg()
     critic: CriticStateGroupCfg = CriticStateGroupCfg()
 
 
-@configclass
-class DistillationObservationsCfg(CameraObservationsCfg):
-    """Camera observations plus the state teacher's inputs, used only to label the student's data."""
+def _color_event(materials: str, color_range) -> EventTerm:
+    return EventTerm(
+        func=mdp.randomize_visual_material,
+        mode="reset",
+        params={"materials": SceneEntityCfg(materials), "channels": {"color": color_range}},
+    )
 
-    teacher_state: PolicyStateGroupCfg = PolicyStateGroupCfg()
+
+@configclass
+class CameraSim2RealEventsCfg(Sim2RealEventsCfg):
+    """Sim2real physics plus appearance and wrist-camera mount variation."""
+
+    # The printed-part material also binds the gripper; motors and pads keep their own materials.
+    robot_color = _color_event("robot_visual", ((0.08, 0.04, 0.008), (1.0, 0.85, 0.85)))
+    desk_color = _color_event("desk_visual", ((0.025, 0.025, 0.025), (0.60, 0.60, 0.60)))
+    rack_color = _color_event("rack_visual", ((0.06, 0.06, 0.02), (1.0, 0.95, 0.95)))
+    vial_body_color = _color_event("vial_body_visual", ((0.12, 0.12, 0.12), (0.95, 0.95, 0.95)))
+    vial_cap_color = _color_event("vial_cap_visual", ((0.02, 0.02, 0.02), (0.95, 0.95, 0.95)))
+    vial_label_color = _color_event("vial_label_visual", ((0.65, 0.65, 0.60), (1.0, 1.0, 1.0)))
+    camera_mount = EventTerm(
+        func=mdp.randomize_wrist_camera_mount,
+        mode="reset",
+        params={
+            "sensor_cfg": SceneEntityCfg("wrist_camera"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["gripper"]),
+            "position_range": 0.003,
+            "rotation_range": math.radians(3),
+        },
+    )
 
 
 @configclass
 class SO101VialCameraEnvCfg(SO101VialEnvCfg):
-    """Vial placement from wrist RGB and proprioception."""
+    """Vial placement from wrist RGB and proprioception, distilled from the state teacher."""
 
     scene: SO101CameraSceneCfg = SO101CameraSceneCfg(num_envs=1024, env_spacing=0.9, replicate_physics=True)
     observations: CameraObservationsCfg = CameraObservationsCfg()
+    events: EventsCfg = preset(default=EventsCfg(), sim2real=CameraSim2RealEventsCfg())
 
     def play_mode(self):
         from isaaclab_tutorial.utils import evaluation
@@ -147,10 +187,3 @@ class SO101VialCameraEnvCfg(SO101VialEnvCfg):
         super().play_mode()
         if not evaluation.EXACT_EVALUATION_ACTIVE:
             self.scene.num_envs = min(self.scene.num_envs, 8)
-
-
-@configclass
-class SO101VialCameraDistillationEnvCfg(SO101VialCameraEnvCfg):
-    """The camera task with the teacher's state observations attached for distillation."""
-
-    observations: DistillationObservationsCfg = DistillationObservationsCfg()

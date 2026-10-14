@@ -2,13 +2,13 @@
 
 from types import SimpleNamespace
 
-import pytest
 import torch
+
 from isaaclab.managers import EventTermCfg, ObservationTermCfg, SceneEntityCfg
 from isaaclab.utils.math import combine_frame_transforms, quat_from_euler_xyz, subtract_frame_transforms
 
-from isaaclab_tutorial.tasks.place_vial.mdp.camera import RandomizeWristCameraMount, camera_sampling_grid
-from isaaclab_tutorial.tasks.place_vial.mdp.terms import DomainRandomizedCameraImage
+from isaaclab_tutorial.tasks.place_vial.mdp.events import randomize_wrist_camera_mount
+from isaaclab_tutorial.tasks.place_vial.mdp.observations import camera_sampling_grid, wrist_rgb
 
 
 def test_identity_projection_is_center_crop_and_focal_principal_point_have_expected_geometry():
@@ -47,7 +47,14 @@ def test_projection_is_episode_fixed_and_retained_without_photometric_corruption
         device="cpu",
         common_step_counter=0,
         cfg=SimpleNamespace(observations=SimpleNamespace(wrist_rgb=SimpleNamespace(enable_corruption=False))),
-        scene=SimpleNamespace(sensors={"camera": SimpleNamespace(data=SimpleNamespace(output={"rgb": image}))}),
+        scene=SimpleNamespace(
+            sensors={
+                "camera": SimpleNamespace(
+                    cfg=SimpleNamespace(height=60, width=80),
+                    data=SimpleNamespace(output={"rgb": SimpleNamespace(torch=image)}),
+                )
+            }
+        ),
     )
     params = dict(
         sensor_cfg=SceneEntityCfg("camera"),
@@ -61,7 +68,7 @@ def test_projection_is_episode_fixed_and_retained_without_photometric_corruption
         principal_point_pixels=1.5,
         radial_distortion_range=(-0.04, 0.04),
     )
-    term = DomainRandomizedCameraImage(ObservationTermCfg(func=DomainRandomizedCameraImage, params=params), env)
+    term = wrist_rgb(ObservationTermCfg(func=wrist_rgb, params=params), env)
     first = term(env, **params).clone()
     assert first.shape == (4, 3, 48, 64)
     torch.testing.assert_close(first, term(env, **params), rtol=0, atol=0)
@@ -106,7 +113,7 @@ def test_mount_offsets_follow_carrier_and_do_not_accumulate():
         position_range=0.003,
         rotation_range=0.05236,
     )
-    term = RandomizeWristCameraMount(EventTermCfg(func=RandomizeWristCameraMount, params=params), env)
+    term = randomize_wrist_camera_mount(EventTermCfg(func=randomize_wrist_camera_mount, params=params), env)
     term(env, None, **params)
     assert invalidated[-1].tolist() == [0, 1, 2, 3]
     unchanged = data.pos_w.torch[1:].clone()
@@ -123,5 +130,3 @@ def test_mount_offsets_follow_carrier_and_do_not_accumulate():
     torch.testing.assert_close(data.quat_w_ros.torch[:1], expected_q)
     local_p, _ = subtract_frame_transforms(carrier_p[0], carrier_q[0], expected_p, expected_q)
     torch.testing.assert_close(local_p, base_p[:1])
-    with pytest.raises(ValueError, match="position_range"):
-        RandomizeWristCameraMount(EventTermCfg(params=params | dict(position_range=float("nan"))), env)

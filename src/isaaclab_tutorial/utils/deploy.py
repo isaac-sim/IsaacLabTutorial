@@ -55,31 +55,6 @@ def require_start_pose(measured: np.ndarray, reference: dict) -> None:
         raise ValueError(f"Move to the training home pose before execution; errors in degrees: {np.degrees(error)}")
 
 
-class TargetLimiter:
-    """Diagnostic setpoint limits; these do not guarantee physical motor speed."""
-
-    def __init__(self, initial, rate_deg_s, offset_deg):
-        if not all(math.isfinite(v) and v > 0 for v in (rate_deg_s, offset_deg)):
-            raise ValueError("Target rate and offset must be positive and finite")
-        self.previous = np.asarray(initial, dtype=float).copy()
-        self.rate = math.radians(rate_deg_s)
-        self.offset = math.radians(offset_deg)
-
-    def limit(self, requested, measured, dt):
-        if not math.isfinite(dt) or dt <= 0:
-            raise ValueError("Invalid control interval")
-        if not np.isfinite(requested).all() or not np.isfinite(measured).all():
-            raise ValueError("Non-finite limiter input")
-        # Never catch up with a large target jump after a delayed control tick.
-        step = self.rate * min(dt, 1 / 120)
-        lower = np.maximum(self.previous - step, measured - self.offset)
-        upper = np.minimum(self.previous + step, measured + self.offset)
-        if (lower > upper).any():
-            raise RuntimeError("Measured motion exceeded target envelope; stopping")
-        self.previous = np.clip(requested, lower, upper)
-        return self.previous.copy()
-
-
 class JointMap:
     """Explicit affine maps from LeRobot degrees/gripper percent to simulation radians."""
 
@@ -134,8 +109,7 @@ class VisualPolicy:
         self.history = deque(maxlen=contract["history_length"])
         if not self.history.maxlen or contract["image_shape"] != [1, 3 * self.history.maxlen, 48, 64]:
             raise ValueError("Unsupported image shape")
-        self.preprocessing = contract["image_preprocessing"]
-        if self.preprocessing not in ("RGB_float_divided_by_pixel_max_channel_min_1e-6", "RGB_uint8_divided_by_255"):
+        if contract["image_preprocessing"] != "RGB_uint8_divided_by_255":
             raise ValueError("Unsupported RGB preprocessing")
         self.scale = np.asarray(contract["action_scale"], dtype=np.float64)
         if self.scale.shape != (6,) or not np.isfinite(self.scale).all() or (self.scale <= 0).any():
@@ -153,8 +127,6 @@ class VisualPolicy:
         # Downsample before tensor conversion to keep the 120 Hz feedback budget available for the bus.
         resized = cv2.resize(rgb, (64, 48), interpolation=cv2.INTER_AREA)
         frame = torch.from_numpy(resized).permute(2, 0, 1).unsqueeze(0).float() / 255
-        if self.preprocessing == "RGB_float_divided_by_pixel_max_channel_min_1e-6":
-            frame = frame / frame.amax(dim=1, keepdim=True).clamp_min(1e-6)
         if not self.history:
             self.history.extend([frame] * self.history.maxlen)
         else:
@@ -245,18 +217,6 @@ def main():
     parser.add_argument("--duration", type=float, default=30)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument(
-        "--target-rate-deg-s",
-        type=float,
-        default=5.0,
-        help="Diagnostic target slew limit; not a physical speed guarantee",
-    )
-    parser.add_argument(
-        "--max-target-offset-deg",
-        type=float,
-        default=2.0,
-        help="Maximum target lead from measured joints; changes training semantics",
-    )
-    parser.add_argument(
         "--hold-at-end",
         action="store_true",
         help="After normal duration expiry, hold measured pose with torque ON; errors/Ctrl+C still release torque",
@@ -272,8 +232,6 @@ def main():
         parser.error("duration must be positive and finite")
     if args.hold_at_end and not args.execute:
         parser.error("--hold-at-end requires --execute")
-    if not all(math.isfinite(v) and v > 0 for v in (args.target_rate_deg_s, args.max_target_offset_deg)):
-        parser.error("Target rate and offset must be positive and finite")
     if args.trace:
         args.trace.parent.mkdir(parents=True, exist_ok=True)
         if args.trace.exists():
@@ -288,12 +246,6 @@ def main():
 
     torch.set_num_threads(1)
     contract = json.loads(args.bundle.with_name("contract.json").read_text())
-    trained_limiter = contract.get("target_limiter")
-    if trained_limiter is not None and (
-        args.target_rate_deg_s != trained_limiter["rate_deg_s"]
-        or args.max_target_offset_deg != trained_limiter["max_offset_deg"]
-    ):
-        parser.error("Controller limits must match the exported training contract")
     policy = VisualPolicy(
         InferenceManager(str(args.bundle.resolve())),
         contract,
@@ -343,7 +295,6 @@ def main():
         policy.history.clear()
         policy.action.fill(0)
         previous_time = time.monotonic()
-        limiter = TargetLimiter(previous, args.target_rate_deg_s, args.max_target_offset_deg)
         trace_start = previous_time
         end = previous_time + args.duration
         next_tick, next_policy = previous_time, previous_time
@@ -368,7 +319,6 @@ def main():
             if time.monotonic() - tick > 0.1:
                 raise RuntimeError("Joint-feedback step exceeded 100 ms; refusing a stale command")
             target = policy.target(measured)
-            target = limiter.limit(target, measured, max(tick - previous_time, 1e-6))
             if args.execute:
                 sent = robot.send_action(mapping.commands(target))
                 target = mapping.positions({name: sent[f"{name}.pos"] for name in JOINTS})
@@ -420,13 +370,6 @@ def main():
                                     "joint_map": map_data,
                                     "effective_limits": mapping.limits.tolist(),
                                     "action_scale": policy.scale.tolist(),
-                                    "target_rate_deg_s": args.target_rate_deg_s,
-                                    "max_target_offset_deg": args.max_target_offset_deg,
-                                    "controller_status": (
-                                        "training-matched limits"
-                                        if trained_limiter is not None
-                                        else "diagnostic limits; not training-matched"
-                                    ),
                                 }
                             ),
                         )

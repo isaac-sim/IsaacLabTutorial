@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+
 from isaaclab_rl import rsl_rl
 
 from isaaclab_tutorial.utils import evaluation
@@ -31,7 +32,8 @@ class _FakeWrapper:
         self.termination_manager = _TerminationManager(
             {
                 "success": torch.tensor([True, False]),
-                "vial_lost": torch.tensor([False, True]),
+                "vial_dropped": torch.tensor([False, True]),
+                "vial_out_of_bounds": torch.tensor([False, False]),
                 "time_out": torch.tensor([False, False]),
             }
         )

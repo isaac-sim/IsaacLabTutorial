@@ -3,59 +3,99 @@ requires = ["uv_build>=0.12.6,<0.13"]
 build-backend = "uv_build"
 
 [project]
-name = "isaaclab-tutorial"
+name = "isaaclab_tutorial"
 version = "0.1.0"
-description = "Isaac Lab tutorial for placing a vial with an SO-101 arm"
+description = "Isaac Lab tutorial for placing a vial with an SO-101 arm."
 readme = "README.md"
 license = { file = "LICENSE" }
+authors = [
+    { name = "Mustafa Haiderbhai" },
+]
 requires-python = ">=3.12,<3.13"
-dependencies = ["isaaclab"]
-
-[project.optional-dependencies]
-# Standalone PhysX runtime for the `physx` physics preset and the standalone RTX renderer for the `rtx` renderer
-# preset (sim-to-sim without Isaac Sim). Isaac Sim users already have both.
-ovphysx = ["ovphysx"]
-ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
-leapp = ["leapp==0.7.2"]
-# Hardware deployment uses the isolated inline environment in utils/deploy.py.
-sim2real = ["leapp==0.7.2"]
+dependencies = [
+    "isaaclab==3.0.0",
+]
 
 [project.entry-points."isaaclab.tasks"]
-so101-vial-place = "isaaclab_tutorial.tasks"
+isaaclab_tutorial = "isaaclab_tutorial.tasks"
 
 [project.scripts]
 generate-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:generate_main"
 view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_main"
 
+[project.optional-dependencies]
+leapp = ["leapp==0.7.2"]
+ovphysx = ["ovphysx"]
+ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
+
 [dependency-groups]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
-[[tool.uv.index]]
-name = "nvidia"
-url = "https://pypi.nvidia.com"
-explicit = true
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'win32' and platform_machine == 'AMD64'"]
 
 [tool.uv.sources]
 isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "release/3.0.0", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 
-[tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
 
 [tool.uv.build-backend]
 module-name = "isaaclab_tutorial"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra"
-
 [tool.ruff]
-target-version = "py312"
 line-length = 120
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["isaaclab_tutorial"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "isaaclab",
+    "isaaclab-rl",
+    "isaaclab-tasks",
+    "isaaclab-assets",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.lint.isort.sections]
+isaaclab = ["isaaclab", "isaaclab_newton", "isaaclab_ov", "isaaclab_physx"]
+"isaaclab-rl" = ["isaaclab_rl"]
+"isaaclab-tasks" = ["isaaclab_tasks"]
+"isaaclab-assets" = ["isaaclab_assets"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "F403"]
+"**/__init__.pyi" = ["F401", "F403"]
+"scripts/**/*.py" = ["E402"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pyright]
+include = ["src", "scripts", "tests"]
+exclude = ["**/__pycache__", "**/logs", ".git", ".venv", ".vscode"]
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "unit: test exercises isolated logic and does not launch the simulator",
+    "integration: test drives the simulator/scene/environment end-to-end",
+    "smoke: tests for core installation, task, and RL functionality",
+    "kitless: test must pass inside the Kit-less container, which has no Isaac Sim runtime",
+]
 
 [tool.codespell]
 skip = "*.usd,*.usda,*.usdc,*.json,*.onnx,*.pt,*.mp4,*.data,uv.lock,logs"
