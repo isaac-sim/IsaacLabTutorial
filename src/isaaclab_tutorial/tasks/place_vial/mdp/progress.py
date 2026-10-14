@@ -6,16 +6,12 @@ import torch
 
 
 class PlacementProgress:
-    """Track three sticky physical milestones and stable placement success.
+    """Per-episode milestones, each latched the first time it is observed.
 
-    Each milestone is a physical fact that is latched the first time it is observed in an episode:
-
-    * ``grasped``: both jaws touch the vial while it is held off the mat,
-    * ``lifted``: the vial's lowest point has cleared the top of the rack,
-    * ``inserted``: the vial's tip is inside the target rack opening.
-
-    ``success`` latches after the released vial rests upright inside the opening for ``stable_steps`` consecutive
-    control steps. Success is a purely physical outcome; it does not depend on which milestones were observed.
+    * ``grasped``: both jaws hold the vial off the desk for ``grasp_steps`` consecutive steps,
+    * ``lifted``: the vial's lowest point has cleared the rack rim,
+    * ``inserted``: the upright vial's tip is inside a hole,
+    * ``success``: the released vial has rested upright in a hole for ``stable_steps`` consecutive steps.
     """
 
     def __init__(self, num_envs: int, device: str | torch.device, stable_steps: int = 10, grasp_steps: int = 2):
@@ -60,3 +56,10 @@ class PlacementProgress:
         self.time_to_success.copy_(torch.where(newly_successful, step, self.time_to_success))
         self.success |= newly_successful
         return self.success.clone()
+
+
+def placement_progress(env) -> PlacementProgress:
+    """Return the episode progress shared by the success termination, rewards and observations."""
+    if not hasattr(env, "_so101_placement_progress"):
+        env._so101_placement_progress = PlacementProgress(env.num_envs, env.device)
+    return env._so101_placement_progress

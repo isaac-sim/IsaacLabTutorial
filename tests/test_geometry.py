@@ -71,3 +71,18 @@ def test_axial_keypoint_error_penalizes_translation_and_tilt_but_not_yaw():
     assert error[0] == 0.0
     assert error[1] > 0.0
     assert error[2] > error[1]
+
+
+def test_tabletop_overlap_uses_vial_extent_and_rack_frame():
+    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import tabletop_vial_overlaps_rack
+
+    half = math.sqrt(0.5)
+    poses = torch.tensor([[0.2, 0.02, 0.05, 0, half, 0, half], [0.2, 0.04, 0.05, 0, half, 0, half]])
+    rack = torch.tensor([[0.18, 0.08, 0.04, 0, 0, 0, 1.0]]).expand(2, -1).clone()
+    assert tabletop_vial_overlaps_rack(poses, rack).tolist() == [False, True]
+    for tensor in (poses, rack):
+        xy = tensor[:, :2].clone()
+        tensor[:, :2] = torch.stack((-xy[:, 1], xy[:, 0]), dim=-1) + torch.tensor([1.0, -2.0])
+    poses[:, 3:] = torch.tensor([-0.5, 0.5, 0.5, 0.5])
+    rack[:, 3:] = torch.tensor([0, 0, half, half])
+    assert tabletop_vial_overlaps_rack(poses, rack).tolist() == [False, True]

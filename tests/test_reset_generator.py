@@ -8,7 +8,7 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     TABLETOP_VIAL_HEADING_RANGE,
     WORKSHOP_INITIAL_JOINT_POSITION,
 )
-from isaaclab_tutorial.tasks.place_vial.mdp.terms import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
+from isaaclab_tutorial.tasks.place_vial.mdp.task import RACK_CLEARANCE_HEIGHT, VIAL_REST_HEIGHT
 from isaaclab_tutorial.tasks.place_vial.reset.generator import (
     PREGRASP_PROOF_DIFFICULTY,
     TABLETOP_VIAL_POSITION_HALF_RANGE,
@@ -28,6 +28,9 @@ def test_pregrasp_resets_reach_the_grasp_transition():
     ("kwargs", "message"),
     (
         ({"seed": -1}, "seed"),
+        ({"home_heading_range": (0.5, -0.5)}, "home_heading_range"),
+        ({"approach_heading_range": (-4.0, 4.0)}, "approach_heading_range"),
+        ({"approach_heading_range": (float("nan"), 0.5)}, "approach_heading_range"),
         ({"batch_size": 0}, "batch_size"),
         ({"joint_noise": float("nan")}, "joint_noise"),
         ({"contact_distance": 0.0}, "contact_distance"),
@@ -56,7 +59,7 @@ def test_gripper_commands_follow_real_robot_mapping():
     assert len(WORKSHOP_PREGRASP_JOINT_POSITION) == 6
     assert (
         pytest.approx(
-            (-0.1221070742, -0.9066845838, 0.1900876486, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
+            (-0.1221070742, -0.9066845838, 0.30178872072763707, 1.4797928525, -0.8044013083, PREGRASP_GRIPPER_POSITION)
         )
         == WORKSHOP_INITIAL_JOINT_POSITION
     )
@@ -77,7 +80,7 @@ def test_real_robot_waypoints_cover_every_loaded_phase():
 def test_generator_lift_history_matches_physical_clearance():
     # Horizontal vials need their root one radius above the required lowest
     # point. The rack frame starts 40 mm above world zero.
-    root_threshold = 0.040 + RACK_CLEARANCE_HEIGHT + 0.017
+    root_threshold = 0.040 + RACK_CLEARANCE_HEIGHT + 0.0177
     vial_pose = torch.tensor(
         [
             [0.0, 0.0, root_threshold - 1.0e-4, 0.0, 2**-0.5, 0.0, 2**-0.5],
@@ -105,3 +108,19 @@ def test_insertion_and_release_resets_preserve_historical_lift():
     assert _represented_lift(6, vial_pose, rack_z, torch.ones(1, dtype=torch.bool)).item()
     assert _represented_lift(7, vial_pose, rack_z, torch.ones(1, dtype=torch.bool)).item()
     assert not _represented_lift(7, vial_pose, rack_z, torch.zeros(1, dtype=torch.bool)).item()
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    ((["presets=newton_mjwarp"], "newton_mjwarp"), (["--presets", "physx"], "physx"), ([], "newton_mjwarp")),
+)
+def test_reset_scripts_accept_the_isaaclab_presets_syntax(argv, expected):
+    import argparse
+
+    from isaaclab_tutorial.tasks.place_vial.reset.generator import _parse_args
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--presets", default="newton_mjwarp")
+    assert _parse_args(parser, argv).presets == expected
+    with pytest.raises(SystemExit):
+        _parse_args(parser, ["--bogus"])

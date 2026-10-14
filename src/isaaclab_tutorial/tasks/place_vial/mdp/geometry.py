@@ -2,6 +2,15 @@
 
 import torch
 
+# Rack-local centers of the four open cells in workshop/rack.usda, in top_01..top_04 order.
+# The original opening remains the rack-frame origin; the collision lattice has a 60 mm pitch.
+RACK_HOLE_CENTERS = ((0.0, 0.0, 0.0), (0.060, 0.0, 0.0), (0.060, 0.060, 0.0), (0.0, 0.060, 0.0))
+
+
+def hole_relative_positions(rack_position: torch.Tensor) -> torch.Tensor:
+    """Return offsets to all four openings, preserving rack-local height: (..., 4, 3)."""
+    return rack_position.unsqueeze(-2) - rack_position.new_tensor(RACK_HOLE_CENTERS)
+
 
 def quat_conjugate_xyzw(quat: torch.Tensor) -> torch.Tensor:
     """Return the conjugate of an XYZW quaternion."""
@@ -70,3 +79,29 @@ def symmetric_axial_keypoint_error(
     swapped = center_error + torch.sum(torch.square(lower - target_upper), dim=-1)
     swapped += torch.sum(torch.square(upper - target_lower), dim=-1)
     return torch.sqrt(torch.minimum(direct, swapped) / 3.0)
+
+
+def tabletop_vial_overlaps_rack(
+    vial_pose: torch.Tensor, rack_pose: torch.Tensor, clearance: float = 0.0
+) -> torch.Tensor:
+    """Conservative XY overlap of a vial lying on the desk with the rack's base, for reset sampling.
+
+    The vial body and cap are tested separately against the base with the separating-axis test.
+    """
+    position = rack_local_position(vial_pose[:, :3], rack_pose[:, :3], rack_pose[:, 3:])
+    world_axis = quat_rotate_xyzw(vial_pose[:, 3:], vial_pose.new_tensor((0.0, 0.0, 1.0)).expand(len(vial_pose), -1))
+    axis = quat_rotate_xyzw(quat_conjugate_xyzw(rack_pose[:, 3:]), world_axis)
+    length = axis[:, :2].norm(dim=-1).clamp_min(1e-8)
+    along = axis[:, :2] / length[:, None]
+    across = torch.stack((-along[:, 1], along[:, 0]), dim=-1)
+    deck_center = position.new_tensor((0.0301682871, 0.0301424648))
+    deck_half = position.new_tensor((0.06 + clearance, 0.06 + clearance))
+    overlaps = torch.zeros(len(position), device=position.device, dtype=torch.bool)
+    for lower, upper, radius in ((-0.01725, 0.086612839, 0.0147), (0.08676, 0.09953, 0.01795)):
+        delta = position[:, :2] + axis[:, :2] * ((lower + upper) / 2) - deck_center
+        half_length = (upper - lower) / 2 * length + radius * axis[:, 2].abs()
+        xy_overlap = (delta.abs() <= deck_half + along.abs() * half_length[:, None] + across.abs() * radius).all(-1)
+        axial_overlap = (delta * along).sum(-1).abs() <= half_length + (deck_half * along.abs()).sum(-1)
+        radial_overlap = (delta * across).sum(-1).abs() <= radius + (deck_half * across.abs()).sum(-1)
+        overlaps |= xy_overlap & axial_overlap & radial_overlap
+    return overlaps

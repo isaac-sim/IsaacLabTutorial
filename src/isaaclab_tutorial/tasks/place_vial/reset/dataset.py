@@ -107,11 +107,6 @@ def _content_digest(states: Mapping[str, torch.Tensor]) -> str:
     return digest.hexdigest()
 
 
-def content_digest(states: Mapping[str, Any]) -> str:
-    """Return a deterministic SHA-256 digest of the ordered state tensors."""
-    return _content_digest(_canonical_states(states))
-
-
 def save_reset_dataset(
     path: str | Path,
     states: Mapping[str, Any],
