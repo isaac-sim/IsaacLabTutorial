@@ -14,6 +14,8 @@ authors = [
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "isaaclab==3.0.0",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
 ]
 
 [project.entry-points."isaaclab.tasks"]
@@ -38,10 +40,17 @@ environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys
 isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "release/3.0.0", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
 
 [[tool.uv.index]]
 name = "nvidia"
 url = "https://pypi.nvidia.com"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.uv.build-backend]

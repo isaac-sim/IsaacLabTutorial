@@ -6,16 +6,6 @@ from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPp
 
 
 @configclass
-class BoundedGaussianDistributionCfg(RslRlMLPModelCfg.GaussianDistributionCfg):
-    """Gaussian policy head whose standard deviation is clamped to ``std_range``.
-
-    With clipped actions and an entropy bonus, PPO otherwise grows the std without bound.
-    """
-
-    std_range: tuple[float, float] = (0.05, 0.3)
-
-
-@configclass
 class SO101StatePPORunnerCfg(RslRlOnPolicyRunnerCfg):
     """State teacher: fully observed actor, privileged critic."""
 
@@ -31,7 +21,8 @@ class SO101StatePPORunnerCfg(RslRlOnPolicyRunnerCfg):
         hidden_dims=[256, 256, 128],
         activation="elu",
         obs_normalization=True,
-        distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
+        # Clamp the std: with clipped actions and an entropy bonus, PPO otherwise grows it without bound.
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(init_std=0.2, std_type="log", std_range=(0.05, 0.3)),
     )
     critic = RslRlMLPModelCfg(hidden_dims=[256, 256, 128], activation="elu", obs_normalization=True)
     algorithm = RslRlPpoAlgorithmCfg(

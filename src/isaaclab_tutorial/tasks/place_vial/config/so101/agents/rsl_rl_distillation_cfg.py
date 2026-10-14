@@ -13,8 +13,6 @@ from isaaclab_rl.rsl_rl import (
     RslRlMLPModelCfg,
 )
 
-from isaaclab_tutorial.tasks.place_vial.config.so101.agents.rsl_rl_ppo_cfg import BoundedGaussianDistributionCfg
-
 
 class BoundedTeacherDistillation(Distillation):
     """RSL-RL distillation whose labels are the teacher's actions clipped to [-1, 1], as the env applies them."""
@@ -52,7 +50,7 @@ class SO101CameraDistillationRunnerCfg(RslRlDistillationRunnerCfg):
         hidden_dims=[256, 256, 128],
         activation="elu",
         obs_normalization=True,
-        distribution_cfg=BoundedGaussianDistributionCfg(init_std=0.2, std_type="log"),
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(init_std=0.2, std_type="log", std_range=(0.05, 0.3)),
     )
     algorithm = RslRlDistillationAlgorithmCfg(
         class_name=(
