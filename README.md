@@ -29,7 +29,7 @@ uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --
 | Task | Inputs | Training |
 | --- | --- | --- |
 | `IsaacTutorial-Place-Vial-SO101` | Full state | PPO |
-| `IsaacTutorial-Place-Vial-SO101-Camera` | Wrist RGB (2 frames, 64×48) + proprioception | Distillation from a state teacher |
+| `IsaacTutorial-Place-Vial-SO101-Camera` | Wrist RGB (2 frames, 64×48) + proprioception | Distillation from a state teacher, or PPO from scratch |
 
 Add `presets=sim2real` to either task to enable robot-transfer randomization. The physical randomization is
 identical in both tasks, so a teacher and its student train under the same physics. See
@@ -48,6 +48,14 @@ uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-
 During distillation the student acts and the frozen teacher labels every state it visits. The labels are
 clipped to the executed `[-1, 1]` action range. Checkpoints go to `logs/rsl_rl/`.
 
+The camera policy can also be trained from scratch with PPO, without a teacher. The actor sees the same wrist
+images and proprioception as the student; the critic sees the privileged state. It reaches about 98% in 2,500
+iterations.
+
+```bash
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_renderer
+```
+
 ## Evaluate
 
 Play starts every episode from the home pose. The exact-evaluation callback counts one episode per
@@ -57,6 +65,9 @@ per-episode outcomes.
 ```bash
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 1024 --checkpoint /abs/path/to/model.pt --visualizer none --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter presets=newton_mjwarp
 ```
+
+To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,newton_renderer`, and add
+`--agent rsl_rl_ppo_cfg_entry_point` for one trained from scratch.
 
 Do not pass `--deterministic`. On this pin it also enables Warp-wide deterministic physics, which overflows a
 collision-kernel buffer in this scene. Playback already uses deterministic policy actions.

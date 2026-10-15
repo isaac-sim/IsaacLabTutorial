@@ -22,6 +22,7 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{_PACKAGE}.camera_env_cfg:SO101VialCameraEnvCfg",
         "rsl_rl_cfg_entry_point": f"{_PACKAGE}.agents.rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg",
+        "rsl_rl_ppo_cfg_entry_point": f"{_PACKAGE}.agents.rsl_rl_ppo_cfg:SO101CameraPPORunnerCfg",
         "default_agent": "rsl_rl",
     },
 )
