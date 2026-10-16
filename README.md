@@ -1,6 +1,6 @@
 # Isaac Lab Tutorial Learning Path
 
-This scaffold is based on upstream `b128f1b140864a67b2f004b540c9575ffd2445ef`.
+This branch is the exercise scaffold for the completed code on `main`.
 Follow the **Train a Robot Arm** module, applying its marked regions in lesson order.
 Imports, workshop assets, the reset dataset, and supporting utilities are supplied.
 The initial scene intentionally has no robot. Lesson 02 makes inspection runnable;
@@ -10,10 +10,11 @@ Run the upstream tests after completing lesson 06, not against unfinished exerci
 Compare with the completed reference without switching branches:
 
 ```bash
-git diff b128f1b140864a67b2f004b540c9575ffd2445ef -- src/
+git diff main -- src/
 ```
 
-The reference documentation below describes the completed task.
+The reference documentation below describes the completed task and includes
+optional upstream workflows outside the course.
 
 # SO-101 vial placement
 
