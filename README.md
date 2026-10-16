@@ -7,6 +7,9 @@ An Isaac Lab tutorial that trains an SO-101 arm to pick up a vial lying on the d
 distilled from it, and that camera policy is the one that runs on the real robot.
 Training uses **Newton MJWarp physics** and the **Newton renderer** for the camera.
 
+Follow the [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
+course for guided lessons.
+
 ## Setup
 
 Linux x86-64 or Windows 11, Python 3.12, Git LFS, an NVIDIA GPU with a CUDA 13-compatible driver, and `uv`.
