@@ -74,7 +74,7 @@ class SO101CameraSceneCfg(SO101SceneCfg):
     vial_label_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Label", spawn=None)
 
     def __post_init__(self):
-        self.robot.spawn.hide_camera_housing = True
+        self.robot.spawn.hide_camera_housing = False
         self.vial.spawn.usd_path = str(VIAL_LABELED_USD)
 
 

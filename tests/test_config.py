@@ -97,7 +97,7 @@ def test_camera_task_inherits_state_task_and_adds_the_wrist_camera():
     nominal = _camera()
     assert nominal.scene.num_envs == 1024
     assert type(nominal.events) is EventsCfg
-    assert nominal.scene.robot.spawn.hide_camera_housing is True
+    assert nominal.scene.robot.spawn.hide_camera_housing is False
     assert nominal.scene.vial.spawn.usd_path == str(VIAL_LABELED_USD)
     assert (nominal.scene.wrist_camera.width, nominal.scene.wrist_camera.height) == (80, 60)
     image = nominal.observations.wrist_rgb.image.params
