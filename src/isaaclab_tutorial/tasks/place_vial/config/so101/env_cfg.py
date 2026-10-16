@@ -14,7 +14,10 @@ from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
-from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.envs import (
+    ManagerBasedRLEnvCfg,
+    VideoRecorderCfg,  # noqa: F401 -- used by the lesson 04 replacement
+)
 from isaaclab.envs.mdp.actions.actions_cfg import RelativeJointPositionActionCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -44,6 +47,14 @@ from isaaclab_assets.robots import so101
 from isaaclab_tutorial.assets import DESK_USD, RACK_USD, RESET_DATASET, VIAL_USD
 from isaaclab_tutorial.tasks.place_vial import mdp
 from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES, CANONICAL_START
+
+from .lesson_scaffold import (  # noqa: F401 -- supplied for the lesson 01-04 replacements
+    AgentObservationGroupsCfg,
+    EmptyActionsCfg,
+    InspectionObservationsCfg,
+    LessonEventsCfg,
+    LessonTerminationsCfg,
+)
 
 JOINTS = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"]
 ARM_JOINTS = JOINTS[:-1]
@@ -195,12 +206,16 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
         for shape_index in range(num_shapes):
             attribute.values[shape_index] = value
 
+    # The vial's cap is wider than its body, so on its side it rolls in circles unless the desk resists rolling.
+    rolling = (_ROLLING_FRICTION, _ROLLING_FRICTION)
+    torsional = (_TORSIONAL_FRICTION, _TORSIONAL_FRICTION)
     support = sim.stage.GetPrimAtPath("/World/envs/env_0/Support")
     if support:
-        rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
-        torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
-        if rolling is not None and torsional is not None:
-            configure_support_rolling_contacts(builder, tuple(rolling), tuple(torsional))
+        support_rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
+        support_torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
+        if support_rolling is not None and support_torsional is not None:
+            rolling, torsional = tuple(support_rolling), tuple(support_torsional)
+    configure_support_rolling_contacts(builder, rolling, torsional)
 
 
 def configure_support_rolling_contacts(builder, rolling_range, torsional_range) -> None:
@@ -434,77 +449,14 @@ def _jaw_support_sensor(link: str) -> ContactSensorCfg:
 class SO101SceneCfg(InteractiveSceneCfg):
     """One SO-101, one vial, one rack, and a desk; sim2real adds the gray mat and jaw/support contact sensing."""
 
-    robot = SO101_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Robot",
-        init_state=SO101_CFG.init_state.replace(
-            pos=preset(default=(-0.05, 0.0, 0.0), sim2real=(-0.05, 0.0, BASE_HEIGHT_CORRECTION)),
-            # +90 degrees about world Z (XYZW).
-            rot=(0.0, 0.0, 0.7071068, 0.7071068),
-            joint_pos=dict(zip(JOINTS, WORKSHOP_INITIAL_JOINT_POSITION, strict=True)),
-        ),
-        soft_joint_pos_limit_factor=0.98,
-    )
+    # BEGIN lesson-02-robot
+    robot = None
+    # END lesson-02-robot
 
-    vial = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Vial",
-        spawn=VialSpawnCfg(
-            usd_path=str(VIAL_USD),
-            rigid_props=preset(
-                default=None,
-                physx=PhysxRigidBodyCfg(solver_position_iteration_count=PHYSX_SOLVER_POSITION_ITERATIONS),
-            ),
-            activate_contact_sensors=True,
-            randomize_diameters=preset(default=False, sim2real=True),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=TABLETOP_VIAL_POSITION,
-            # Horizontal vial: +90 degrees about world Y (XYZW).
-            rot=(0.0, 0.7071068, 0.0, 0.7071068),
-        ),
-    )
-
-    rack = RigidObjectCfg(
-        prim_path="{ENV_REGEX_NS}/Rack",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(RACK_USD), func=_spawn_usd_with_contact_material),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.18, 0.08, 0.04)),
-    )
-
-    desk = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/Desk",
-        spawn=sim_utils.UsdFileCfg(usd_path=str(DESK_USD), func=_spawn_usd_with_contact_material),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.22, 0.0, 0.032), rot=(0.0, 0.0, 0.7071068, 0.7071068)),
-    )
-
-    support = preset(
-        default=None,
-        sim2real=RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/Support",
-            spawn=SupportSpawnCfg(
-                size=(0.39, 0.39, 0.005),
-                rigid_props=sim_utils.UsdPhysicsRigidBodyCfg(kinematic_enabled=True),
-                collision_props=sim_utils.UsdPhysicsCollisionCfg(),
-                mass_props=sim_utils.MassCfg(mass=1.0),
-                physics_material=WORKSHOP_CONTACT_MATERIAL,
-                visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.07, 0.07, 0.07)),
-            ),
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.22, 0.02, 0.0325)),
-        ),
-    )
-
-    # Unfiltered: OV PhysX cannot build a filtered contact view for the gripper link in a cloned scene.
-    fixed_jaw_contact = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/gripper", history_length=4)
-    moving_jaw_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/moving_jaw_so101_v1",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Vial"],
-        history_length=4,
-    )
-    vial_rack_contact = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Vial",
-        filter_prim_paths_expr=["{ENV_REGEX_NS}/Rack"],
-        history_length=4,
-    )
-    fixed_jaw_support = preset(default=None, sim2real=_jaw_support_sensor("gripper"))
-    moving_jaw_support = preset(default=None, sim2real=_jaw_support_sensor("moving_jaw_so101_v1"))
+    # BEGIN lesson-03-objects
+    # Add the vial, rack, desk, and contact sensors in lesson 03.
+    pass
+    # END lesson-03-objects
 
     light = AssetBaseCfg(
         prim_path="/World/Light",
@@ -517,108 +469,39 @@ class SO101SceneCfg(InteractiveSceneCfg):
     )
 
 
+# BEGIN lesson-04-actions
 @configclass
 class ActionsCfg:
-    """Joint targets relative to the measured position, matching the real SO-101 position interface."""
-
-    arm_action = RelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=ARM_JOINTS,
-        preserve_order=True,
-        # Small offsets stall the real shoulder and elbow, so sim2real gives them larger steps.
-        scale=preset(
-            default=0.033,
-            sim2real={
-                "shoulder_pan": 0.033,
-                "shoulder_lift": 0.12,
-                "elbow_flex": 0.07,
-                "wrist_flex": 0.033,
-                "wrist_roll": 0.033,
-            },
-        ),
-        use_zero_offset=True,
-    )
-    gripper_action = RelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=["gripper"],
-        # Avoid opening a grasp rapidly from a small policy bias.
-        scale=0.02,
-        use_zero_offset=True,
-    )
+    pass
+# END lesson-04-actions
 
 
+# BEGIN lesson-05-policy-observations
 @configclass
 class PolicyStateGroupCfg(ObsGroup):
-    """Fully observed state actor inputs."""
-
-    joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
-    joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
-    joint_target = ObsTerm(func=mdp.joint_target, params={"asset_cfg": SceneEntityCfg("robot", joint_names=JOINTS)})
-    previous_action = ObsTerm(func=mdp.last_action)
-    end_effector = ObsTerm(
-        func=mdp.body_state_b,
-        params={
-            "body_asset_cfg": SceneEntityCfg("robot", body_names="gripper"),
-            "base_asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
-    vial = ObsTerm(
-        func=mdp.body_state_b,
-        params={"body_asset_cfg": SceneEntityCfg("vial"), "base_asset_cfg": SceneEntityCfg("robot")},
-    )
-    vial_in_rack = ObsTerm(func=mdp.vial_in_rack_frame)
-    placement = ObsTerm(func=mdp.placement_features)
-    # Latched milestones make the once-per-episode milestone rewards Markov.
-    progress = ObsTerm(func=mdp.progress_flags)
-
-    def __post_init__(self):
-        self.enable_corruption = False
-        self.concatenate_terms = True
+    pass
+# END lesson-05-policy-observations
 
 
+# BEGIN lesson-05-critic-observations
 @configclass
 class CriticStateGroupCfg(PolicyStateGroupCfg):
-    """Privileged training critic inputs."""
+    pass
+# END lesson-05-critic-observations
 
-    contact = ObsTerm(func=mdp.jaw_contact_flags)
 
-
+# BEGIN lesson-05-observation-groups
 @configclass
 class ObservationsCfg:
-    policy: PolicyStateGroupCfg = PolicyStateGroupCfg()
-    critic: CriticStateGroupCfg = CriticStateGroupCfg()
+    pass
+# END lesson-05-observation-groups
 
 
+# BEGIN lesson-05-dataset-resets
 @configclass
 class EventsCfg:
-    """Task-horizon resets from the physics-validated dataset plus modest vial variation."""
-
-    vial_material = EventTerm(
-        func=mdp.randomize_rigid_body_material,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            "static_friction_range": preset(default=VIAL_FRICTION_RANGE, physx=PHYSX_VIAL_FRICTION_RANGE),
-            "dynamic_friction_range": preset(default=VIAL_FRICTION_RANGE, physx=PHYSX_VIAL_FRICTION_RANGE),
-            "restitution_range": (0.0, 0.02),
-            "num_buckets": 32,
-        },
-    )
-    vial_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            # Newton cannot reliably infer mass from the detailed mesh.
-            "mass_distribution_params": (0.015, 0.025),
-            "operation": "abs",
-        },
-    )
-    reset_from_dataset = EventTerm(
-        func=mdp.ResetFromDataset,
-        mode="reset",
-        params={"dataset_path": str(RESET_DATASET), "sequential": False, "phase_weights": ALL_PHASES},
-    )
+    pass
+# END lesson-05-dataset-resets
 
 
 def _material_event(asset_cfg: SceneEntityCfg, friction_range: tuple[float, float]) -> EventTerm:
@@ -698,43 +581,18 @@ class Sim2RealEventsCfg(EventsCfg):
         )
 
 
+# BEGIN lesson-05-rewards
 @configclass
 class RewardsCfg:
-    """Sparse physical milestones, a success bonus, two dense shaping terms, and light regularization."""
-
-    # Sim2real aims the pad centre slightly above the cap, favouring a shallower pinch clear of the mat.
-    approach_progress = RewTerm(
-        func=mdp.approach_progress, weight=1.0, params={"height_offset": preset(default=0.0, sim2real=0.008)}
-    )
-    held_goal = RewTerm(func=mdp.held_goal, weight=0.1)
-    milestones = RewTerm(func=mdp.milestones, weight=10.0)
-    success = RewTerm(func=mdp.success, weight=200.0)
-    vial_lost = RewTerm(
-        func=mdp.is_terminated_term, weight=-50.0, params={"term_keys": ["vial_out_of_bounds", "vial_dropped"]}
-    )
-    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.002)
-    joint_velocity = RewTerm(func=mdp.joint_vel_l2, weight=-0.0002)
-    joint_limits = RewTerm(func=mdp.joint_pos_limits, weight=-1.0)
-    jaw_support_force = preset(
-        default=None,
-        sim2real=RewTerm(func=mdp.jaw_support_force, weight=-8.0, params={"free_force": 0.25, "force_span": 2.0}),
-    )
+    pass
+# END lesson-05-rewards
 
 
+# BEGIN lesson-05-terminations
 @configclass
 class TerminationsCfg:
-    success = DoneTerm(func=mdp.placement_success)
-    vial_dropped = DoneTerm(func=mdp.vial_dropped)
-    # The robot base frame is yawed +90 degrees, so these bounds are 0.5 m to its sides and 0.62 m ahead/behind.
-    vial_out_of_bounds = DoneTerm(
-        func=mdp.out_of_bound,
-        params={
-            "asset_cfg": SceneEntityCfg("vial"),
-            "in_bound_range": {"x": (-0.55, 0.45), "y": (-0.62, 0.62), "z": (-0.01, 1.0)},
-        },
-    )
-    unstable_robot = DoneTerm(func=mdp.abnormal_robot_state)
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    pass
+# END lesson-05-terminations
 
 
 @configclass
@@ -745,10 +603,10 @@ class PhysicsCfg(PresetCfg):
             integrator="implicitfast",
             njmax=300,
             nconmax=200,
-            cone="elliptic",
+            cone="pyramidal",
             impratio=10.0,
             update_data_interval=2,
-            iterations=100,
+            iterations=50,
             ls_iterations=50,
             use_mujoco_contacts=False,
             ccd_iterations=35,
@@ -764,44 +622,23 @@ class PhysicsCfg(PresetCfg):
     default = newton_mjwarp
 
 
+# BEGIN lesson-environment
 @configclass
 class SO101VialEnvCfg(ManagerBasedRLEnvCfg):
-    """State task trained from physics-validated reset poses."""
+    """Inspection scaffold; lesson 04 adds actions and lesson 05 adds training."""
 
-    scene: SO101SceneCfg = SO101SceneCfg(num_envs=4096, env_spacing=0.9, replicate_physics=True)
-    actions: ActionsCfg = ActionsCfg()
-    observations: ObservationsCfg = ObservationsCfg()
-    events: EventsCfg = preset(default=EventsCfg(), sim2real=Sim2RealEventsCfg())
-    rewards: RewardsCfg = RewardsCfg()
-    terminations: TerminationsCfg = TerminationsCfg()
+    scene: SO101SceneCfg = SO101SceneCfg(num_envs=1, env_spacing=0.9, replicate_physics=True)
+    actions: EmptyActionsCfg = EmptyActionsCfg()
+    observations: InspectionObservationsCfg = InspectionObservationsCfg()
+    events: LessonEventsCfg = LessonEventsCfg()
+    rewards = None
+    terminations = None
 
     def __post_init__(self):
         self.decimation = 4
-        # The measured shoulder response is slower, so sim2real attempts get more time.
-        self.episode_length_s = preset(default=20.0, sim2real=30.0)
-        self.is_finite_horizon = False
+        self.episode_length_s = 20.0
         self.sim.dt = 1.0 / 120.0
         self.sim.render_interval = self.decimation
         self.sim.physics = PhysicsCfg()
         self.sim.default_visualizer_cfg = VisualizerCfg(eye=(0.64, 0.0, 0.36), lookat=(0.19, 0.02, 0.075))
-
-    def play_mode(self):
-        """Play and evaluate complete episodes from the home pose, in dataset order.
-
-        The nominal task pins the vial to its workshop material and mass; sim2real keeps its physics randomization.
-        """
-        from isaaclab_tutorial.utils import evaluation
-
-        requested_num_envs = self.scene.num_envs
-        super().play_mode()
-        if evaluation.EXACT_EVALUATION_ACTIVE:
-            self.scene.num_envs = min(requested_num_envs, evaluation.EVALUATION_EPISODES)
-        else:
-            self.scene.num_envs = min(self.scene.num_envs, 16)
-        self.events.reset_from_dataset.params["sequential"] = True
-        self.events.reset_from_dataset.params["phase_weights"] = CANONICAL_START
-        if not isinstance(self.events, Sim2RealEventsCfg):
-            self.events.vial_material.params.update(
-                static_friction_range=(0.7, 0.7), dynamic_friction_range=(0.7, 0.7), restitution_range=(0.0, 0.0)
-            )
-            self.events.vial_mass.params["mass_distribution_params"] = (0.020, 0.020)
+# END lesson-environment

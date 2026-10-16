@@ -42,8 +42,14 @@ def _camera(*presets):
 
 def test_tasks_are_registered_with_rsl_rl_entry_points():
     ids = sorted(task for task in gym.registry if task.startswith("IsaacTutorial-"))
-    assert ids == ["IsaacTutorial-Place-Vial-SO101", "IsaacTutorial-Place-Vial-SO101-Camera"]
-    state, camera = (gym.spec(task).kwargs for task in ids)
+    assert ids == [
+        "IsaacTutorial-Inspect-SO101",
+        "IsaacTutorial-Place-Vial-SO101",
+        "IsaacTutorial-Place-Vial-SO101-Camera",
+    ]
+    inspection, state, camera = (gym.spec(task).kwargs for task in ids)
+    assert inspection["env_cfg_entry_point"].endswith("inspection_env_cfg:SO101InspectionEnvCfg")
+    assert "rsl_rl_cfg_entry_point" not in inspection
     assert state["env_cfg_entry_point"].endswith("env_cfg:SO101VialEnvCfg")
     assert state["rsl_rl_cfg_entry_point"].endswith("rsl_rl_ppo_cfg:SO101StatePPORunnerCfg")
     assert camera["env_cfg_entry_point"].endswith("camera_env_cfg:SO101VialCameraEnvCfg")
