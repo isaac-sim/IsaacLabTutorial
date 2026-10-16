@@ -1,7 +1,9 @@
 # Isaac Lab Tutorial Learning Path
 
 This branch is the exercise scaffold for the completed code on `main`.
-Follow the **Train a Robot Arm** module, applying its marked regions in lesson order.
+Follow the **Train a Robot Arm** module in the
+[Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
+course, applying its marked regions in lesson order.
 Imports, workshop assets, the reset dataset, and supporting utilities are supplied.
 The initial scene intentionally has no robot. Lesson 02 makes inspection runnable;
 lesson 04 adds actions, lesson 05 the state teacher, and lesson 06 camera distillation.
