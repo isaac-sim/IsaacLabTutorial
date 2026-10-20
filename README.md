@@ -1,7 +1,9 @@
 # Isaac Lab Tutorial Learning Path
 
 This branch is the exercise scaffold for the completed code on `main`.
-Follow the **Train a Robot Arm** module, applying its marked regions in lesson order.
+Follow the **Train a Robot Arm** module in the
+[Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
+course, applying its marked regions in lesson order.
 Imports, workshop assets, the reset dataset, and supporting utilities are supplied.
 The initial scene intentionally has no robot. Lesson 02 makes inspection runnable;
 lesson 04 adds actions, lesson 05 the state teacher, and lesson 06 camera distillation.
@@ -41,6 +43,23 @@ Check that the task builds and steps before training:
 ```bash
 uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --max_steps 100 --visualizer none presets=newton_mjwarp
 ```
+
+### Optional Recording and Experiment Tracking
+
+Add `--extra video` to `uv run` commands that record videos with `--video` or
+`record_video`. This installs Isaac Lab's MoviePy dependency through `isaaclab[video]`.
+
+For Weights & Biases (W&B) experiment tracking, sign in with:
+
+```bash
+uv run --extra wandb wandb login
+```
+
+Then add `--extra wandb` to the training command and set `agent.logger=wandb` and
+`agent.wandb_project=YOUR_PROJECT`. The tutorial's `wandb` extra forwards to `isaaclab[wandb]`
+and temporarily pins a compatible W&B version in [pyproject.toml](pyproject.toml), because
+the Isaac Lab logger uses the legacy `wandb.util.generate_id` API. Both extras can be
+combined as `uv run --extra video --extra wandb` when recording and tracking a run.
 
 ## Tasks
 
