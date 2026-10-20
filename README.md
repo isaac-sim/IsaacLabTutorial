@@ -7,6 +7,9 @@ An Isaac Lab tutorial that trains an SO-101 arm to pick up a vial lying on the d
 distilled from it, and that camera policy is the one that runs on the real robot.
 Training uses **Newton MJWarp physics** and the **Newton renderer** for the camera.
 
+Follow the [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
+course for guided lessons.
+
 ## Setup
 
 Linux x86-64 or Windows 11, Python 3.12, Git LFS, an NVIDIA GPU with a CUDA 13-compatible driver, and `uv`.
@@ -23,6 +26,23 @@ Check that the task builds and steps before training:
 ```bash
 uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --max_steps 100 --visualizer none presets=newton_mjwarp
 ```
+
+### Optional Recording and Experiment Tracking
+
+Add `--extra video` to `uv run` commands that record videos with `--video` or
+`record_video`. This installs Isaac Lab's MoviePy dependency through `isaaclab[video]`.
+
+For Weights & Biases (W&B) experiment tracking, sign in with:
+
+```bash
+uv run --extra wandb wandb login
+```
+
+Then add `--extra wandb` to the training command and set `agent.logger=wandb` and
+`agent.wandb_project=YOUR_PROJECT`. The tutorial's `wandb` extra forwards to `isaaclab[wandb]`
+and temporarily pins a compatible W&B version in [pyproject.toml](pyproject.toml), because
+the Isaac Lab logger uses the legacy `wandb.util.generate_id` API. Both extras can be
+combined as `uv run --extra video --extra wandb` when recording and tracking a run.
 
 ## Tasks
 
