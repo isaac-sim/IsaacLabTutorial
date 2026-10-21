@@ -10,7 +10,6 @@ import math
 from typing import Any
 
 import torch
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade
 
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
@@ -22,15 +21,13 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
-from isaaclab.physics import PhysicsEvent, PhysxAutoCfg
+from isaaclab.physics import PhysicsEvent, PhysicsManager, PhysxAutoCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
-from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
-from isaaclab.sim.spawners.materials.physics_materials import spawn_physics_material
 from isaaclab.sim.utils import bind_physics_material, clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
-from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonManager
+from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg
 from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
 from isaaclab_ov.physics import OvPhysxCfg
 from isaaclab_physx.physics import PhysxCfg
@@ -95,6 +92,8 @@ WORKSHOP_CONTACT_MATERIAL = PhysxRigidBodyMaterialCfg(
 
 
 def _bind_workshop_contact_material(prim: Any, prim_path: str) -> None:
+    from isaaclab.sim.spawners.materials.physics_materials import spawn_physics_material
+
     material_path = f"{prim_path}/workshopContactMaterial"
     spawn_physics_material(material_path, WORKSHOP_CONTACT_MATERIAL, stage=prim.GetStage())
     bind_physics_material(prim_path, material_path, stage=prim.GetStage())
@@ -109,6 +108,10 @@ def _spawn_usd_with_contact_material(
     **kwargs,
 ):
     """Spawn a USD asset and bind the workshop contact material to all of its colliders."""
+    from pxr import Gf, Sdf
+
+    from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
+
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
     if getattr(cfg, "randomize_diameters", False):
@@ -127,6 +130,8 @@ class VialSpawnCfg(sim_utils.UsdFileCfg):
 
 @clone
 def _spawn_support(prim_path, cfg, translation=None, orientation=None, **kwargs):
+    from pxr import Sdf
+
     prim = sim_utils.spawn_cuboid(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     prim.CreateAttribute("tutorial:rollingFrictionRange", Sdf.ValueTypeNames.Float2, custom=True).Set(
         cfg.rolling_friction_range
@@ -235,7 +240,7 @@ def _register_contact_model() -> None:
     global _contact_model_registered
     if _contact_model_registered:
         return
-    NewtonManager.register_callback(
+    PhysicsManager.register_callback(
         _initialize_contacts,
         PhysicsEvent.MODEL_INIT,
         name="so101_workshop_contact_model",
@@ -248,6 +253,8 @@ _register_contact_model()
 
 def _remove_non_gripper_colliders(robot_prim: Any) -> None:
     """Keep fixed jaw, moving jaw and camera-mount contacts; retain all link dynamics/visuals."""
+    from pxr import Usd, UsdPhysics
+
     root = robot_prim.GetPath()
     for prim in Usd.PrimRange(robot_prim):
         if not prim.HasAPI(UsdPhysics.CollisionAPI):
@@ -269,6 +276,10 @@ def _spawn_so101(
     **kwargs,
 ):
     """Spawn the workshop SO-101: calibrated joints, contact material, gripper-only colliders, orange plastic."""
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
+
+    from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
+
     prim = spawn_from_usd(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     _bind_workshop_contact_material(prim, prim_path)
     stage = prim.GetStage()
