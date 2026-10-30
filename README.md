@@ -57,12 +57,12 @@ identical in both tasks, so a teacher and its student train under the same physi
 
 ## Registry publishing (prototype)
 
-Package version `1.0.0` uses the release tag `v1.0`. After a release maintainer has tagged and pushed
+Package version `0.1.0` uses the release tag `v0.1.0`. After a release maintainer has tagged and pushed
 the approved commit to the official repository, draft its registration request from this repository
 root using an environment with the registry-enabled Isaac Lab CLI:
 
 ```bash
-isaaclab registry publish . --ref v1.0 --repository https://github.com/isaac-sim/IsaacLabTutorial --output registry-request.toml
+isaaclab registry publish . --ref v0.1.0 --repository https://github.com/isaac-sim/IsaacLabTutorial --output registry-request.toml
 ```
 
 Submit the generated request to the registry bot. The existing task entry point exposes both tasks

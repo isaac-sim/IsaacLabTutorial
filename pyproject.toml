@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "isaaclab_tutorial"
-version = "1.0.0"
+version = "0.1.0"
 description = "Isaac Lab tutorial for placing a vial with an SO-101 arm."
 readme = "README.md"
 license = { file = "LICENSE" }
