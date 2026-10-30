@@ -55,6 +55,20 @@ Add `presets=sim2real` to either task to enable robot-transfer randomization. Th
 identical in both tasks, so a teacher and its student train under the same physics. See
 [docs/SIM2REAL.md](docs/SIM2REAL.md).
 
+## Registry publishing (prototype)
+
+Package version `0.1.0` uses the release tag `v0.1.0`. After a release maintainer has tagged and pushed
+the approved commit to the official repository, draft its registration request from this repository
+root using an environment with the registry-enabled Isaac Lab CLI:
+
+```bash
+isaaclab registry publish . --ref v0.1.0 --repository https://github.com/isaac-sim/IsaacLabTutorial --output registry-request.toml
+```
+
+Submit the generated request to the registry bot. The existing task entry point exposes both tasks
+listed above. The wheel includes the workshop geometry and reset dataset; the SO-101 robot uses
+Isaac Lab's hosted asset. Git-source registration requires Git LFS to fetch the workshop geometry.
+
 ## Train
 
 ```bash

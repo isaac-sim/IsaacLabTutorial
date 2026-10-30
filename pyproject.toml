@@ -18,8 +18,16 @@ dependencies = [
     "torchvision==0.26.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/isaac-sim/IsaacLabTutorial"
+
 [project.entry-points."isaaclab.tasks"]
 isaaclab_tutorial = "isaaclab_tutorial.tasks"
+
+[tool.isaaclab.registry]
+category = "manipulation"
+tags = ["so101", "vial-placement", "newton", "rsl-rl", "sim2real"]
+maintainers = ["StafaH"]
 
 [project.scripts]
 generate-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:generate_main"
