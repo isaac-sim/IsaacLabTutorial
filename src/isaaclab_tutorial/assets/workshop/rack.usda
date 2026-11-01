@@ -1,3 +1,125 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3b2c32a08aae30a58321490eca0fab5342b696b38346379179b8da85496ec8e6
-size 5217
+#usda 1.0
+(
+    defaultPrim = "Rack"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+# Workshop slot ``top_01`` is placed at the task origin. Keep the detailed
+# four-hole mesh for rendering, but represent its collision geometry with the
+# small box lattice below. The lattice preserves all four open slots without
+# paying the per-environment cost of mesh/SDF contacts.
+def Xform "Rack" (prepend apiSchemas = ["PhysicsRigidBodyAPI"])
+{
+    bool physics:kinematicEnabled = true
+
+    def Xform "WorkshopVisual" (prepend references = @./rack_simple.usda@</World>)
+    {
+        double3 xformOp:translate = (-0.0298317129, -0.0298575352, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        over "Body1" (delete apiSchemas = ["PhysicsRigidBodyAPI", "PhysxRigidBodyAPI"])
+        {
+            over "Mesh"
+            {
+                over "Mesh" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+                {
+                    bool physics:collisionEnabled = false
+                }
+            }
+        }
+    }
+
+    def Xform "Collision"
+    {
+        token visibility = "invisible"
+        uniform token purpose = "guide"
+        # The visual source spans [0, 0.12] in X/Y and is translated so its
+        # first opening is centered on the rack origin. This places the proxy
+        # on the same 120 mm footprint and aligns its first opening likewise.
+        double3 xformOp:translate = (0.0301682871, 0.0301424648, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Base" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            # The workshop mesh has a 20 mm lower deck. Its 14 mm top plus
+            # the vial's 17 mm radius gives the measured 31 mm seated root.
+            double3 xformOp:scale = (0.12, 0.12, 0.02)
+            double3 xformOp:translate = (0, 0, 0.004)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "Post_0" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.012, 0.012, 0.065)
+            double3 xformOp:translate = (-0.054, -0.054, 0.0365)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_1" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.012, 0.012, 0.065)
+            double3 xformOp:translate = (0.054, -0.054, 0.0365)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_2" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.012, 0.012, 0.065)
+            double3 xformOp:translate = (-0.054, 0.054, 0.0365)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Post_3" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.012, 0.012, 0.065)
+            double3 xformOp:translate = (0.054, 0.054, 0.0365)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "TopRailLeft" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.006, 0.12, 0.012)
+            double3 xformOp:translate = (-0.057, 0, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "TopRailCenterX" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.012, 0.12, 0.012)
+            double3 xformOp:translate = (0, 0, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "TopRailRight" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.006, 0.12, 0.012)
+            double3 xformOp:translate = (0.057, 0, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "TopRailFront" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.108, 0.006, 0.012)
+            double3 xformOp:translate = (0, -0.057, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "TopRailCenterY" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.108, 0.012, 0.012)
+            double3 xformOp:translate = (0, 0, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "TopRailBack" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+        {
+            double size = 1
+            double3 xformOp:scale = (0.108, 0.006, 0.012)
+            double3 xformOp:translate = (0, 0.057, 0.067)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+}

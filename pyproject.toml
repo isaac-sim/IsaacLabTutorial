@@ -13,7 +13,7 @@ authors = [
 ]
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "isaaclab==3.0.0",
+    "isaaclab>=3.0.0",
     "torch==2.11.0",
     "torchvision==0.26.0",
 ]
