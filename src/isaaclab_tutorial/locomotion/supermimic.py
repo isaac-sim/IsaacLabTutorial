@@ -49,7 +49,7 @@ def _selections(env: ManagerBasedRLEnv) -> tuple[list[int], list[int], ContactSe
 class DuckPhysicalState(ManagerTermBase):
     """Read physical coordinates, measured contact clocks, momentum, clearance, and swing memory."""
 
-    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv) -> None:
         super().__init__(cfg, env)
         self.joints, self.feet, self.sensor, self.sensor_feet = _selections(env)
 
@@ -87,7 +87,7 @@ class DuckPhysicalState(ManagerTermBase):
 class DuckEventLabels(ManagerTermBase):
     """Supervise foot contact, touchdown, self-contact, and the real orientation fall event."""
 
-    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv) -> None:
         super().__init__(cfg, env)
         _, _, self.sensor, self.feet = _selections(env)
 
@@ -118,7 +118,7 @@ def duck_context(env: ManagerBasedRLEnv) -> torch.Tensor:
 class DuckStateRepresentation(VelocityStateRepresentation):
     """SO(3) integration plus Duck momentum/clearance coordinates and analytic swing peaks."""
 
-    def __init__(self, device: str = "cpu"):
+    def __init__(self, device: str = "cpu") -> None:
         super().__init__(14, 2, device)
         self.widths += (1, 2, 2)
         self.increment_widths += (1, 2)
@@ -143,11 +143,17 @@ class MicroDuckTask(DifferentiableTask):
 
     Contact clocks/peaks advance at the 20 ms control period during imagination.
     Real-state parity uses the measured physics-rate clocks, including partial-step contacts.
+
+    Args:
+        env: Nominal Duck environment with resolved reward and observation managers.
+        device: Device for constant tensors used by the differentiable heads.
+        air_time_gradient_width: Sigmoid-window width in seconds for the optional backward estimator.
+            Zero retains the hard window's derivative. Forward reward values always retain the exact hard window.
     """
 
     num_labels = 6
 
-    def __init__(self, env: ManagerBasedRLEnv, device: str = "cpu", air_time_gradient_width: float = 0.0):
+    def __init__(self, env: ManagerBasedRLEnv, device: str = "cpu", air_time_gradient_width: float = 0.0) -> None:
         if not math.isfinite(air_time_gradient_width) or air_time_gradient_width < 0:
             raise ValueError("Air-time gradient width must be a finite, nonnegative number of seconds.")
         self.air_time_gradient_width = air_time_gradient_width

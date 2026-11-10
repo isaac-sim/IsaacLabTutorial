@@ -17,11 +17,15 @@ class DuckHistoryPolicy(nn.Module):
     The standard runtime carries explicit ``h``/``c`` tensors and resets both to zero.
     ``h`` stores sensor history and a flag. ``c`` passes through unchanged. The first
     real frame fills the history, matching RSL-RL's reset padding exactly.
+
+    Args:
+        actor: Stateless actor export accepting sensor history and the current command goal.
+        history_length: Number of 48-value sensor frames consumed by that actor.
     """
 
     __constants__ = ("history_length", "state_width")
 
-    def __init__(self, actor: nn.Module, history_length: int):
+    def __init__(self, actor: nn.Module, history_length: int) -> None:
         super().__init__()
         if history_length < 1:
             raise ValueError("A Duck history actor needs at least one sensor frame.")
