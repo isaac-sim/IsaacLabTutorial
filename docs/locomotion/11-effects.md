@@ -33,6 +33,22 @@ Every application constructs a fresh trial and clears its histories. Backlash ad
 
 ## Use a frozen experiment file
 
+<details>
+<summary>What does the backlash coordinate mean?</summary>
+
+```mermaid
+flowchart LR
+    Servo[Servo hinge: q_s] --> Play[Passive series hinge: q_b in minus 1 to plus 1 degree]
+    Play --> Output[Mechanical output: q_out = q_s + q_b]
+    Output --> Encoder[Modeled encoder reads the summed output]
+```
+
+On reversal, the passive hinge can traverse its available clearance before loading the opposite stop. The transmitted motion depends on load, friction and contacts; it is not a fixed number of milliseconds or a constant offset. This is a conceptual mechanism with the exact coordinate mapping used by the known asset. The BAM controller and actor encoder feature use the summed output; the raw receipt preserves each coordinate separately.
+
+**Predict:** after reversing a joint, which should you compare with the target: `q_s`, `q_b`, or `q_s + q_b`? Inspect both servo and output traces before treating a discrepancy as sensor delay.
+
+</details>
+
 This runs the same workflow without a desktop, using the supplied backlash snapshot:
 
 ```bash

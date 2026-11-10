@@ -13,6 +13,17 @@ The manager evaluates each active term, multiplies it by its configured weight, 
 
 The linear tracking reward is `exp(-squared_heading_velocity_error / std²)`. Width changes recompute this term from the squared error recorded at the same post-physics instant as the reward, before autoreset. The evaluator's separate pre-step metric velocities are not substituted for that reward-time state. Merely multiplying the previous score would be incorrect.
 
+<details>
+<summary>Predict what changing the tolerance does</summary>
+
+![Analytic tracking reward at the actual 0.15 m/s tolerance and an illustrative 0.30 m/s alternative; a second panel includes weight 4 and the 0.02-second control interval](media/reward-shape.jpg)
+
+At the same nonzero velocity error, a larger width gives a larger tracking reward. Both curves equal one at zero error; increasing tolerance does not create better tracking. The right panel shows this term's contribution after its actual weight and control interval are applied. These are equation curves using [recorded nominal parameters](evidence/reward-shape.json), not learned-policy measurements. Rebuild with `uv run --project environments/locomotion python scripts/locomotion/plot_reward_shape.py`.
+
+Try the workshop's width slider, then explain why making the score easier to earn could leave task performance unchanged.
+
+</details>
+
 ## Predict what stronger smoothness will teach
 
 Make the `action_rate_l2` weight ten times more negative: −0.1 → −1.0. Before retraining, predict whether the duck will walk more smoothly, stop walking, or fall. The penalty measures changes in consecutive raw actions; it does not directly measure motor torque or energy.

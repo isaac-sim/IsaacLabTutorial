@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "50b6d7e3084a753dc99b2c3e3e74a943626aadf7",
+  "source_revision": "adf0234e2875865f0fbe415933b3475c73370907",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -68,6 +68,14 @@
     {
       "path": "docs/locomotion/evidence/signal-validation.json",
       "sha256": "ce6b8118ab910ca95ceeaccf4655cd0253403611161941c45bccab574afac458"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-shape.json",
+      "sha256": "b58f133b02f8a793a701a130ee90f3d9c850af30172bfdcda41173fc5dfe61d8"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-shape-render.json",
+      "sha256": "26c36ae2fdcbcf60541cdeb2e1ea17d741163f9e43c28bf295aa696c63934dfe"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -99,11 +107,11 @@
       "id": "V02",
       "topic": "learning-loop",
       "kind": "schematic",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
-          "path": "docs/locomotion/05-observations.md",
-          "sha256": "f61ed43fa05c91d962d855dcacf2ff9bcb4df3aa0721abe2ad57bcd637ae03de"
+          "path": "docs/locomotion/README.md",
+          "sha256": "a8ee3e2144fcdcbf1101e0cecc0557b022a3ddb11ff89cb6d3c2b6e14dc60b3d"
         }
       ],
       "acceptance": "Inference path cannot be mistaken for a controller that needs rewards or critic values on hardware.",
@@ -119,7 +127,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Observation/inference flow exists; add the reward and training-only optimizer branch."
+      "remaining": null
     },
     {
       "id": "V03",
@@ -363,8 +371,13 @@
       "id": "V14",
       "topic": "tracking-reward-shape",
       "kind": "analytic_plot",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/reward-shape.jpg",
+          "sha256": "1a7041260ef8a3de61d1bb4543093be8c54cb4519428d535674465a36018b730"
+        }
+      ],
       "acceptance": "Equation, width interpretation, and units are verified from source; plotting data is analytically generated and labeled.",
       "required_labels": [
         "Velocity error m/s",
@@ -375,7 +388,7 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "The actual tracking curve is interactive in the reward workshop; publish its analytic figure."
+      "remaining": null
     },
     {
       "id": "V15",
@@ -405,8 +418,13 @@
       "id": "V16",
       "topic": "episode-ending-reset",
       "kind": "schematic",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/07-ppo.md",
+          "sha256": "b3b6e66e07c9d1f38b6bd0da2e339bc183a664cce77e7edf5a2a0bb230aba2f4"
+        }
+      ],
       "acceptance": "Timeline follows actual environment/wrapper ordering and does not use the next episode initial observation as the terminal state.",
       "required_labels": [
         "Failure",
@@ -418,7 +436,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Show true termination versus truncation with the actual pinned timeout bootstrap approximation."
+      "remaining": null
     },
     {
       "id": "V17",
@@ -428,7 +446,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/07-ppo.md",
-          "sha256": "0dd1653034df2da496b082e4e191299d773d8260e78046b79a17153dd375e409"
+          "sha256": "b3b6e66e07c9d1f38b6bd0da2e339bc183a664cce77e7edf5a2a0bb230aba2f4"
         }
       ],
       "acceptance": "Horizon and batch arithmetic match the config; collection and repeated optimizer updates are distinct.",
@@ -476,7 +494,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/07-ppo.md",
-          "sha256": "0dd1653034df2da496b082e4e191299d773d8260e78046b79a17153dd375e409"
+          "sha256": "b3b6e66e07c9d1f38b6bd0da2e339bc183a664cce77e7edf5a2a0bb230aba2f4"
         }
       ],
       "acceptance": "Arithmetic can be checked by hand; example never labels a one-step residual as a general multi-step advantage estimator.",
@@ -647,8 +665,13 @@
       "id": "V27",
       "topic": "backlash-mechanism",
       "kind": "schematic",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/11-effects.md",
+          "sha256": "ad68d03269728f32f51f277ae91aaa188aab32a5647dce4b364e667823d7df6c"
+        }
+      ],
       "acceptance": "It explains state-dependent play rather than random noise; motor/output labels are verified for the chosen model.",
       "required_labels": [
         "Reversal",
@@ -659,7 +682,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Draw conceptual reversal and the actual series-play coordinate mapping."
+      "remaining": null
     },
     {
       "id": "V28",
@@ -688,7 +711,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "26293cf9e9813f32dfd6db901fe397e284317b970253b9fab9caae5fde70ef91"
+          "sha256": "ad68d03269728f32f51f277ae91aaa188aab32a5647dce4b364e667823d7df6c"
         },
         {
           "path": "docs/locomotion/media/signal-delay40.jpg",

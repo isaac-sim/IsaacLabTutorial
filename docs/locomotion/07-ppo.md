@@ -50,6 +50,25 @@ The residual compares a one-step target with the critic's previous estimate. GAE
 
 The value loss trains the critic; entropy encourages exploration; gradient clipping limits an optimizer step. The configured horizon and number of parallel environments determine the rollout size. Epochs/minibatches reuse that recent rollout without creating additional environment transitions.
 
+<details>
+<summary>Follow a fall and a time limit through reset</summary>
+
+```mermaid
+flowchart TD
+    Step[Physics step and reward] --> End{Episode ending?}
+    End -->|No| Continue[Record transition and continue]
+    End -->|Fall or time limit| Final[Preserve pre-reset state and ending flags]
+    Final --> Reset[Reset physical state and observation/action histories]
+    Reset --> New[First observation of the new episode]
+    Final --> Flags[Send termination and truncation flags to runner]
+    Flags -->|Fall| Terminal[No continuing-value addition]
+    Flags -->|Time limit| Timeout[Add discounted stored pre-step value to that transition reward]
+```
+
+The evaluator holds the first failed pose rather than letting autoreset conceal it. During training, the environment autoresets before returning observations to the runner. Ending flags preserve the distinction; the time-limit addition uses the runner's stored pre-step value, not the new reset state's value. See the numerical example above for this pinned runner's approximation.
+
+</details>
+
 The maintained PPO recipe uses 24 control steps per environment, discount 0.99, GAE lambda 0.95, clip parameter 0.2, five learning epochs, and four minibatches. A rollout of 128 × 24 contains 3,072 transitions. Fifty iterations collect 153,600 transitions, regardless of how many optimizer minibatches reuse them.
 
 Each epoch splits the rollout into four minibatches of 768 samples. Five epochs give 20 optimizer steps per iteration, or 1,000 over the preview run. The optimizer jointly updates actor and critic; those are not two separate counts of fresh experience. The investigator reads optimizer counters from the actual saved checkpoint alongside the arithmetic prediction.

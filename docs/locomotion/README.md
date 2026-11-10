@@ -22,6 +22,26 @@ The runnable path includes supported/free-base joint control, observation inspec
 
 **Try → predict → change one thing → observe → explain → retry.** The main path is hands-on; theory panels explain what you have already seen. Record one sentence after each experiment. Keep the seed and reset protocol fixed when comparing changes.
 
+<details>
+<summary>See the loop you are exploring</summary>
+
+```mermaid
+flowchart LR
+    Physics[Physical state in simulation] --> Obs[Assemble actor observations]
+    Obs --> Actor[Actor: choose action]
+    Actor --> Map[Action mapping and actuator]
+    Map --> Physics
+    Physics --> Reward[Training only: rewards and episode endings]
+    Physics --> Critic[Training only: critic observations]
+    Reward --> PPO[PPO rollout and updates]
+    Critic --> PPO
+    PPO -. updates weights .-> Actor
+```
+
+The frozen policy workshop keeps the observation/action/physics loop running. Learning additionally collects a rollout and updates weights; display sliders and ghost playback do not perform those updates.
+
+</details>
+
 A **Run** block is an executable command. A **Reference** block explains code; it is not an instruction to paste it. Expected behavior describes what to look for, not a guaranteed training outcome. Checkpoint and hardware paths are inputs you choose explicitly.
 
 Contributors can inspect [the production evidence and visual inventory](production.md) for reproducible figures, activity coverage and remaining publication gates.
