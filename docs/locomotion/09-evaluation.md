@@ -52,6 +52,20 @@ uv run --project environments/locomotion python scripts/locomotion/plot_playgrou
 
 The viewer's native **Reset Episode** also clears the tutorial's controller and display histories. If it interrupts a transition while the scene is rendering, that transition is logged as a reset event and excluded from the motion trace. A viewer reset is not a fall.
 
+## Which way is forward?
+
+**Predict:** turn the duck 45°, then ask for forward motion. Should its world position change only along world X?
+
+![Analytic top-view diagram shows world axes, heading axes rotated 45 degrees, positive counterclockwise yaw, and a forward command mapping to equal world-X and world-Y velocity components](media/velocity-frames.jpg)
+
+The tracking reward and evaluator express horizontal velocity in the **heading frame**: keep the body's yaw, remove roll and pitch. At a 45° heading, a forward-only 0.2 m/s command corresponds to world velocity `(0.1414, 0.1414, 0)` m/s. Turning is compared with angular velocity about **world Z**. The actor's body-frame gyro uses the complete body orientation; those coordinates differ when the duck tilts.
+
+This is an analytic illustration, not a measured trajectory. Its [source and numerical transform check](evidence/velocity-frames.json) include a tilted-body negative control against the maintained quaternion functions. Rebuild the JPEG and editable SVG master with:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/plot_velocity_frames.py --output outputs/frames/velocity-frames.jpg --master outputs/frames/velocity-frames.svg
+```
+
 ## Read the benchmark honestly
 
 The evaluator stops at the **first episode ending**. It does not silently restart a fallen robot and call the next episode a continuation. Each record saves the pre-step pose/velocities, following transition reward, reward-time tracking error, and individual termination reasons; an optional image is the final pre-step state rather than the autoreset stance. A `nan_state` termination invalidates the trial and returns an error after saving its diagnostic receipt. It is not counted as an ordinary fall, even if autoreset made the subsequent state finite.

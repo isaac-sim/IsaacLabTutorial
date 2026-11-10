@@ -44,6 +44,28 @@ The budget is 128 environments × 24 control steps × 50 iterations = **153,600 
 
 Find the printed run directory under `logs/rsl_rl/microduck_tutorial/`. Checkpoints are written at the configured interval and at the end. Iterations, episode duration, tracking errors, and fall terminations are more useful together than reward alone.
 
+<details>
+<summary>Verify that the nominal task is registered</summary>
+
+From the **IsaacLabTutorial repository root**, run:
+
+```bash
+uv run --project environments/locomotion --locked isaaclab list_envs --keyword MicroDuckTutorial-Velocity-Flat
+```
+
+The actual nominal row from the pinned environment is shown as field/value pairs for readability:
+
+```text
+Task Name: MicroDuckTutorial-Velocity-Flat
+Entry Point: isaaclab.envs:ManagerBasedRLEnv
+Config: isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:NominalEnvCfg
+RL Libraries: rsl_rl
+```
+
+The [saved CLI receipt](evidence/task-list.json) retains the exact command, unedited stdout and zero exit code. Other matching task rows also appear. Registration alone does not launch simulation or verify that an optional workflow's dependencies are installed; use the nominal task for this first PPO attempt.
+
+</details>
+
 ## Replay what you actually trained
 
 ```bash

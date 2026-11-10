@@ -165,7 +165,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/02-first-training.md",
-          "sha256": "5ef4270fd863f14e8be1b912a4fd58c3f3d1aa65702e46df37fe2a8ae4feabda"
+          "sha256": "bd6fb441c51dc61d88f98dcd54d7f6c3eaca6a4b3e53836f1eff51862237641e"
         }
       ],
       "acceptance": "Every displayed path exists at the lesson checkpoint; config ownership and runtime execution are distinguished.",
@@ -184,8 +184,17 @@
       "id": "V04",
       "topic": "verified-cli-output",
       "kind": "text_excerpt",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/02-first-training.md",
+          "sha256": "bd6fb441c51dc61d88f98dcd54d7f6c3eaca6a4b3e53836f1eff51862237641e"
+        },
+        {
+          "path": "docs/locomotion/evidence/task-list.json",
+          "sha256": "a87ddaf5d1226e8f7baf472b70718ebc08ef18cb0e3b3021f9820b94bd8ac48b"
+        }
+      ],
       "acceptance": "Excerpt comes from a saved successful receipt and contains no invented success line or user-specific secret.",
       "required_labels": [
         "Working directory",
@@ -196,7 +205,7 @@
       "dimensions": "Selectable text in the lesson; no screenshot required",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Publish a concise real task-list/inspection excerpt with its exact command."
+      "remaining": null
     },
     {
       "id": "V05",
@@ -332,8 +341,17 @@
       "id": "V11",
       "topic": "velocity-command-frames",
       "kind": "schematic",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/velocity-frames.jpg",
+          "sha256": "0ba7dbe5346a827b82d3a8a4e013c0469ebabf3ade20f4ad51d6d7a2df20082d"
+        },
+        {
+          "path": "docs/locomotion/evidence/velocity-frames.json",
+          "sha256": "67ac4c11f3d8541fc58494a27ea975f38e4f3253321d9aecb0472b265d4d8511"
+        }
+      ],
       "acceptance": "Arrow directions and frame transforms match the implemented command and evaluation terms.",
       "required_labels": [
         "vx m/s",
@@ -345,7 +363,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Produce a frame diagram with a rotated heading example from the actual convention."
+      "remaining": null
     },
     {
       "id": "V12",
@@ -1156,11 +1174,27 @@
       "id": "V45",
       "topic": "reality-gap-sandbox-panel",
       "kind": "interactive_panel_reference",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/effects-workshop.jpg",
           "sha256": "7ebf5d75ba753e2522d06049b414b4c3c806960965404987f86be769b79b29fe"
+        },
+        {
+          "path": "docs/locomotion/media/actuator-panel.jpg",
+          "sha256": "5e228adcd5e2c50837571ccaf35b8b87b057681407bec16962fb7fe3328474ac"
+        },
+        {
+          "path": "docs/locomotion/media/actuator-clocks.jpg",
+          "sha256": "054167eeff9c3132f4b68d705d69e6d49464de5baa36a424621a22872ebe4774"
+        },
+        {
+          "path": "docs/locomotion/media/actuator-reversal.jpg",
+          "sha256": "a827230516b40e9106bd074ad5b9e5bbcb798e35f369daa23478879410aac261"
+        },
+        {
+          "path": "docs/locomotion/evidence/actuator-validation.json",
+          "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
         }
       ],
       "acceptance": "Controls reproduce verified isolated mechanisms; delay clocks are correct, changed factors are recorded, and reset or scene reconstruction is explicit. Ghost is visual-only and cannot affect physics; actual paired runs have matching input protocols and declared differences. Rendering/transparency support is verified or a labeled fallback is used.",
@@ -1179,7 +1213,7 @@
       "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Native controls, independent ghosts and actual raw-versus-actor traces captured; applied-target age and bounded reversal plots remain."
+      "remaining": null
     }
   ],
   "experiences": [

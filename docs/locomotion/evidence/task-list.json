@@ -1,0 +1,28 @@
+{
+  "kind": "actual-task-list-cli-v1",
+  "working_directory": "IsaacLabTutorial repository root",
+  "command": [
+    "uv",
+    "run",
+    "--project",
+    "environments/locomotion",
+    "--locked",
+    "isaaclab",
+    "list_envs",
+    "--keyword",
+    "MicroDuckTutorial-Velocity-Flat"
+  ],
+  "exit_code": 0,
+  "stdout": "+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n|                                                                              Available Environments in Isaac Lab                                                                               |\n+--------+--------------------------------------------+---------------------------------+-----------------------------------------------------------------------------------------+--------------+\n| S. No. | Task Name                                  | Entry Point                     | Config                                                                                  | RL Libraries |\n+--------+--------------------------------------------+---------------------------------+-----------------------------------------------------------------------------------------+--------------+\n|   1    | MicroDuckTutorial-Velocity-Flat            | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:NominalEnvCfg               | rsl_rl       |\n|   2    | MicroDuckTutorial-Velocity-Flat-Transfer   | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:TransferEnvCfg              | rsl_rl       |\n|   3    | MicroDuckTutorial-Velocity-Flat-SuperMimic | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.supermimic_env_cfg:SuperMimicEnvCfg | rsl_rl       |\n|   4    | MicroDuckTutorial-Velocity-Flat-Delay      | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:DelayEnvCfg                 | rsl_rl       |\n|   5    | MicroDuckTutorial-Velocity-Flat-Backlash   | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:BacklashEnvCfg              | rsl_rl       |\n|   6    | MicroDuckTutorial-Velocity-Flat-Combined   | isaaclab.envs:ManagerBasedRLEnv | isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:CombinedEnvCfg              | rsl_rl       |\n+--------+--------------------------------------------+---------------------------------+-----------------------------------------------------------------------------------------+--------------+\n",
+  "stderr": "",
+  "nominal_row": {
+    "row": "1",
+    "task_id": "MicroDuckTutorial-Velocity-Flat",
+    "entry_point": "isaaclab.envs:ManagerBasedRLEnv",
+    "config": "isaaclab_tutorial.tasks.locomotion.config.microduck.env_cfg:NominalEnvCfg",
+    "rl_libraries": "rsl_rl"
+  },
+  "source_revision": "6975f56352c99cd857dba1eab776832038d28e00",
+  "lock_sha256": "b0354cdf31de8551ca6493057cfdadac624d7069cb8d61832d7ad427b0be6e29",
+  "scope": "Registration listing only; does not instantiate physics or establish training/deployment qualification."
+}
