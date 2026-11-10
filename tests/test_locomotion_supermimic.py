@@ -168,3 +168,48 @@ def test_duck_adapter_rejects_reward_replacement_sensor_delay_and_mismatched_fee
         patch.setattr(selection, "body_ids", selection.body_ids.flip(0))
         with pytest.raises(ValueError, match="ordered feet"):
             MicroDuckTask(duck_env, device=duck_env.device)
+
+
+@pytest.mark.integration
+def test_teacher_replay_preserves_applied_controls_and_pre_reset_physical_successors(duck_env):
+    from rsl_rl.runners import OnPolicyRunner
+
+    from isaaclab.utils import to_dict
+
+    from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
+
+    from isaaclab_tutorial.locomotion.warmstart import prepare_teacher_transition
+
+    env = duck_env
+    _, cfg = resolve_task_config(
+        "MicroDuckTutorial-Velocity-Flat-SuperMimic", "rsl_rl_supermimic_cfg_entry_point", overrides=()
+    )
+    cfg.algorithm.replay_buffer_size = 16 * 8
+    cfg.algorithm.warmup_steps = 8
+    wrapped = RslRlVecEnvWrapper(env, clip_actions=None)
+    algorithm = OnPolicyRunner(wrapped, to_dict(cfg), log_dir=None, device=env.device).alg
+    env.reset(seed=42)
+    algorithm.actor.reset()
+    expected_states, expected_successors = [], []
+    for step, target in enumerate((0.2, -0.1)):
+        observation = TensorDict(env.observation_manager.compute(), batch_size=[16])
+        expected_states.append(observation["state"].clone())
+        algorithm.actor.sync_actions(observation)
+        previous = algorithm.actor.previous_actions.clone()
+        algorithm.actor(observation)
+        action = torch.full((16, 14), target, device=env.device)
+        prepare_teacher_transition(algorithm, observation, action, previous)
+        if step == 1:
+            env.episode_length_buf[:] = env.max_episode_length - 1
+        successor, rewards, dones, extras = wrapped.step(action)
+        expected_successors.append(extras["final_obs"]["state"].clone())
+        algorithm.process_env_step(successor, rewards, dones, extras)
+    replay = algorithm.storage.data
+    torch.testing.assert_close(replay["state"][:2], torch.stack(expected_states))
+    torch.testing.assert_close(replay["next_state"][:2], torch.stack(expected_successors))
+    torch.testing.assert_close(replay["actions"][0], torch.full_like(action, 0.2))
+    torch.testing.assert_close(replay["actions"][1], torch.full_like(action, -0.1))
+    torch.testing.assert_close(replay["prev_actions"][1, :, -1], torch.full_like(action, 0.2))
+    assert dones.all(), "The second physical successor must precede an actual timeout reset."
+    assert not torch.allclose(replay["next_state"][1], successor["state"])
+    assert not algorithm.actor.previous_actions.any(), "Reset controls must not retain teacher commands."

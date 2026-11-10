@@ -372,6 +372,18 @@ def main() -> None:
                     "provider": "CPUExecutionProvider",
                 },
             }
+            initialization_path = args.checkpoint.parent / "warmstart.json"
+            if args.agent == "supermimic" and initialization_path.is_file():
+                initialization_bytes = initialization_path.read_bytes()
+                initialization = json.loads(initialization_bytes)
+                receipt["training_initialization"] = {
+                    "scope": initialization["scope"],
+                    "teacher_checkpoint_sha256": initialization["teacher_checkpoint_sha256"],
+                    "teacher_receipt_sha256": initialization["teacher_receipt_sha256"],
+                    "run_metadata_sha256": hashlib.sha256(initialization_bytes).hexdigest(),
+                }
+                if bundle is not None:
+                    (bundle / "initialization.json").write_bytes(initialization_bytes)
             (args.output / "receipt.json").write_text(
                 json.dumps(_finite_json(receipt), indent=2, allow_nan=False) + "\n"
             )

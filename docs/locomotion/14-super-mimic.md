@@ -99,6 +99,30 @@ The 25 ms estimator produced motion, but its final policy moved forward during t
 
 The [optimization evidence](evidence/supermimic-optimization-screen.json) retains final and intermediate checkpoint hashes, full declared response criteria and failures, saved settings, actual optimizer counters, telemetry hashes, and runner timing. These are exploratory single-seed results. A separate experiment restores the native 250,000-update learning-rate schedule; a longer physical budget is a separate comparison.
 
+### Initialize from a qualified teacher and physical replay
+
+This optional experiment starts from the qualified SAC policy in [lesson 15](15-flash-sac.md). Its walking behavior originates in that teacher. The [warm-start command](../../scripts/locomotion/warmstart.py) fits the native SuperMimic history actor on real teacher-controlled BAM transitions, retains those transitions in native replay, fits the world model, and then runs native model-based policy optimization. The final phase makes no further teacher queries; its replay initially still contains teacher data.
+
+The measured recipe uses the following separate budgets per teacher/student seed pair:
+
+| Phase | Physical transitions | Optimizer work |
+| --- | --- | --- |
+| SAC teacher training | 49,152,000 | 48,000 critic; 24,000 actor; 24,000 temperature |
+| History-actor imitation | 524,288 | 8192 supervised actor steps |
+| Model-only warm-up | 0 additional | 2000 world-model steps |
+| Native SuperMimic fine-tuning | 640,000 | 4000 world-model; 1000 actor; 20,000 critic steps |
+
+The teacher cost remains part of the recipe: 50,316,288 physical transitions in total, of which 1,164,288 are collected by this command. Model-only optimization adds no physical experience. The actor receives only deployable features; privileged model state and mass context remain unavailable at deployment.
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/warmstart.py --teacher-checkpoint PATH/TO/SAC/model_1499.pt --teacher-receipt outputs/sac-u32/receipt.json --output outputs/supermimic-warmstart-seed42 --seed 42
+uv run --project environments/workflows --locked python scripts/locomotion/evaluate.py --agent supermimic --checkpoint outputs/supermimic-warmstart-seed42/model_2499.pt --start-protocol balance-starts-v1 --seed 0 --export --output outputs/supermimic-warmstart-evaluation
+```
+
+Use the exact teacher checkpoint evaluated by that receipt. The command requires complete response qualification and matching checkpoint weights before simulator setup. It writes resolved parameters, the original teacher receipt, producer source files and hashes, one-second device-memory samples, initialization checkpoints, native training events, and `warmstart.json` with each phase's actual counters. Initialization files use separate names so they cannot be mistaken for the final `model_2499.pt` policy.
+
+The conservative native learning rate is `1e-7`, with a 16-step imagined horizon and the 25 ms air-time gradient estimator. In seed-42 feasibility trials, the final policy passed the complete response protocol after 1000 native actor updates; rates `1e-6` and `2e-5` lost that behavior. This demonstrates preservation through conservative model-based fine-tuning. It establishes neither improvement over the teacher nor successful learning from scratch. Repeat the full pipeline with independently trained teachers and matched physical starts before judging reliability.
+
 For OSMO, use [lesson 15's workflow](15-flash-sac.md) with `learner=supermimic`, `iterations=10000`, and `horizon=8`, `16`, or `32`. Publish the source first and provide its full commit SHA as `source_revision`; jobs never read uncommitted files.
 
 **Record:** does a longer imagined horizon improve actual command tracking and survival, or only imagined return?

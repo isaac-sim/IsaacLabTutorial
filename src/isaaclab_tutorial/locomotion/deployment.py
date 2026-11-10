@@ -121,6 +121,7 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
             "task_id": receipt.get("conditions", {}).get("task", "MicroDuckTutorial-Velocity-Flat"),
             "checkpoint": receipt["checkpoint"],
             "checkpoint_sha256": receipt["checkpoint_sha256"],
+            **({"initialization": receipt["training_initialization"]} if "training_initialization" in receipt else {}),
         },
         "eval": {
             "seed": receipt["seed"],
