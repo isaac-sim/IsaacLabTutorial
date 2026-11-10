@@ -6,13 +6,35 @@
 uv run --project environments/locomotion python scripts/locomotion/playground.py --mode observations
 ```
 
-Open **Observation detective (read only)**. Move a joint and inspect its named slices. Pause the playground to read one state. The values are assembled environment observations; actor normalization is a separate part of the learned model.
+Open **Observation detective (read only)**. Choose the **policy** group and **joint_pos** term. Values are labeled in the same named joint order used by the controller.
+
+1. Move `head_yaw`. Find its changing entry; compare it with the measured joint angle.
+2. Enable **Show raw sensor**. The raw encoder angle is absolute; the environment feature subtracts the default home angle. Try a knee, whose home angle is nonzero, to see the difference.
+3. Enable **Freeze display snapshot**, then move another joint. The snapshot and its displayed timestamp stay fixed while the live simulation continues. Unfreeze to see the latest values.
+4. Select **imu**. Predict which gyro/gravity components will change before moving the head. Compare supported and free-base scenes.
+
+**Freeze display snapshot** affects inspection alone. **Pause playground** stops control stepping; **Single control step** advances one 20 ms interval. Neither display control changes the policy's input vector. The displayed environment features precede the learned normalization embedded inside the actor.
+
+```mermaid
+flowchart LR
+    S[Physical IMU and encoders] --> F[Environment features]
+    C[Desired commands and previous action] --> F
+    F --> A[Actor normalization and policy]
+    A --> M[Motor targets]
+    F --> D[Copied display snapshot]
+    S --> D
+    D --> I[Freeze, choose term, inspect]
+```
+
+The inspector reads a copy of the same named observation groups. A separate telemetry group supplies display-only physical signals, including the terminal state before autoreset. The actor and critic widths remain unchanged.
 
 The 61-value actor vector contains angular velocity and projected gravity (6), joint-position offsets (14), joint velocities (14), previous actions (14), desired velocity (3), head-pose commands (4), and body-pose commands (6). Head/body command slots are retained but held at zero initially.
 
 Projected gravity expresses the world down direction in the robot/sensor frame. Tilting the robot changes its components even when its world position stays fixed. Joint motion can change position/velocity signals without rotating the base; do not expect a head movement alone to change a base-mounted IMU's gravity direction.
 
 The critic receives 76 values, including simulation-only linear velocity and foot information. It learns a value estimate during training. The deployed actor must not silently receive those privileged values.
+
+Switch the group to **critic** and find `base_lin_vel`, then `foot_contact_forces`. These are privileged simulation signals. The force feature is `sign(F) × log(1 + |F|)`, with F measured in newtons; its displayed number is not a force in newtons. Each term's panel identifies its coordinates and units.
 
 Command velocities use the task's declared heading/world conventions. Forward/lateral linear tracking is measured in the heading frame; yaw tracking uses world angular velocity about Z. Units are m/s, rad/s, and radians unless explicitly converted for display.
 

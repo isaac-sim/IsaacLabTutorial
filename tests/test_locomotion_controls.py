@@ -47,3 +47,26 @@ def test_pause_step_and_reset_requests_are_consumed_once():
     assert not controls.consume_reset()
     controls.paused = False
     assert controls.consume_step()
+
+
+def test_commands_keep_training_bounds_and_stand_does_not_write_joint_targets():
+    controls = JointControls(
+        ("knee",),
+        np.zeros(1),
+        np.array([[-1.0, 1.0]]),
+        np.ones(1),
+        command_limits=np.array([[-0.4, 0.4], [-0.3, 0.3], [-1.0, 1.0]]),
+    )
+    controls.set_target("knee", 0.2)
+    controls.set_command(0, 0.3)
+    controls.set_command(2, -0.5)
+    for axis, value in ((0, 0.5), (1, float("nan")), (3, 0.1)):
+        with pytest.raises(ValueError):
+            controls.set_command(axis, value)
+    np.testing.assert_array_equal(controls.commands, [0.3, 0, -0.5])
+    controls.stand()
+    np.testing.assert_array_equal(controls.commands, [0, 0, 0])
+    np.testing.assert_array_equal(controls.targets, [0.2])
+    controls.ended = True
+    controls.step_requested = True
+    assert not controls.consume_step()

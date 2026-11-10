@@ -13,7 +13,14 @@ import numpy as np
 class JointControls:
     """Own named joint targets and one-shot requests without depending on the viewer."""
 
-    def __init__(self, names: tuple[str, ...], default: np.ndarray, limits: np.ndarray, scale: np.ndarray):
+    def __init__(
+        self,
+        names: tuple[str, ...],
+        default: np.ndarray,
+        limits: np.ndarray,
+        scale: np.ndarray,
+        command_limits: np.ndarray | None = None,
+    ):
         self.names = tuple(names)
         self.default = np.asarray(default, dtype=np.float64).copy()
         self.limits = np.asarray(limits, dtype=np.float64).copy()
@@ -36,6 +43,14 @@ class JointControls:
         self.reset_requested = False
         self.save_requested = False
         self.commands = np.zeros(3)
+        self.command_limits = (
+            np.zeros((3, 2)) if command_limits is None else np.asarray(command_limits, dtype=float).copy()
+        )
+        if self.command_limits.shape != (3, 2) or not np.isfinite(self.command_limits).all():
+            raise ValueError("Command limits must be finite forward/lateral/yaw bounds.")
+        if np.any(self.command_limits[:, 0] > 0) or np.any(self.command_limits[:, 1] < 0):
+            raise ValueError("The teaching command range must include standing at zero.")
+        self.ended = False
         self.time_s = 0.0
         self.status = "Move a joint slider, then compare target and measured angles."
 
@@ -56,10 +71,23 @@ class JointControls:
     def restore(self) -> None:
         """Restore the requested stance without teleporting measured joint coordinates."""
         self.targets[:] = self.default
+        self.stand()
+
+    def set_command(self, axis: int, value: float) -> None:
+        """Latch a velocity command inside the trained envelope, without touching joint targets."""
+        if axis not in (0, 1, 2) or not np.isfinite(value):
+            raise ValueError("Commands need a valid forward/lateral/yaw axis and finite value.")
+        if not self.command_limits[axis, 0] <= value <= self.command_limits[axis, 1]:
+            raise ValueError("Command is outside the training range.")
+        self.commands[axis] = value
+
+    def stand(self) -> None:
+        """Ask a frozen policy to stand using a zero velocity command."""
+        self.commands[:] = 0
 
     def consume_step(self) -> bool:
         """Consume a single-step request or permit normal unpaused stepping."""
-        advance = not self.paused or self.step_requested
+        advance = not self.ended and (not self.paused or self.step_requested)
         self.step_requested = False
         return advance
 
