@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "adf0234e2875865f0fbe415933b3475c73370907",
+  "source_revision": "b5d8e3a12d3e7066ae864438d610a2aa811f3b1d",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -95,7 +95,7 @@
     },
     {
       "path": "docs/locomotion/evidence/robustness-validation.json",
-      "sha256": "018025018ff1ea625b03e1f77f7d7ee3aaa70f7784eb1009b77b8d4fd5cf7a84"
+      "sha256": "9ad9d04e075ed916c4dc1f039816a507d2f42147e6a3e4af22da486fef2574cd"
     },
     {
       "path": "docs/locomotion/evidence/robust-delay-runtime.json",

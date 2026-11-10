@@ -305,5 +305,6 @@
       0.07,
       0.3
     ]
-  }
+  },
+  "training_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
 }
