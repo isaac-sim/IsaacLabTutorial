@@ -435,7 +435,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
+          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
         }
       ],
       "acceptance": "Slice widths sum to the actual actor dimension and match the exported policy contract.",
@@ -734,7 +734,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
+          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
         }
       ],
       "acceptance": "Every connection is grounded in the actual hardware API and policy contract; estimates are labeled as estimates.",
@@ -970,11 +970,15 @@
       "id": "V34",
       "topic": "deployment-dataflow",
       "kind": "schematic",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
+          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
+        },
+        {
+          "path": "docs/locomotion/evidence/deployment-flow.json",
+          "sha256": "534911f47809fba93999284f8488f0f2e7cc80a5357125fdef4d5fb307c308c3"
         }
       ],
       "acceptance": "Diagram matches the supported deployed runtime and calibration contract, including inference state/reset handling.",
@@ -989,7 +993,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "ONNX/Rust boundary and sensor schema are documented; add the watchdog/timestamp diagram."
+      "remaining": null
     },
     {
       "id": "V35",
@@ -1037,7 +1041,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/14-super-mimic.md",
-          "sha256": "068cf4f55554386a4147c443488a7ab23d31887fe8891a44b8c0330bb022dd69"
+          "sha256": "2e53f84eb626d66f9e63af6e9a1b3fe55eefb32439b6dbef7c8c908fdf42961e"
         }
       ],
       "acceptance": "Every stage traces to merged source/docs; no substitution with similarly named Mimic workflows.",
@@ -1065,6 +1069,14 @@
         {
           "path": "docs/locomotion/media/supermimic-screen.jpg",
           "sha256": "3e8dc9825b281501389ed31754a6532075bc9f36675538e873fe294dac9daf36"
+        },
+        {
+          "path": "docs/locomotion/media/supermimic-native-video.jpg",
+          "sha256": "30cd042192129134a5ad0cf6c8df1d014369a3bc25df7ff672ea5a7da378ed84"
+        },
+        {
+          "path": "docs/locomotion/evidence/supermimic-native-video.json",
+          "sha256": "eee6732cee1865c3f313f020a14e2b3fa433d10256a50a3f365865674be7f8bb"
         }
       ],
       "acceptance": "Example runs under the merged integration; any supported non-Microduck example is explicitly identified.",
@@ -1077,7 +1089,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Measured model/response/normalization plots exist; native-time experiment video remains."
+      "remaining": "Native-time1080p50Hz20sMP4 is complete and checked locally. Publish the exact checksum-bound video and add its reviewed external URL."
     },
     {
       "id": "V39",
@@ -1087,7 +1099,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/15-flash-sac.md",
-          "sha256": "828e6f33084e128d16feff7960c24d1a433f5de779921b8375b6a665586d5aab"
+          "sha256": "9ff1312eaf64b1d0e137566927002239c9fb4052199d9361de875205a392336c"
         }
       ],
       "acceptance": "The diagram reflects the merged implementation and distinguishes reuse, update ratio, and terminal-observation handling.",
@@ -1107,11 +1119,27 @@
       "id": "V40",
       "topic": "ppo-flash-sac-results",
       "kind": "measured_plot",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/supermimic-screen.jpg",
           "sha256": "3e8dc9825b281501389ed31754a6532075bc9f36675538e873fe294dac9daf36"
+        },
+        {
+          "path": "docs/locomotion/media/learner-throughput.jpg",
+          "sha256": "b7e23c8b04e0486e5e39d436123a05dfc01d762a0b3c8aa761e83cd4459348a9"
+        },
+        {
+          "path": "docs/locomotion/evidence/learner-throughput.json",
+          "sha256": "d3e3e2b5ca122f507b9136644bba785e1ce2ef9a2c2e3bc6845d42f4e968cb3d"
+        },
+        {
+          "path": "docs/locomotion/evidence/learner-throughput-input-check.json",
+          "sha256": "65c42b8835e355de49bea8101726207a49f124cb6978a8d2cd1a903a303b5396"
+        },
+        {
+          "path": "docs/locomotion/evidence/learner-throughput-plot.json",
+          "sha256": "e29d669ab03b76b577156a970ff15d408b88431f516f9b09170db61d279a40e6"
         }
       ],
       "acceptance": "No superiority claim from one short run; comparison controls task/interface and reports warmup and resource accounting.",
@@ -1126,7 +1154,7 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Seeded response and cost tables exist; a matched-data learner-throughput comparison remains."
+      "remaining": null
     },
     {
       "id": "V41",

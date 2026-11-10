@@ -41,6 +41,55 @@ The tutorial trained zero head/body commands; keep those ten slots zero. Outputs
 
 **Check the runtime settings before loading.** Standard Duck walking defaults use scale 0.9 and head/leg target filters 0.5/0.7. This tutorial uses scale **1.0** and **no target filter**. Its generated fragment explicitly sets both filter factors to 1.0 and gain 200. Applying the standard defaults would change the controller after export. Review the fragment against the robot's existing policy section and calibration; the manifest's action-scale field alone does not configure every walking-slot setting.
 
+## Follow one hardware control tick
+
+**Predict:** if operator commands stop arriving, does the standard runtime stop inference, relax the motors, or ask for zero velocity?
+
+<details>
+<summary>Trace the control path and reveal the answer</summary>
+
+```mermaid
+flowchart TD
+    Sensor["Calibrated sensors<br/>rad, rad/s<br/>gyro / gravity"] --> Assemble
+    Intent["Operator command<br/>and its age"] --> Gate{"Fresh intent?"}
+    Gate -- Yes --> Assemble["61 raw inputs<br/>Order + home<br/>Previous raw action"]
+    Gate -- No --> Zero["Zero velocity<br/>Keep head command"]
+    Zero --> Assemble
+    Assemble --> Actor["ONNX actor<br/>Normalize once<br/>inside the graph"]
+    Actor --> Map["14 raw offsets<br/>home + scale × a<br/>Scale 1; filters 1<br/>Gain 200"]
+    Map --> Safety["Safety.apply<br/>Non-finite → hold<br/>Else actuator clamp"]
+    Safety --> Write["Motor target write<br/>Unverified on robot"]
+    Reset["Re-enable / reset<br/>Clear feedback<br/>Reset declared<br/>model state"] -.-> Assemble
+```
+
+The pinned runtime's intent deadman zeros the velocity command; it does **not** mean torque-off or a stopped inference loop. `robotd` handles configured fall responses and gain changes separately. Likewise, its final range clamp covers actuator travel, not calibrated anatomical joint limits. These source-reviewed behaviors are not hardware tests. The tutorial's single actor handles standing and moving commands; review any separately selected standing or skill policy before treating the installed controller as this tutorial's policy.
+
+The model wrapper also rejects non-finite observations or actions. An inference error takes the runtime's hold path before normal policy targets are proposed.
+
+The PPO actor itself is memoryless, but the control loop still retains previous action and optional target-filter state. Clear that feedback state on re-enable. Exploratory history-based exports additionally carry their declared inference state; see [the SuperMimic reset contract](14-super-mimic.md).
+
+</details>
+
+<details>
+<summary>Put timestamps around the complete path</summary>
+
+```mermaid
+flowchart LR
+    Tick["Tick start"] --> Read["Read sensors"]
+    Read --> Work["Assemble / infer / map targets"]
+    Work --> Write["Write motor targets"]
+    Write --> Measure["Measure full tick elapsed<br/>Compare with 20 ms target period"]
+    Measure --> Next["Record overrun count<br/>Skip missed scheduled ticks"]
+```
+
+The existing loop counts work that exceeds its period and skips missed ticks. That timing counter is not an automatic deadline-triggered stop. A fast actor-only rehearsal also excludes sensor/bus I/O and cannot establish a complete 20 ms control deadline on the robot board.
+
+Sensor capture time, bus-read time, inference boundaries and motor-write time are separate events. The runtime's `Sensors` value contains joint and IMU values, not a universal per-channel acquisition timestamp. Its repeated-IMU-read counters also do not prove a numerical capture-to-use age: identical values can come from a stationary robot. Record timestamps where the hardware interface actually provides them, label read/receive times separately, and leave unavailable acquisition ages unavailable. Verify sensor freshness and the intended operator stop/hold behavior in the no-actuation robot rehearsal before enabling motion.
+
+The [pinned source map](evidence/deployment-flow.json) identifies observation assembly, model validation/reset, target mapping, intent gating, hold/clamp behavior and tick accounting. The workstation rehearsal checks the actor boundary; hardware wiring, timing and stop trials remain measured gates.
+
+</details>
+
 ## Rehearse without actuation
 
 In a separate checkout of [the standard Duck runtime](https://github.com/pollen-robotics/microduck/tree/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9), its existing example consumes this bundle directly:
