@@ -72,12 +72,16 @@ def draw_inspector(imgui, inspector: ObservationInspector) -> None:
     _, inspector.frozen = imgui.checkbox("Freeze display snapshot", inspector.frozen)
     imgui.text(f"Snapshot: {inspector.time_s:.3f} s | {'FROZEN' if inspector.frozen else 'LIVE'}")
     groups = list(inspector.layouts)
-    changed, inspector.group_index = imgui.combo("Observation group", inspector.group_index, groups)
+    imgui.text("Observation group")
+    imgui.set_next_item_width(-1)
+    changed, inspector.group_index = imgui.combo("##observation_group", inspector.group_index, groups)
     if changed:
         inspector.term_index = 0
     group = groups[inspector.group_index]
     terms = [name for name, _ in inspector.layouts[group]]
-    _, inspector.term_index = imgui.combo("Observation term", inspector.term_index, terms)
+    imgui.text("Observation term")
+    imgui.set_next_item_width(-1)
+    _, inspector.term_index = imgui.combo("##observation_term", inspector.term_index, terms)
     name = terms[inspector.term_index]
     imgui.text(
         "Actor: deployable features" if group == "policy" else "Critic: includes privileged simulation information"

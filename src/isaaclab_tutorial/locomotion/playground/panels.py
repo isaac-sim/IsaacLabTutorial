@@ -43,8 +43,10 @@ def draw_controls(imgui, controls: JointControls, supported: bool, signals: dict
         imgui.text_wrapped("Trial ended. Its final physical pose is held. Reset experiment to retry.")
     if policy_mode:
         for axis, label in enumerate(("Forward (m/s)", "Left (m/s)", "Yaw (rad/s)")):
+            imgui.text(label)
+            imgui.set_next_item_width(-1)
             changed, value = imgui.slider_float(
-                label, float(controls.commands[axis]), *controls.command_limits[axis].tolist(), "%.2f"
+                f"##command_{axis}", float(controls.commands[axis]), *controls.command_limits[axis].tolist(), "%.2f"
             )
             if changed:
                 controls.set_command(axis, value)
@@ -63,8 +65,10 @@ def draw_controls(imgui, controls: JointControls, supported: bool, signals: dict
             selected = name.startswith(prefix) if prefix else not name.startswith(("left_", "right_"))
             if not selected:
                 continue
+            imgui.text(name)
+            imgui.set_next_item_width(-1)
             changed, angle = imgui.slider_float(
-                name,
+                f"##joint_{name}",
                 math.degrees(controls.targets[index]),
                 math.degrees(controls.limits[index, 0]),
                 math.degrees(controls.limits[index, 1]),

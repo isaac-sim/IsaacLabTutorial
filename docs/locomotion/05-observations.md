@@ -13,6 +13,15 @@ Open **Observation detective (read only)**. Choose the **policy** group and **jo
 3. Enable **Freeze display snapshot**, then move another joint. The snapshot and its displayed timestamp stay fixed while the live simulation continues. Unfreeze to see the latest values.
 4. Select **imu**. Predict which gyro/gravity components will change before moving the head. Compare supported and free-base scenes.
 
+<details>
+<summary>Find the group, term and raw-sensor controls</summary>
+
+![Native observation inspector showing policy and IMU selectors, raw gyro/gravity values, named units and the 61-value actor width next to the actual supported duck state](media/observation-panel.jpg)
+
+The panel uses the real widget code and a recorded physical snapshot. Its gold marker rotates that snapshot's projected-gravity reading into world coordinates for this reference image. Head movement alone leaves the supported trunk's gyro/gravity unchanged. [Capture provenance](evidence/observation-panel-capture.json).
+
+</details>
+
 **Freeze display snapshot** affects inspection alone. **Pause playground** stops control stepping; **Single control step** advances one 20 ms interval. Neither display control changes the policy's input vector. The displayed environment features precede the learned normalization embedded inside the actor.
 
 ```mermaid

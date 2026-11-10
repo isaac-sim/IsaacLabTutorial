@@ -6,6 +6,15 @@
 uv run --project environments/locomotion python scripts/locomotion/playground.py
 ```
 
+<details>
+<summary>See the joint controls</summary>
+
+![Native Newton panel showing all 14 named joint sliders in left-leg, right-leg and head groups, with target and measured angles beside a supported Microduck](media/puppet-panel.jpg)
+
+This reference image renders an actual recorded state at 0.92 s using the same widgets as the live workshop. The root is fixed for this supported experiment; the feet need not touch the floor. The gold marker shows the recorded gravity direction. Run the command above to change targets and observe new physics. [Capture provenance](evidence/puppet-panel-capture.json).
+
+</details>
+
 Open **Microduck playground** in the Newton sidebar. The head/neck group starts open; expand either leg to see its joints. Sliders display degrees; the simulation receives radians. Each joint has a target and a measured angle.
 
 The default **Supported pose** fixes the root above the floor so you can inspect motion without balancing. It is an inspection configuration, not a trained locomotion task. The feet hanging clear of the ground are intentional.

@@ -76,6 +76,18 @@
     {
       "path": "docs/locomotion/evidence/reward-shape-render.json",
       "sha256": "26c36ae2fdcbcf60541cdeb2e1ea17d741163f9e43c28bf295aa696c63934dfe"
+    },
+    {
+      "path": "docs/locomotion/evidence/playground-snapshot.json",
+      "sha256": "94ad50bfd0ee7960834ee425f2758d83854e1a984e90ec89e95ad0a2b64f5ac9"
+    },
+    {
+      "path": "docs/locomotion/evidence/puppet-panel-capture.json",
+      "sha256": "784c883b37faa370654990e177e70623acb3174fd91b0d41ec3d945a75b926c2"
+    },
+    {
+      "path": "docs/locomotion/evidence/observation-panel-capture.json",
+      "sha256": "36289ec6e382358a64e420c241b10bd139f7ccf4092787136915355845c894bb"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -351,7 +363,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/05-observations.md",
-          "sha256": "f61ed43fa05c91d962d855dcacf2ff9bcb4df3aa0721abe2ad57bcd637ae03de"
+          "sha256": "1d5698fafc98dc361e6dd35cfd065793556b1452cfc256103b3560338f353f73"
         }
       ],
       "acceptance": "No privileged signal leaks into the actor path; frozen input groups agree with the agent configuration.",
@@ -985,8 +997,13 @@
       "id": "V41",
       "topic": "puppet-duck-panel",
       "kind": "interactive_panel_reference",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/puppet-panel.jpg",
+          "sha256": "6f2c631d0799a1f5fe380d04b456dcd97e3885d73d07a9e3e3e73a3fc94ef0d3"
+        }
+      ],
       "acceptance": "Capture comes from working controls. Slider mapping, support mode, signs/order, physics response, and reset are verified; no pose teleport is presented as actuator dynamics.",
       "required_labels": [
         "Joint name",
@@ -996,17 +1013,22 @@
         "Manual control",
         "Reset"
       ],
-      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "dimensions": "1920x1700 recorded native-panel capture",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Puppet controls run; publish a native-panel capture with the selected joint and measured target."
+      "remaining": null
     },
     {
       "id": "V42",
       "topic": "observation-detective-panel",
       "kind": "interactive_panel_reference",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/observation-panel.jpg",
+          "sha256": "60010fc2ceb992cd8314d2c63e6271d5c53234fd2a72c638aecae911eef5c738"
+        }
+      ],
       "acceptance": "Displayed slices match the policy contract and change with actual state. Display toggles do not alter policy inputs; privileged values remain labeled.",
       "required_labels": [
         "Term and slice",
@@ -1015,10 +1037,10 @@
         "Raw or processed",
         "Read-only inspection"
       ],
-      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "dimensions": "1440x1100 recorded native-panel capture",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Raw/processed actor/critic inspector runs; native-panel capture and gravity arrow remain."
+      "remaining": null
     },
     {
       "id": "V43",

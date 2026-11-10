@@ -28,6 +28,8 @@ The committed [asset lock](evidence/asset-lock.json) freezes the nominal and ser
 
 Only small JPEG derivatives live in this repository. Full trajectory receipts, checkpoints and cloud source/asset archives remain collected run artifacts. Videos need a durable artifact URL and checksum before linking them in a lesson; a temporary local output path is not a published video.
 
+The native panel reference images use [one portable physical snapshot](evidence/playground-snapshot.json), extracted from an actual playground recording. Recreate them with `capture_playground.py --receipt docs/locomotion/evidence/playground-snapshot.json --mode observations --output outputs/panel/observations.jpg` (or `--mode joints`) in the pinned locomotion environment. The tool draws the live workshop's actual widgets over the recorded body poses using public Newton/ImGui APIs; it creates no solver or physics steps. Captures label their recorded-state scope and retain camera, asset, source, input and image hashes. Renderer timing text can vary between machines.
+
 ## Keep the learner in control
 
 Open each lesson with an action or prediction, show an observable result, then reveal the explanation. Each slider must state whether it changes the next command, merely rescales a recorded score, or launches a fresh experiment. GUI callbacks request changes at a control boundary; they must not advance physics independently.
