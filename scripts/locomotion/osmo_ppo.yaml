@@ -1,0 +1,117 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# One fresh controlled PPO replicate and its four fixed-condition evaluations per GPU.
+version: 2
+workflow:
+  name: {{ workflow_name }}
+  resources:
+    default:
+      gpu: 1
+      cpu: 8
+      memory: 64Gi
+      storage: 96Gi
+      platform: {{ platform }}
+  timeout:
+    exec_timeout: 90m
+    queue_timeout: 60m
+  tasks:
+  - name: train
+    lead: true
+    image: {{ image }}
+    {% if image_credential %}
+    credentials:
+      {{ image_credential }}: nvcr.io
+    {% endif %}
+    command: [bash]
+    args: [/tmp/microduck-ppo-trial.sh, "{{output}}"]
+    environment:
+      ACCEPT_EULA: Y
+      OMNI_KIT_ACCEPT_EULA: "YES"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      PYTHONUNBUFFERED: "1"
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
+      OPENBLAS_NUM_THREADS: "8"
+      TUTORIAL_SOURCE_REPOSITORY: "{{ source_repository }}"
+      TUTORIAL_SOURCE_REVISION: "{{ source_revision }}"
+      TUTORIAL_PROFILE: "{{ profile }}"
+      TUTORIAL_SEED: "{{ seed }}"
+      TUTORIAL_NUM_ENVS: "{{ num_envs }}"
+      TUTORIAL_ITERATIONS: "{{ iterations }}"
+      TUTORIAL_EVAL_SEED_COUNT: "{{ eval_seed_count }}"
+    files:
+    - path: /tmp/microduck-ppo-trial.sh
+      contents: |
+        set -euo pipefail
+        OUT="${1:?OSMO output directory required}"
+        INPUT=/osmo/run/workspace/microduck-input
+        ROOT=/osmo/run/workspace/microduck-tutorial
+        mkdir -p "$OUT/collection" "$ROOT" "$INPUT"
+        finish() {
+          result=$?
+          trap - EXIT
+          set +e
+          printf '{"exit_code":%d}\n' "$result" > "$OUT/collection/exit-status.json"
+          for log in bootstrap.log driver.log source-fetch.log; do
+            [[ ! -f "$OUT/$log" ]] || cp "$OUT/$log" "$OUT/collection/"
+          done
+          # Collect only the compressed bundle, avoiding duplicate raw checkpoints and receipts.
+          if [[ -f "$OUT/trial/collection/trial-artifacts.tar.gz" ]]; then
+            cp "$OUT/trial/collection/"* "$OUT/collection/"
+          else
+            tar -czf "$OUT/collection/bootstrap-failure.tar.gz" \
+              -C "$OUT" --exclude=collection .
+            (cd "$OUT/collection" && sha256sum bootstrap-failure.tar.gz > bootstrap-failure.sha256)
+          fi
+          touch "$OUT/collection/trial-finished"
+          echo "TRIAL_FINISHED: status $result; download $OUT/collection and verify the archive SHA256."
+          # A collector creates INPUT/collected after verified download to release the GPU early.
+          deadline=$((SECONDS + 1200))
+          until [[ -f "$INPUT/collected" ]] || (( SECONDS >= deadline )); do sleep 2; done
+          exit "$result"
+        }
+        trap finish EXIT
+        if [[ ! "$TUTORIAL_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+          echo 'A full immutable Git commit SHA is required'; exit 1
+        fi
+        if [[ ! "$TUTORIAL_EVAL_SEED_COUNT" =~ ^[1-9][0-9]*$ ]] || (( TUTORIAL_EVAL_SEED_COUNT > 1000 )); then
+          echo 'Choose 1..1000 evaluation seeds'; exit 1
+        fi
+        export GIT_LFS_SKIP_SMUDGE=1
+        git init "$ROOT" > "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" fetch --depth=1 -- "$TUTORIAL_SOURCE_REPOSITORY" "$TUTORIAL_SOURCE_REVISION" >> "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" checkout --detach FETCH_HEAD >> "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" rev-parse HEAD > "$OUT/collection/source-revision.txt"
+        git -C "$ROOT" archive --format=tar.gz HEAD > "$OUT/collection/source.tar.gz"
+        (cd "$OUT/collection" && sha256sum source.tar.gz > source.sha256)
+        cd "$ROOT"
+        export PATH="/workspace/isaaclab/.venv/bin:/root/.local/bin:$PATH"
+        unset UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PYTHONPATH
+        export UV_CACHE_DIR="$ROOT/.cache/uv" WARP_CACHE_PATH="$ROOT/.cache/warp"
+        export MPLCONFIGDIR="$ROOT/.cache/matplotlib"
+        nvidia-smi --query-gpu=name,uuid,driver_version --format=csv > "$OUT/collection/device.csv"
+        uv sync --project environments/locomotion --locked > "$OUT/bootstrap.log" 2>&1
+        eval_seeds=()
+        for ((seed_index=0; seed_index<TUTORIAL_EVAL_SEED_COUNT; seed_index++)); do
+          eval_seeds+=("$seed_index")
+        done
+        uv run --project environments/locomotion --locked python scripts/locomotion/run_robustness_trial.py \
+          --profile "$TUTORIAL_PROFILE" --seed "$TUTORIAL_SEED" --num-envs "$TUTORIAL_NUM_ENVS" \
+          --iterations "$TUTORIAL_ITERATIONS" --eval-seeds "${eval_seeds[@]}" --output "$OUT/trial" \
+          > "$OUT/driver.log" 2>&1
+
+default-values:
+  workflow_name: microduck-ppo-trial
+  image: REPLACE_WITH_YOUR_VALIDATED_IMAGE_DIGEST
+  image_credential: ""
+  source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
+  source_revision: c4fb3f4e369fd6bf2a5dcab9460d3d8746abf1dd
+  platform: ovx-l40
+  profile: nominal
+  seed: 42
+  num_envs: 4096
+  iterations: 1000
+  eval_seed_count: 10

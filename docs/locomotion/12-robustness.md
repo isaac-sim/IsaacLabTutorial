@@ -54,6 +54,18 @@ Use `qualify.py --training-profile PROFILE --effects SNAPSHOT.json` to qualify e
 
 Compare per-training-seed response-pass and survival rates, their variation, and complete-trial tracking errors. Keep invalid and failed attempts in denominators. A policy that stands still can survive every trial and still fail the locomotion checks. The full driver is a runnable experiment, not a promise that the randomized policy will improve.
 
+### Run independent replicates on OSMO
+
+[The PPO workflow](../../scripts/locomotion/osmo_ppo.yaml) runs the same driver in one GPU task. Choose a validated container image by digest, its registry credential if needed, your pool/platform, and an immutable source commit. The default source points to the published tutorial producer; an image placeholder must be replaced before submission.
+
+```bash
+osmo workflow submit scripts/locomotion/osmo_ppo.yaml --pool YOUR_POOL --set-string image=YOUR_IMAGE_DIGEST image_credential=YOUR_REGISTRY_CREDENTIAL --set workflow_name=duck-combined-seed42 profile=combined seed=42
+```
+
+First submit a preflight with `iterations=2 eval_seed_count=1`, keeping `num_envs=4096` to test the full scene size. Check its asset hashes, realized budget, four evaluation reports and archive before launching production. A preflight checks execution; two iterations do not establish locomotion quality.
+
+Run each of the four profiles with training seeds 42, 0 and 1 on the same GPU type and frozen source/image. The task collects `collection/` under the output path reported by OSMO, including source, device metadata, logs, `trial-artifacts.tar.gz` and `sha256.json`. Download that directory with `osmo workflow rsync download`, verify the archive digest, then create `/osmo/run/workspace/microduck-input/collected` with `osmo workflow exec` to release the GPU. The collection window is bounded at 20 minutes; collect promptly. Preserve unsuccessful trials and diagnostics too.
+
 ## Look at the learned difference
 
 In [the native effects workshop](11-effects.md), pass `--training-profile delay` (or `backlash`/`combined`) with that policy's exact checkpoint. The same frozen policy then encounters different evaluation conditions. To compare two separately trained policies, evaluate both with the same effect file and start, then pass their two receipts to `compare.py`. Keep both objectives and independent task metrics visible.
