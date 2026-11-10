@@ -1,0 +1,46 @@
+{
+  "scope": "Standard Duck Rust policy-rehearsal on a workstation, replaying recorded actor observations. No sensor/motor I/O, motor bus, board-side timing, or hardware transfer claim.",
+  "runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+  "runtime_example": "duck-control/examples/policy-rehearsal.rs",
+  "runtime_executable_sha256": "3bd74c3d958c6274c488edf874183ee8d74183612cf2e89c8647e893748d147f",
+  "onnxruntime": "1.31.1, CPU provider",
+  "workstation": {
+    "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.39",
+    "architecture": "x86_64"
+  },
+  "checkpoint_sha256": "bbbd21bed6d7789312d951721597500593f6ca41b3324193dffee6f0a2e85873",
+  "model": {
+    "format": "ONNX",
+    "embedded_weights": true,
+    "inputs": 61,
+    "actions": 14,
+    "control_period_ms": 20
+  },
+  "parity": {
+    "steps": 1000,
+    "max_absolute_action_difference": 1.1920928955078125e-06,
+    "atol": 1e-05,
+    "rtol": 0.0001,
+    "passed": true
+  },
+  "latency_ms": {
+    "max": 0.14648,
+    "p50": 0.011045,
+    "p95": 0.013921,
+    "p99": 0.026061
+  },
+  "over_20_ms": 0,
+  "latency_scope": "actor inference only; excludes sensor and motor I/O",
+  "input_sha256": {
+    "policy.onnx": "037d084a3a79db39efabeca81e8bd1f32f7d2f459fd3cb7572ff9b8cd118386c",
+    "manifest.json": "e9a290e507f8f4e15a966700f164368ff3569b964be82ca6e1790d18557c1198",
+    "trace.json": "50343517a1d11d39c4e35ae70e2f80778c085f6b2e5c92f932a373ecda382341",
+    "native-actions.json": "c363bd7cd8fd1a898082aaccf4e87d01d36b31e55a74d4242f298891e8c1b0eb",
+    "robotd-policy.toml": "7a220de36f0882f4fd998b370b81eef61b63f605bbdcf68bc406068ba2932c49"
+  },
+  "full_result_sha256": "8d17971ef2040e9cf32b636893aeee47eff72adb8c0a838200c7217bf95cf2a9",
+  "reproduce": "Build the pinned standard Duck runtime example, then run policy-rehearsal exported/policy.onnx exported/trace.json > rehearsal.json. Compare actions against native-actions.json with atol=1e-5,rtol=1e-4. Exact timings vary by host/load.",
+  "hardware_validated": false,
+  "warmup_calls_excluded": 50,
+  "runtime_example_sha256": "b71c6d6695bf2e3f683e75f03ff287cdb4b02553363cfc0e6eef9c3d091c3cbd"
+}
