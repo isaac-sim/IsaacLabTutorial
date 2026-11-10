@@ -82,6 +82,31 @@ uv run --project environments/workflows --locked python scripts/locomotion/quali
 
 Replace the example run directories with your saved runs. Keep every receipt, including invalid or fallen attempts. The default ten physical starts and seed-level aggregation match PPO; use separate studies for command or observation delays. The historical screen above retains its declared checkpoint-save cadence difference; the collector requires new replicates to share their saved recipe, including that cadence.
 
+## Measure native learners on the same physical data
+
+![PPO and FlashSAC update timings and PyTorch allocated memory for the same recorded Duck transitions, with different native actor and replay workloads stated below](media/learner-throughput.jpg)
+
+A local learner-only measurement used **the same 8192 real Duck transitions** for both algorithms: 256 environments × 32 physical control steps, collected with the saved seed-42 PPO policy and collection seed 77. The pinned workflows environment supplied both native learners and the original BAM task. Actor inputs have 61 values, critic inputs 76, and actions 14. [Input checks](evidence/learner-throughput-input-check.json) verify exact observation, action, reward and done equality between the physical dataset and PPO rollout; SAC replay receives that same dataset without substituting generated tensors. All physical values were finite. This short batch contains no terminal transitions; the collector preserves `final_obs` and native PPO timeout/GAE handling, but this timing sample does not exercise a reset boundary.
+
+Each timed call used a minibatch size of 2048 and 20 critic minibatches, or **40,960 critic anchor sample presentations**. PPO visits the entire rollout in each of five epochs and performs 20 joint actor/critic optimizer steps. FlashSAC samples anchors with replacement, constructs up to three chronological transitions per anchor, and performs 20 critic, ten actor and ten temperature steps. Those windows can stop at a terminal boundary or the newest data. Each SAC anchor reaches two critics; PPO uses one. Matching anchors therefore does not equalize network work. Sample presentations and window entries are replay reuse; each timed call adds **zero** physical transitions.
+
+| Local native workload on one RTX 5090 | Median synchronized call | Critic anchor presentations/s | PyTorch peak allocated |
+| --- | --- | --- | --- |
+| PPO, five epochs × four minibatches | 34.19 ms | 1,198,095 | 132.6 MiB |
+| FlashSAC, 20 replay updates | 88.44 ms | 463,129 | 186.2 MiB |
+
+These measurements retain the native network architectures, normalizers, losses and optimizer implementations, including FlashSAC's residual BatchNorm categorical critics and CUDA graphs. The saved trained actor/critic weights initialize each workload; fresh optimizers are used and the temporary updates are discarded. PPO's Gaussian collection actions range from −2.78 to 3.53 raw in this dataset, while the SAC actor remains bounded to [−1, 1]. The SAC critics receive the common physical actions without clipping them. Repeated frozen-rollout updates are a timing workload, not an on-policy training recipe. These differences prevent an algorithmic or training-quality ranking from the timing table.
+
+Three interleaved timing repetitions each excluded four complete warm-up calls, including CUDA graph capture, then retained ten measured calls per algorithm. Each wall-clock interval synchronizes CUDA before and after native `update()`, including sampling, native loss reductions, normalization and optimizer work. Collection, simulator construction, GAE preparation, logging and evaluation are excluded. The actual Adam counters advanced by 200 critic steps per ten-call block; SAC also advanced by 100 actor and 100 temperature steps. All measured losses were finite. The reported memory is PyTorch's peak allocated memory after warm-up, including the current learner, its storage and input tensors; it excludes Warp and driver allocations and is not whole-device peak memory. The repetitions measure timing variation on one local GPU, not independent training seeds or task success.
+
+[The timing evidence](evidence/learner-throughput.json) retains every interval and loss, optimizer counters, full resolved configurations, input/checkpoint/source hashes and device identity. [Plot provenance](evidence/learner-throughput-plot.json) identifies the renderer and small JPG; the renderer also produces a local SVG master. The 17 MB frozen physical dataset remains an external artifact identified by its checksum. Repeat the collection with your saved checkpoints, then time both learners without stepping physics:
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/benchmark_learners.py collect --dataset outputs/duck-transitions.pt --ppo-checkpoint PATH/TO/PPO/model_999.pt --sac-checkpoint PATH/TO/SAC/model_1499.pt
+uv run --project environments/workflows --locked python scripts/locomotion/benchmark_learners.py measure --dataset outputs/duck-transitions.pt --sac-checkpoint PATH/TO/SAC/model_1499.pt --output outputs/learner-throughput.json
+uv run --project environments/workflows --locked python scripts/locomotion/plot_learner_throughput.py --evidence outputs/learner-throughput.json --output outputs/learner-throughput.jpg
+```
+
 ## Tune with OSMO
 
 The supplied [one-GPU workflow](../../scripts/locomotion/osmo.yaml) runs one independent trial. These incoming learners do not support multi-GPU training; parallelize trials instead. It fetches a published, immutable tutorial commit, including its experimental lock:
