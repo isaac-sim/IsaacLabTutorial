@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Replay a saved PPO policy with fixed commands; retain the first fall rather than retrying."""
+"""Replay a saved Duck policy with fixed commands; retain the first fall rather than retrying."""
 
 from __future__ import annotations
 
@@ -44,8 +44,10 @@ from isaaclab_tutorial.locomotion.recording import RecordedLinearTracking
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", type=Path, default=Path("latest"), help="Saved PPO checkpoint or latest.")
-    parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo", help="Use the matching pinned environment.")
+    parser.add_argument("--checkpoint", type=Path, default=Path("latest"), help="Saved checkpoint or latest.")
+    parser.add_argument(
+        "--agent", choices=("ppo", "sac", "supermimic"), default="ppo", help="Use the matching pinned environment."
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--viewer", action="store_true")
@@ -57,9 +59,10 @@ def main() -> None:
     parser.add_argument("--observation-delay-ms", type=int, default=0)
     parser.add_argument("--output", type=Path, default=Path("outputs/evaluation"))
     args = parser.parse_args()
+    task = "MicroDuckTutorial-Velocity-Flat" + ("-SuperMimic" if args.agent == "supermimic" else "")
     try:
-        experiment = "microduck_tutorial" if args.agent == "ppo" else "microduck_tutorial_sac"
-        args.checkpoint = resolve_checkpoint(args.checkpoint, log_root=Path("logs/rsl_rl") / experiment)
+        experiment = "microduck_tutorial" + (f"_{args.agent}" if args.agent != "ppo" else "")
+        args.checkpoint = resolve_checkpoint(args.checkpoint, task=task, log_root=Path("logs/rsl_rl") / experiment)
     except (ValueError, FileNotFoundError) as error:
         parser.error(str(error))
     if not math.isfinite(args.seconds) or args.seconds < 0.02 or not args.checkpoint.is_file():
@@ -70,8 +73,8 @@ def main() -> None:
         parser.error("Command delay must be a nonnegative multiple of the 5 ms physics step.")
     if args.observation_delay_ms < 0 or args.observation_delay_ms % 20:
         parser.error("Observation delay must be a nonnegative multiple of the 20 ms observation sample.")
-    entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else "rsl_rl_sac_cfg_entry_point"
-    cfg, agent = resolve_task_config("MicroDuckTutorial-Velocity-Flat", entry_point, overrides=())
+    entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else f"rsl_rl_{args.agent}_cfg_entry_point"
+    cfg, agent = resolve_task_config(task, entry_point, overrides=())
     validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
@@ -100,7 +103,7 @@ def main() -> None:
     schedule = ([0.0, 0.0, 0.0], [0.2, 0.0, 0.0], [-0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.5])
     with ExitStack() as resources, launch_simulation(cfg):
         bundle = resources.enter_context(staged_bundle(args.output / "exported")) if args.export else None
-        env = gym.make("MicroDuckTutorial-Velocity-Flat", cfg=cfg)
+        env = gym.make(task, cfg=cfg)
         wrapped = RslRlVecEnvWrapper(env, clip_actions=agent.clip_actions)
         try:
             base = wrapped.unwrapped
@@ -109,9 +112,29 @@ def main() -> None:
             policy = runner.get_inference_policy(device=base.device)
             exported = None
             onnx_session = None
+            history_width = None
+            jit_memory = None
+            onnx_memory = None
             if args.export:
-                runner.export_policy_to_jit(path=str(bundle), filename="policy.pt")
-                runner.export_policy_to_onnx(path=str(bundle), filename="policy.onnx")
+                if args.agent == "supermimic":
+                    from isaaclab_tutorial.locomotion.history_export import DuckHistoryPolicy
+
+                    wrapper = DuckHistoryPolicy(policy.as_onnx().cpu(), policy.history_length).eval()
+                    history_width = wrapper.state_width
+                    torch.jit.script(wrapper).save(str(bundle / "policy.pt"))
+                    torch.onnx.export(
+                        wrapper,
+                        wrapper.get_dummy_inputs(),
+                        bundle / "policy.onnx",
+                        opset_version=18,
+                        input_names=["obs", "h_in", "c_in"],
+                        output_names=["actions", "h_out", "c_out"],
+                    )
+                    jit_memory = tuple(value.to(base.device) for value in wrapper.get_dummy_inputs()[1:])
+                    onnx_memory = tuple(value.numpy() for value in wrapper.get_dummy_inputs()[1:])
+                else:
+                    runner.export_policy_to_jit(path=str(bundle), filename="policy.pt")
+                    runner.export_policy_to_onnx(path=str(bundle), filename="policy.onnx")
                 inline_onnx_weights(bundle / "policy.onnx")
                 (bundle / "policy.onnx.data").unlink(missing_ok=True)
                 exported = torch.jit.load(str(bundle / "policy.pt"), map_location=base.device)
@@ -122,10 +145,14 @@ def main() -> None:
                 onnx_session = ort.InferenceSession(
                     str(bundle / "policy.onnx"), options, providers=["CPUExecutionProvider"]
                 )
-                if [(x.name, x.shape) for x in onnx_session.get_inputs()] != [("obs", [1, 61])]:
-                    raise ValueError("The standard Duck runtime requires a single obs[1,61] input.")
-                if [(x.name, x.shape) for x in onnx_session.get_outputs()] != [("actions", [1, 14])]:
-                    raise ValueError("The standard Duck runtime requires a single actions[1,14] output.")
+                input_shapes, output_shapes = [("obs", [1, 61])], [("actions", [1, 14])]
+                if history_width is not None:
+                    input_shapes += [(name, [1, 1, history_width]) for name in ("h_in", "c_in")]
+                    output_shapes += [(name, [1, 1, history_width]) for name in ("h_out", "c_out")]
+                if [(x.name, x.shape) for x in onnx_session.get_inputs()] != input_shapes:
+                    raise ValueError("Exported inputs do not match the standard Duck tensor contract.")
+                if [(x.name, x.shape) for x in onnx_session.get_outputs()] != output_shapes:
+                    raise ValueError("Exported outputs do not match the standard Duck tensor contract.")
             base.reset(seed=args.seed)
             robot = base.scene["robot"]
             descriptor = base.action_manager.get_term("joint_pos").IO_descriptor
@@ -148,6 +175,14 @@ def main() -> None:
             }
             if args.export:
                 check_duck_contract(contract)
+                if history_width is not None:
+                    contract["history"] = {
+                        "frames": policy.history_length,
+                        "frame_width": 48,
+                        "state_shape": [1, 1, history_width],
+                        "reset": "zero both states; repeat first real frame to fill history",
+                        "kind": "sensor history cache; not an LSTM",
+                    }
             with torch.inference_mode():
                 for step in range(round(args.seconds / base.step_dt)):
                     command = schedule[min(int(step * base.step_dt // 4), 4)]
@@ -170,11 +205,21 @@ def main() -> None:
                         last_frame = base.sim.visualizers[0].render_rgb_array()
                     action = policy(obs)
                     if exported is not None:
-                        exported_action = exported(obs["policy"])
+                        if jit_memory is None:
+                            exported_action = exported(obs["policy"])
+                        else:
+                            exported_action, h, c = exported(obs["policy"], *jit_memory)
+                            jit_memory = (h, c)
                         torch.testing.assert_close(exported_action, action, atol=1e-5, rtol=1e-4)
                         max_export_error = max(max_export_error, float((exported_action - action).abs().max()))
                         raw_observation = obs["policy"].cpu().numpy()
-                        onnx_action = onnx_session.run(["actions"], {"obs": raw_observation})[0]
+                        if onnx_memory is None:
+                            onnx_action = onnx_session.run(["actions"], {"obs": raw_observation})[0]
+                        else:
+                            onnx_action, h, c = onnx_session.run(
+                                None, {"obs": raw_observation, "h_in": onnx_memory[0], "c_in": onnx_memory[1]}
+                            )
+                            onnx_memory = (h, c)
                         np.testing.assert_allclose(onnx_action, action.cpu().numpy(), atol=1e-5, rtol=1e-4)
                         max_onnx_error = max(max_onnx_error, float(np.max(np.abs(onnx_action - action.cpu().numpy()))))
                         export_observations.append(raw_observation[0].copy())
@@ -223,7 +268,7 @@ def main() -> None:
                 "body_names": list(robot.body_names),
                 "asset_url": cfg.scene.robot.spawn.usd_path,
                 "conditions": {
-                    "task": "MicroDuckTutorial-Velocity-Flat",
+                    "task": task,
                     "command_delay_ms": args.command_delay_ms,
                     "observation_delay_ms": args.observation_delay_ms,
                 },

@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# One independent Duck SAC trial per GPU, from a published immutable Git commit.
+# One independent Duck SAC or SuperMimic trial per GPU, from a published immutable Git commit.
 version: 2
 workflow:
   name: {{ workflow_name }}
@@ -51,6 +51,18 @@ workflow:
           set +e
           printf '{"exit_code":%d}\n' "$result" > "$OUT/exit-status.json"
           touch "$OUT/trial-finished"
+          mkdir -p "$OUT/collection"
+          latest=$(ls "$OUT"/logs/rsl_rl/*/*/model_*.pt 2>/dev/null | sort -V | tail -n 1)
+          if [[ -n "$latest" ]]; then
+            run_dir=$(dirname "$latest")
+            cp "$latest" "$OUT/collection/"
+            cp -a "$run_dir/params" "$run_dir/run.json" "$OUT/collection/"
+            cp "$run_dir"/events.out.tfevents.* "$OUT/collection/"
+          fi
+          if [[ -d "$OUT/evaluation" ]]; then cp -a "$OUT/evaluation" "$OUT/collection/"; fi
+          for name in exit-status.json source-revision.txt source.sha256 device.csv bootstrap.log training.log evaluation.log; do
+            if [[ -f "$OUT/$name" ]]; then cp "$OUT/$name" "$OUT/collection/"; fi
+          done
           echo "TRIAL_FINISHED: status $result; download {{output}} with osmo workflow rsync download."
           # Retain failures as well as successes for accounts without an output bucket.
           # Upload 'collected' to INPUT after downloading to release the task early.
@@ -77,18 +89,29 @@ workflow:
         uv sync --project environments/workflows --locked > "$OUT/bootstrap.log" 2>&1
         mkdir -p "$OUT/logs"
         ln -s "$OUT/logs" logs
+        TASK=MicroDuckTutorial-Velocity-Flat
+        if [[ "{{ learner }}" == supermimic ]]; then
+          TASK="$TASK-SuperMimic"
+          extra=(agent.algorithm.horizon={{ horizon }}
+                 agent.algorithm.world_model_warmup_iterations={{ world_model_warmup }}
+                 agent.algorithm.lr_decay_iterations=$(( {{ iterations }} * 2 / 5 )))
+        elif [[ "{{ learner }}" == sac ]]; then
+          extra=(agent.algorithm.num_updates={{ updates }}
+                 agent.algorithm.schedule_updates=$(( {{ iterations }} * {{ updates }} ))
+                 agent.algorithm.actor_learning_rate={{ learning_rate }}
+                 agent.algorithm.critic_learning_rate={{ learning_rate }}
+                 agent.algorithm.alpha_learning_rate={{ learning_rate }})
+        else
+          echo 'learner must be sac or supermimic'; exit 1
+        fi
         uv run --project environments/workflows --locked isaaclab train \
-          --rl_library rsl_rl --task MicroDuckTutorial-Velocity-Flat \
-          --agent rsl_rl_sac_cfg_entry_point --num_envs {{ num_envs }} \
-          --max_iterations {{ iterations }} --seed {{ seed }} --run_name osmo_sac \
-          --visualizer none agent.algorithm.num_updates={{ updates }} \
-          agent.algorithm.schedule_updates=$(( {{ iterations }} * {{ updates }} )) \
-          agent.algorithm.actor_learning_rate={{ learning_rate }} \
-          agent.algorithm.critic_learning_rate={{ learning_rate }} \
-          agent.algorithm.alpha_learning_rate={{ learning_rate }} \
+          --rl_library rsl_rl --task "$TASK" \
+          --agent rsl_rl_{{ learner }}_cfg_entry_point --num_envs {{ num_envs }} \
+          --max_iterations {{ iterations }} --seed {{ seed }} --run_name osmo_{{ learner }} \
+          --visualizer none agent.save_interval={{ checkpoint_interval }} "${extra[@]}" \
           > "$OUT/training.log" 2>&1
         uv run --project environments/workflows --locked python scripts/locomotion/evaluate.py \
-          --agent sac --checkpoint latest --seed 0 --export --output "$OUT/evaluation" \
+          --agent {{ learner }} --checkpoint latest --seed 0 --export --output "$OUT/evaluation" \
           > "$OUT/evaluation.log" 2>&1
         touch "$OUT/training-complete"
 
@@ -103,4 +126,8 @@ default-values:
   num_envs: 4096
   iterations: 1500
   updates: 16
+  learner: sac
+  horizon: 16
+  world_model_warmup: 500
+  checkpoint_interval: 500
   learning_rate: 0.0003
