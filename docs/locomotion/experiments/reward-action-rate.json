@@ -1,0 +1,19 @@
+{
+  "weights": {
+    "track_lin_vel": 4.0,
+    "track_ang_vel": 4.0,
+    "upright": 2.0,
+    "pose": 1.0,
+    "body_ang_vel": -0.05,
+    "angular_momentum": -0.02,
+    "dof_pos_limits": -1.0,
+    "action_rate_l2": -1.0,
+    "air_time": 3.0,
+    "foot_clearance": -2.0,
+    "foot_swing_height": -1.1289062499999996,
+    "foot_slip": -0.1,
+    "self_collisions": -1.0,
+    "head_pose_tracking": 2.0
+  },
+  "tracking_std": 0.15
+}
