@@ -72,7 +72,7 @@
     "Calibrated wiring, anatomical limits and selected model/standing/skill behavior.",
     "Operator stop/hold/freshness verification without actuation before motion."
   ],
-  "diagram_source_markdown_sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488",
+  "diagram_source_markdown_sha256": "bcf18e419a9c1fb83ea04722254e8b2782f32f6e486ea0e982ff49891f6b463e",
   "render_validation": {
     "deployment-control": {
       "mermaid_source_sha256": "a5fc8985af317a2798d74b864acbfe6ceff5304f7defc43501dab4ef5b49a46f",

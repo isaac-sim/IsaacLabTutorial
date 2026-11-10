@@ -39,6 +39,15 @@ The exporter checks the actual resolved home pose, joint order, action scale, co
 
 The tutorial trained zero head/body commands; keep those ten slots zero. Outputs are 14 raw joint offsets in left-leg, neck/head, right-leg order. The mouth remains outside policy control. Calibrated encoder offsets must use the same sign and home frame; with the backlash model, the encoder observes servo angle plus passive play angle.
 
+<details>
+<summary>Trace a joint or IMU signal through the real SDK</summary>
+
+**Try:** the right knee answers on motor ID 13. Which actor position slot and policy action reach it? Open the [source-reviewed signal map](reference/hardware-signal-map.md), follow both directions, then reveal the joint table.
+
+The map traces actual bus counts, units, board-specific IMU rotation and median preprocessing into the 61-value actor packet, then follows raw action feedback and the separate mouth mapping back to ordered targets. Its editable master and render receipt are tied to the pinned SDK. This is an interface schematic; calibrated physical wiring and board-side timing still need their own robot checks.
+
+</details>
+
 **Check the runtime settings before loading.** Standard Duck walking defaults use scale 0.9 and head/leg target filters 0.5/0.7. This tutorial uses scale **1.0** and **no target filter**. Its generated fragment explicitly sets both filter factors to 1.0 and gain 200. Applying the standard defaults would change the controller after export. Review the fragment against the robot's existing policy section and calibration; the manifest's action-scale field alone does not configure every walking-slot setting.
 
 ## Follow one hardware control tick

@@ -1,0 +1,26 @@
+%% Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+%% All rights reserved.
+%% SPDX-License-Identifier: BSD-3-Clause
+flowchart TD
+    Truth["Privileged simulation state<br/>Training critic / diagnostics<br/>Separate from 61 actor inputs"]
+    Bus["Configured Dynamixel bus<br/>15 servos + body IMU ID 200<br/>Combined read at register 124"]
+    Bus --> Enc["Servo position / velocity counts<br/>Convert to rad and rad/s<br/>15 joints in SDK order"]
+    Bus --> Imu["imu_to_dxl v2 board<br/>Gyro + packed SFLP quaternion<br/>Decode and apply board mount"]
+    Enc --> Joint["Skip mouth at SDK index 9<br/>Position minus policy home: 6..19<br/>Joint velocity: 20..33"]
+    Imu --> Body["Trunk gyro rad/s: 0..2<br/>Projected gravity: 3..5<br/>Component-wise median of 3"]
+    Joint --> Obs["61 assembled float32 values<br/>Physical units; policy order"]
+    Body --> Obs
+    Cmd["Effective runtime command<br/>Forward / left / yaw: 48..50<br/>Head / body: 51..60"] --> Obs
+    Prev["Previous raw action: 34..47<br/>14 values before target scaling<br/>Cleared on controller reset"] --> Obs
+    Obs --> Actor["ONNX actor<br/>Normalization embedded once<br/>14 raw action offsets"]
+    Actor -. next tick .-> Prev
+    Actor --> Map["Scatter around mouth into 15 slots<br/>Target = home + scale x offset<br/>Tutorial scale 1; target filters 1"]
+    Mouth["Mouth command<br/>Separate from learned policy"] --> Targets
+    Map --> Targets["Runtime target proposal<br/>Mouth assigned separately<br/>Safety hold / actuator clamp"]
+    Targets --> Write["JointTargets.positions: rad<br/>Sync write goal positions<br/>Ordered JOINT_IDS"]
+    classDef measured fill:#e6f2fc,stroke:#27698e,color:#153b53;
+    classDef computed fill:#f4f5f7,stroke:#586473,color:#24303c;
+    classDef commanded fill:#fff0db,stroke:#a66b18,color:#603d0b;
+    class Bus,Enc,Imu measured;
+    class Joint,Body,Obs,Actor,Prev,Truth computed;
+    class Cmd,Map,Mouth,Targets,Write commanded;

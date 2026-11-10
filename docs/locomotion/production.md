@@ -38,6 +38,8 @@ The supported actuator activity also has [portable native traces and a physical 
 
 The [robot reference plates](reference/robot-asset.md) use one recorded reset pose for front, side, three-quarter, joint/frame and collider views. `capture_reference.py` rebuilds their native geometry and annotations; `inspect_contacts.py` independently reads the actual task's enabled colliders. [Validation](evidence/reference-validation.json) confirms the kinematic/projection checks, unchanged pose and byte-identical repeated captures.
 
+The [standard Duck signal map](reference/hardware-signal-map.md) traces the pinned SDK's actual encoder/IMU interfaces, unit and frame conversions, policy slots, raw-action feedback and ordered target writes. Its [editable Mermaid source](reference/hardware-signal-map.mmd) supplies the vector master; [the receipt](evidence/hardware-signal-map.json) records Mermaid CLI 12.2.0 commands, SVG/PNG masters and the small JPEG derivative. Every joint/ID/actor-slot row was checked against the SDK tables and the exported 61-input/14-action contract. This completes the source/interface schematic requested by V25; actual cable/calibration checks and hardware timing/footage remain measured gates.
+
 ## Keep the learner in control
 
 Open each lesson with an action or prediction, show an observable result, then reveal the explanation. Each slider must state whether it changes the next command, merely rescales a recorded score, or launches a fresh experiment. GUI callbacks request changes at a control boundary; they must not advance physics independently.

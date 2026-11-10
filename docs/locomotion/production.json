@@ -192,6 +192,10 @@
     {
       "path": "docs/locomotion/evidence/audit-review-validation.json",
       "sha256": "16e2a7344e539fe0534ec916d1cf77bf1b6e30d76ef3df6a825f20801f222b2b"
+    },
+    {
+      "path": "docs/locomotion/evidence/hardware-signal-map.json",
+      "sha256": "eebc33a0dab4ed035ef7bde504dc3f893a5e124ac888b281bb6947235a89d913"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -527,7 +531,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
+          "sha256": "bcf18e419a9c1fb83ea04722254e8b2782f32f6e486ea0e982ff49891f6b463e"
         }
       ],
       "acceptance": "Slice widths sum to the actual actor dimension and match the exported policy contract.",
@@ -835,11 +839,23 @@
       "id": "V25",
       "topic": "hardware-signal-map",
       "kind": "schematic",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
-          "path": "docs/locomotion/13-deployment.md",
-          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
+          "path": "docs/locomotion/reference/hardware-signal-map.mmd",
+          "sha256": "509aebfaaa27132009464c33ff065c808d0b2654e4a235ba097868607dc7df8c"
+        },
+        {
+          "path": "docs/locomotion/reference/hardware-signal-map.md",
+          "sha256": "470cb17880431d5723d58956d49c1ac6ed8b193340ed58ac449d9355a471459b"
+        },
+        {
+          "path": "docs/locomotion/media/hardware-signal-map.jpg",
+          "sha256": "ba254b3fe0617e05b788a76d758162539e6d705c65fabc252e3905248fd5cfd9"
+        },
+        {
+          "path": "docs/locomotion/evidence/hardware-signal-map.json",
+          "sha256": "eebc33a0dab4ed035ef7bde504dc3f893a5e124ac888b281bb6947235a89d913"
         }
       ],
       "acceptance": "Every connection is grounded in the actual hardware API and policy contract; estimates are labeled as estimates.",
@@ -853,7 +869,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "The bundle maps sensor fields; measured hardware signal wiring has not been checked."
+      "remaining": null
     },
     {
       "id": "V26",
@@ -1091,11 +1107,11 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "2a6e1fb75f1f9d235a65d0e6d8ec8ecb98a5ec9131f6aaf8e214f57ebcde1488"
+          "sha256": "bcf18e419a9c1fb83ea04722254e8b2782f32f6e486ea0e982ff49891f6b463e"
         },
         {
           "path": "docs/locomotion/evidence/deployment-flow.json",
-          "sha256": "534911f47809fba93999284f8488f0f2e7cc80a5357125fdef4d5fb307c308c3"
+          "sha256": "6976c9d11b4deab6caeb1e47dc3a85b02ad9050729deb088693402eaab8c2456"
         }
       ],
       "acceptance": "Diagram matches the supported deployed runtime and calibration contract, including inference state/reset handling.",
