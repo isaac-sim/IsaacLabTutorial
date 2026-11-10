@@ -38,7 +38,12 @@ from isaaclab_tutorial.locomotion.deployment import (
     rehearsal_trace,
     staged_bundle,
 )
-from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
+from isaaclab_tutorial.locomotion.evaluation import (
+    load_training_parameters,
+    resolve_checkpoint,
+    summarize_episode,
+    validate_training_contract,
+)
 from isaaclab_tutorial.locomotion.recording import RecordedLinearTracking
 
 
@@ -76,6 +81,9 @@ def main() -> None:
     entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else f"rsl_rl_{args.agent}_cfg_entry_point"
     cfg, agent = resolve_task_config(task, entry_point, overrides=())
     validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
+    if args.agent == "supermimic":
+        _, saved_agent = load_training_parameters(args.checkpoint)
+        agent.algorithm.actor_ema_halflife = saved_agent["algorithm"]["actor_ema_halflife"]
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
     cfg.rewards.track_lin_vel.func = RecordedLinearTracking
@@ -254,6 +262,9 @@ def main() -> None:
                 "checkpoint": str(args.checkpoint.resolve()),
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
                 "algorithm": args.agent,
+                "policy_weights": "ema"
+                if args.agent == "supermimic" and agent.algorithm.actor_ema_halflife is not None
+                else "live",
                 "seed": args.seed,
                 "control_dt_s": base.step_dt,
                 "horizon_s": args.seconds,

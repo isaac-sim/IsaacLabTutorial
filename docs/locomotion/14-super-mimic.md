@@ -40,6 +40,8 @@ The bundle uses standard Duck **model API 2** with `obs[1,61]`, `h_in/c_in[1,1,1
 
 Reset both tensors to zero before the first real observation of every episode. The wrapper repeats that first observation to fill history, matching RSL-RL. Preserve each returned state for the next call. The manifest records this contract, and the exported ONNX contains its weights in one file. Continue with the standard Duck rehearsal procedure in [lesson 13](13-deployment.md); use the manifest's API version and retain the reset flags in `trace.json`.
 
+Evaluation and model diagnostics restore the saved training setting for actor EMA before loading the checkpoint, then use the learner's selected deployment policy. Their receipts identify `live` or `ema` weights. Retain `params/agent.yaml` and `params/env.yaml` alongside the checkpoint.
+
 ## Train and investigate model horizon
 
 The [runner configuration](../../src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py) defaults to 10,000 collection iterations, one physical step per iteration, a 16-step imagined horizon, and four world-model optimizer steps per learner iteration. At 4096 environments this is 40,960,000 physical transitions. Learner iterations accrue at 0.4 per collection step after replay warm-up; its first 500 learner iterations fit only the model. A collection iteration is therefore different from a learner or optimizer update.

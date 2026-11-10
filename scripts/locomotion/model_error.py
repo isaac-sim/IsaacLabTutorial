@@ -25,7 +25,11 @@ from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from isaaclab_tasks.utils import resolve_task_config
 
 import isaaclab_tutorial.tasks  # noqa: F401
-from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, validate_training_contract
+from isaaclab_tutorial.locomotion.evaluation import (
+    load_training_parameters,
+    resolve_checkpoint,
+    validate_training_contract,
+)
 
 
 def main() -> None:
@@ -45,6 +49,8 @@ def main() -> None:
     )
     cfg, agent = resolve_task_config(task_id, "rsl_rl_supermimic_cfg_entry_point", overrides=())
     validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
+    _, saved_agent = load_training_parameters(args.checkpoint)
+    agent.algorithm.actor_ema_halflife = saved_agent["algorithm"]["actor_ema_halflife"]
     cfg.scene.num_envs = args.num_envs
     cfg.seed = args.seed
     cfg.sim.visualizer_cfgs = []
@@ -148,6 +154,7 @@ def main() -> None:
                 "scope": "Model diagnostics with noisy physical policy actions; not walking evaluation or hardware.",
                 "checkpoint": str(args.checkpoint.resolve()),
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
+                "policy_weights": "ema" if agent.algorithm.actor_ema_halflife is not None else "live",
                 "seed": args.seed,
                 "num_envs": args.num_envs,
                 "steps": args.steps,
