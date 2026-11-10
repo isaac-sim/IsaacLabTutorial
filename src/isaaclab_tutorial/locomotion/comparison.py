@@ -1,0 +1,105 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""Time-aligned reference playback over two immutable, independently simulated trials."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from .deployment import check_duck_contract
+from .effects import mechanical_state
+
+
+def _assert_same_pose(first_a: dict, first_b: dict) -> None:
+    if not np.allclose(first_a["root_pos_w"], first_b["root_pos_w"], atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial positions differ; regenerate the reference.")
+    qa = np.asarray(first_a["root_quat_xyzw"])
+    qb = np.asarray(first_b["root_quat_xyzw"])
+    if not np.allclose(qa, qb, atol=1e-5, rtol=0) and not np.allclose(qa, -qb, atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial orientations differ.")
+    if not np.allclose(first_a["joint_pos_rad"], first_b["joint_pos_rad"], atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial joint positions differ.")
+
+
+def assert_matched_start(reference: dict, candidate: dict) -> None:
+    """Match actual initial mechanics and reset provenance, including numerically invalid later trials."""
+    first_a = reference.get("initial_state", {})
+    first_b = candidate.get("initial_state", {})
+    if reference.get("joint_names") != candidate.get("joint_names"):
+        assets = {str(receipt.get("asset_url", "")).rsplit("/", 1)[-1] for receipt in (reference, candidate)}
+        if assets != {"microduck_walk.usd", "microduck_walk_backlash.usd"}:
+            raise ValueError("Reference and candidate joint order differs outside the known backlash intervention.")
+        try:
+            for receipt in (reference, candidate):
+                check_duck_contract(receipt["contract"])
+        except KeyError as error:
+            raise ValueError(
+                "Cross-asset comparison requires each complete verified Duck inference contract."
+            ) from error
+        for state in (first_a, first_b):
+            # A baseline without play has no counterpart for hidden initial passive motion/displacement.
+            passive = [i for i, name in enumerate(state["joint_names"]) if name.startswith("passive_")]
+            for field in ("joint_pos_rad", "joint_vel_rad_s"):
+                if not np.allclose(np.asarray(state[field])[passive], 0, atol=1e-5, rtol=0):
+                    label = "velocity" if field == "joint_vel_rad_s" else "joint positions"
+                    raise ValueError(f"Cross-asset initial passive {label} must be zero for a matched start.")
+        first_a, first_b = mechanical_state(first_a), mechanical_state(first_b)
+    for field in ("seed", "control_dt_s", "horizon_s", "protocol_id"):
+        if field not in reference or reference[field] != candidate.get(field):
+            raise ValueError(f"Reference and candidate must use the same {field}.")
+    if "start_condition" in reference or "start_condition" in candidate:
+        for field in ("name", "definition_sha256", "sample_sha256"):
+            first = reference.get("start_condition", {}).get(field)
+            if first is None or first != candidate.get("start_condition", {}).get(field):
+                raise ValueError("Reference and candidate must use the same explicit start protocol and sample.")
+        for field in ("root_linear_velocity_w", "root_angular_velocity_w", "joint_vel_rad_s"):
+            first = first_a.get(field)
+            second = first_b.get(field)
+            if first is None or second is None or not np.allclose(first, second, atol=1e-5, rtol=0):
+                raise ValueError("Reference and candidate initial velocity states differ or are missing.")
+    if "root_pos_w" not in first_a:
+        first_a = reference["trajectory"][0]
+    if "root_pos_w" not in first_b:
+        first_b = candidate["trajectory"][0]
+    _assert_same_pose(first_a, first_b)
+
+
+class RecordedComparison:
+    """Validate a matched trial pair and select display frames without changing either recording."""
+
+    def __init__(self, reference: dict, candidate: dict):
+        self.reference = reference
+        self.candidate = candidate
+        for receipt in (reference, candidate):
+            if receipt.get("valid") is not True or not receipt.get("trajectory"):
+                raise ValueError("An invalid or empty trial cannot become a reference comparison.")
+            initial = receipt.get("initial_state", {})
+            if "root_pos_w" in initial:
+                _assert_same_pose(initial, receipt["trajectory"][0])
+            dt = receipt["control_dt_s"]
+            times = np.asarray([row["t_sim_s"] for row in receipt["trajectory"]], dtype=float)
+            if not np.isfinite(dt) or dt <= 0 or not np.isfinite(times).all():
+                raise ValueError("Recorded time and control periods must be finite and positive.")
+            if abs(times[0]) > 1e-9 or not np.allclose(np.diff(times), dt, atol=1e-8, rtol=0):
+                raise ValueError("Recorded time must start at zero and follow the declared control period.")
+        assert_matched_start(reference, candidate)
+        for row_a, row_b in zip(reference["trajectory"], candidate["trajectory"], strict=False):
+            if not np.allclose(row_a["command"], row_b["command"], atol=1e-8, rtol=0):
+                raise ValueError("Recorded command sequences differ; this reference is stale.")
+        self.control_dt_s = reference["control_dt_s"]
+        self.duration_s = max(len(reference["trajectory"]), len(candidate["trajectory"])) * self.control_dt_s
+
+    def frame(self, time_s: float) -> dict:
+        """Select a shared time, holding the last recorded pose after an early trial ending."""
+        if not np.isfinite(time_s) or time_s < 0:
+            raise ValueError("Display time must be finite and nonnegative.")
+        result = {"time_s": time_s}
+        for name, receipt in (("reference", self.reference), ("candidate", self.candidate)):
+            rows = receipt["trajectory"]
+            index = min(int((time_s + 1e-9) / self.control_dt_s), len(rows) - 1)
+            result[name] = rows[index]
+            result[f"{name}_ended"] = time_s >= len(rows) * self.control_dt_s - 1e-9
+        return result

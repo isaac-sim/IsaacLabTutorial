@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microduck training investigator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#fafafa; --fg:#20262b; --panel:#fff; --line:#c7cdd1; --muted:#5b6268; --blue:#0072b2; --orange:#b84e00; }
+    @media (prefers-color-scheme:dark) { :root { --bg:#191d20; --fg:#e8edf0; --panel:#242a2e; --line:#53616a; --muted:#b6c2ca; --blue:#64baff; --orange:#ffb276; } }
+    * { box-sizing:border-box; }
+    body { max-width:1100px; margin:32px auto; padding:0 20px; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; }
+    h1 { font-size:28px; margin-bottom:4px; } h2 { font-size:21px; margin:0 0 16px; }
+    p { margin:8px 0 16px; overflow-wrap:anywhere; } h3 { overflow-wrap:anywhere; } .muted { color:var(--muted); }
+    section { background:var(--panel); padding:22px; margin:22px 0; border-radius:10px; }
+    label { display:block; margin-bottom:6px; } input,select,button { color:inherit; background:var(--panel); font:inherit; padding:7px; border:1px solid var(--line); border-radius:5px; }
+    button { cursor:pointer; } button:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+    .controls { display:flex; flex-wrap:wrap; align-items:end; gap:18px; margin-bottom:16px; }
+    .controls>div { min-width:0; max-width:100%; } select { max-width:100%; }
+    .numbers { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin:20px 0; }
+    .number { font-size:24px; font-variant-numeric:tabular-nums; display:block; }
+    .numbers small { color:var(--muted); } pre { white-space:pre-wrap; overflow-wrap:anywhere; background:var(--bg); padding:14px; font-size:13px; }
+    table { border-collapse:collapse; width:100%; font-size:14px; } td,th { padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+    .scroll { overflow:auto; } #chart { width:100%; height:auto; display:block; } .run { overflow-wrap:anywhere; }
+    #cursor { width:100%; padding:0; } #legend { display:flex; flex-wrap:wrap; gap:18px; margin-top:10px; font-size:14px; }
+    .swatch { display:inline-block; width:20px; height:3px; vertical-align:middle; margin-right:5px; }
+    #readout { min-height:44px; font-variant-numeric:tabular-nums; } details { margin-top:18px; } summary { cursor:pointer; }
+    .status { padding:12px; background:var(--bg); border-radius:5px; }
+  </style>
+</head>
+<body>
+  <h1>Training investigator</h1>
+  <p class="muted">Predict the budget. Compare the evidence. Replay the actual checkpoint.</p>
+  <section aria-labelledby="budget-heading">
+    <h2 id="budget-heading">How much new experience will the duck collect?</h2>
+    <div class="controls">
+      <div><label for="baseline">Start from recorded run</label><select id="baseline"></select></div>
+      <div><label for="envs">Candidate parallel ducks</label><select id="envs"></select></div>
+      <button id="restore">Restore recorded count</button>
+    </div>
+    <p id="fixed"></p>
+    <div class="numbers" aria-live="polite">
+      <div><small>New transitions per rollout</small><output class="number" id="rollout"></output></div>
+      <div><small>New transitions in the run</small><output class="number" id="experience"></output></div>
+      <div><small>Samples per minibatch</small><output class="number" id="minibatch"></output></div>
+      <div><small>Minibatch optimizer steps</small><output class="number" id="updates"></output></div>
+    </div>
+    <p id="budget-message" class="status"></p>
+    <p>Only the environment count changes here. Optimizer epochs reuse the rollout; they do not create new transitions. More ducks generally require more memory. This calculator does not predict speed or learning success.</p>
+    <details><summary>Prepare this separate fresh training run</summary>
+      <p>Save the plan, then supply its downloaded path to the command below. The launcher verifies the baseline contract against current source before starting a fresh run. No training starts from this page.</p>
+      <pre id="launch-command"></pre>
+      <button id="save-plan">Save candidate plan</button><span id="plan-status" role="status"></span>
+    </details>
+  </section>
+  <section aria-labelledby="curves-heading">
+    <h2 id="curves-heading">What actually changed during training?</h2>
+    <div class="controls">
+      <div><label for="metric">Recorded diagnostic</label><select id="metric"></select></div>
+      <div><label for="axis">Compare by</label><select id="axis"><option value="transitions">Fresh transitions</option><option value="iterations">Completed iterations</option><option value="time">Recorded training time (s)</option></select></div>
+    </div>
+    <p id="comparison" class="status"></p>
+    <svg id="chart" viewBox="0 0 960 350" role="img" aria-labelledby="chart-title"><title id="chart-title">Recorded training curves</title></svg>
+    <div id="legend"></div>
+    <label for="cursor">Inspect the timeline</label><input id="cursor" type="range" min="0" max="100" value="100">
+    <p id="readout" aria-live="polite"></p>
+    <p class="muted">Raw recorded samples; no smoothing. Numerical gaps stay visible. The training return uses stochastic actions and resampled commands. It is not the deterministic fixed-command evaluation score. Termination diagnostics are logger activations, not an aggregate held-out fall rate.</p>
+    <div class="scroll"><table><thead><tr><th>Run</th><th>Logged fresh transitions</th><th>Recorded training time</th><th>Checkpoint optimizer steps</th></tr></thead><tbody id="run-table"></tbody></table></div>
+    <p class="muted">Time sums collection and update intervals; setup, compilation before collection, and asset downloads are excluded. A checkpoint may lag a still-running log. Full source hashes and curves are in report.json.</p>
+  </section>
+  <section aria-labelledby="replay-heading">
+    <h2 id="replay-heading">Does the saved policy do what you want?</h2>
+    <div id="replays"></div>
+    <p>Inspect standing drift, forward/lateral/yaw tracking, the first fall, and horizon coverage together. More training reward alone does not prove walking or robustness. Save all attempts.</p>
+  </section>
+  <script type="application/json" id="run-data">{{REPORT_JSON}}</script>
+  <script>
+(() => {
+  "use strict";
+  const report = JSON.parse(document.getElementById("run-data").textContent),
+    runs = report.runs;
+  const el = (id) => document.getElementById(id),
+    format = (n) => n.toLocaleString("en-US"),
+    svgNS = "http://www.w3.org/2000/svg";
+  const colors = ["var(--blue)", "var(--orange)", "#009e73", "#bc69b1"];
+  let plan, chartState;
+  function option(parent, value, label) {
+    const node = document.createElement("option");
+    node.value = value;
+    node.textContent = label;
+    parent.append(node);
+  }
+  runs.forEach((run, i) => option(el("baseline"), i, run.name));
+  const sizes = new Set([
+    64,
+    128,
+    256,
+    512,
+    1024,
+    2048,
+    4096,
+    ...runs.map((r) => r.requested_budget.num_envs),
+  ]);
+  [...sizes].sort((a, b) => a - b).forEach((n) => option(el("envs"), n, format(n)));
+  function budget() {
+    const run = runs[+el("baseline").value],
+      b = run.requested_budget,
+      n = +el("envs").value;
+    const rollout = n * b.rollout_steps,
+      fresh = rollout * b.iterations;
+    el("fixed").textContent =
+      `Keep ${b.rollout_steps} steps/duck, ${format(b.iterations)} iterations, ${b.epochs} epochs, ${b.minibatches} minibatches, seed ${run.seed}.`;
+    el("rollout").textContent = format(rollout);
+    el("experience").textContent = format(fresh);
+    el("minibatch").textContent = format(rollout / b.minibatches);
+    el("updates").textContent = format(b.optimizer_steps);
+    const ratio = n / b.num_envs;
+    el("budget-message").textContent =
+      `${ratio.toFixed(2)}× the recorded run's requested fresh-data budget. ${n === b.num_envs ? "The environment count is unchanged." : "This is a different experience budget, not an equal-data comparison."}`;
+    const compatible = run.candidate_compatibility?.compatible === true;
+    const command = "uv run --project environments/locomotion python scripts/locomotion/train_candidate.py --plan PATH_TO_SAVED_PLAN.json";
+    plan = compatible ? {
+      ...run.candidate_plan_template,
+      candidate_value: n,
+      expected_fresh_transitions: fresh,
+      expected_optimizer_steps: b.optimizer_steps,
+      command,
+    } : null;
+    el("save-plan").disabled = !compatible;
+    el("launch-command").textContent = compatible ? command : `Single-factor launcher unavailable. ${run.candidate_compatibility?.reason || "Rebuild the report to verify its baseline contract."} The calculator and recorded evidence remain available. Custom task/learner settings require their matching training configuration.`;
+    el("plan-status").textContent = "";
+  }
+  function chooseBaseline() {
+    const b = runs[+el("baseline").value].requested_budget;
+    [...el("envs").options].forEach((item) => {
+      item.disabled = (+item.value * b.rollout_steps) % b.minibatches !== 0;
+    });
+    el("envs").value = runs[+el("baseline").value].requested_budget.num_envs;
+    budget();
+  }
+  el("baseline").addEventListener("change", chooseBaseline);
+  el("envs").addEventListener("change", budget);
+  el("restore").addEventListener("click", chooseBaseline);
+  chooseBaseline();
+  el("save-plan").addEventListener("click", () => {
+    if (!plan) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "candidate-plan.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    el("plan-status").textContent = " Saved planned settings; no training launched.";
+  });
+  const tags = [...new Set(runs.flatMap((run) => Object.keys(run.metrics)))];
+  tags.forEach((tag) => {
+    const m = runs.find((run) => run.metrics[tag]).metrics[tag];
+    option(el("metric"), tag, `${m.label} (${m.unit})`);
+  });
+  if (tags.includes("Train/mean_episode_length")) el("metric").value = "Train/mean_episode_length";
+  const differing = Object.keys(runs[0].config_fingerprints).filter((key) =>
+    runs.some((run) => run.config_fingerprints[key] !== runs[0].config_fingerprints[key]),
+  );
+  el("comparison").textContent =
+    runs.length === 1
+      ? "One recorded run. Add a separate run to compare outcomes."
+      : differing.length
+        ? `Tracked settings differ: ${differing.join(", ")}. Reward/objective changes can make return curves incomparable.`
+        : "Tracked task, objective, and controller settings match. Check the experience budgets and seeds below; matching settings alone do not establish a reliable performance difference.";
+  function addSvg(type, attrs, text) {
+    const node = document.createElementNS(svgNS, type);
+    Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+    if (text !== undefined) node.textContent = text;
+    el("chart").append(node);
+    return node;
+  }
+  function xValue(run, step) {
+    const axis = el("axis").value;
+    return axis === "time"
+      ? run.cumulative_training_time_s[step]
+      : axis === "iterations"
+        ? step + 1
+        : (step + 1) * run.logged_budget.rollout_transitions;
+  }
+  function inspect() {
+    if (!chartState) return;
+    const { xmax, x, sets } = chartState,
+      target = (xmax * +el("cursor").value) / 100;
+    el("crosshair").setAttribute("x1", x(target));
+    el("crosshair").setAttribute("x2", x(target));
+    const read = [];
+    sets.forEach(({ run, points }) => {
+      const before = points.filter((point) => point[0] <= target);
+      if (before.length) {
+        const point = before[before.length - 1];
+        read.push(
+          `${run.name}: ${point[1] === null ? "non-finite gap" : point[1].toPrecision(4)} at ${point[0].toPrecision(4)}`,
+        );
+      }
+    });
+    el("readout").textContent = read.join(" | ") || "No recorded sample yet at this timeline position.";
+  }
+  function draw() {
+    const tag = el("metric").value,
+      sets = runs.map((run) => ({
+        run,
+        points: (run.metrics[tag]?.points || []).map(([step, value]) => [xValue(run, step), value]),
+      }));
+    const finite = sets.flatMap((set) => set.points.filter((point) => point[1] !== null));
+    el("chart").replaceChildren();
+    addSvg("title", { id: "chart-title" }, el("metric").selectedOptions[0].textContent);
+    if (!finite.length) {
+      addSvg("text", { x: 80, y: 100, fill: "currentColor" }, "No finite samples for this diagnostic.");
+      chartState = null;
+      el("readout").textContent = "No finite recorded values.";
+      return;
+    }
+    const xmax = Math.max(...finite.map((point) => point[0]), 1),
+      values = finite.map((point) => point[1]);
+    let ymin = Math.min(...values),
+      ymax = Math.max(...values);
+    const pad = (ymax - ymin || Math.max(Math.abs(ymax), 1)) * 0.08;
+    ymin -= pad;
+    ymax += pad;
+    const x = (value) => 75 + (value / xmax) * 855,
+      y = (value) => 295 - ((value - ymin) / (ymax - ymin)) * 270;
+    for (let i = 0; i <= 4; i++) {
+      const xx = x((xmax * i) / 4),
+        yy = y(ymin + ((ymax - ymin) * i) / 4);
+      addSvg("line", { x1: 75, x2: 930, y1: yy, y2: yy, stroke: "var(--line)", "stroke-width": 0.5 });
+      addSvg(
+        "text",
+        { x: 65, y: yy + 4, "text-anchor": "end", fill: "currentColor", "font-size": 12 },
+        (ymin + ((ymax - ymin) * i) / 4).toPrecision(3),
+      );
+      addSvg(
+        "text",
+        { x: xx, y: 318, "text-anchor": "middle", fill: "currentColor", "font-size": 12 },
+        ((xmax * i) / 4).toLocaleString("en-US", { maximumFractionDigits: 1 }),
+      );
+    }
+    sets.forEach(({ points }, i) => {
+      let path = "",
+        start = true;
+      points.forEach(([xx, yy]) => {
+        if (yy === null) {
+          start = true;
+          return;
+        }
+        path += `${start ? "M" : "L"}${x(xx)},${y(yy)} `;
+        start = false;
+      });
+      addSvg("path", { d: path, fill: "none", stroke: colors[i], "stroke-width": 2 });
+    });
+    addSvg("line", {
+      id: "crosshair",
+      x1: 930,
+      x2: 930,
+      y1: 20,
+      y2: 295,
+      stroke: "var(--muted)",
+      "stroke-dasharray": "4 4",
+    });
+    addSvg(
+      "text",
+      { x: 500, y: 345, "text-anchor": "middle", fill: "currentColor", "font-size": 13 },
+      el("axis").selectedOptions[0].textContent,
+    );
+    chartState = { sets, xmax, x };
+    inspect();
+  }
+  el("metric").addEventListener("change", draw);
+  el("axis").addEventListener("change", draw);
+  el("cursor").addEventListener("input", inspect);
+  el("chart").addEventListener("pointermove", (event) => {
+    const rect = el("chart").getBoundingClientRect(),
+      px = ((event.clientX - rect.left) / rect.width) * 960;
+    el("cursor").value = Math.round(Math.max(0, Math.min(100, ((px - 75) / 855) * 100)));
+    inspect();
+  });
+  runs.forEach((run, i) => {
+    const legend = document.createElement("span"),
+      swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = colors[i];
+    legend.append(swatch, document.createTextNode(run.name));
+    el("legend").append(legend);
+    const row = document.createElement("tr");
+    [
+      run.name,
+      format(run.logged_budget.collected_transitions),
+      `${run.recorded_training_time_s.toFixed(2)} s`,
+      Number.isFinite(run.checkpoint?.optimizer_steps)
+        ? format(run.checkpoint.optimizer_steps)
+        : "mixed/unavailable",
+    ].forEach((text) => {
+      const cell = document.createElement("td");
+      cell.className = "run";
+      cell.textContent = text;
+      row.append(cell);
+    });
+    el("run-table").append(row);
+    const title = document.createElement("h3");
+    title.textContent = run.name;
+    el("replays").append(title);
+    const text = document.createElement("p"),
+      evaluation = run.evaluation;
+    if (!evaluation) {
+      text.textContent = "No fixed-protocol evaluation attached. The training curve alone does not establish task success.";
+    } else if (!evaluation.valid) {
+      text.textContent = `INVALID ${evaluation.protocol_id}, evaluation seed ${evaluation.seed}: ${evaluation.metrics.invalid_reason || "invalid trial"}. This failed attempt has no valid tracking score.`;
+    } else {
+      text.textContent = `Valid ${evaluation.protocol_id}, evaluation seed ${evaluation.seed}: ${evaluation.metrics.fell ? "fell" : "no recorded fall"}, ${evaluation.metrics.alive_time_s.toFixed(2)} s, ${(evaluation.metrics.coverage * 100).toFixed(1)}% coverage. Available-sample tracking RMSE: ${evaluation.metrics.tracking_rmse.map((v) => v.toFixed(3)).join(", ")} (m/s, m/s, rad/s). Command delay: ${evaluation.conditions.command_delay_ms ?? "unspecified"} ms; observation delay: ${evaluation.conditions.observation_delay_ms ?? "unspecified"} ms.`;
+    }
+    el("replays").append(text);
+    if (run.replay_command) {
+      const command = document.createElement("pre");
+      command.textContent = run.replay_command;
+      el("replays").append(command);
+    } else {
+      const note = document.createElement("p");
+      note.textContent = run.checkpoint
+        ? "This recorded checkpoint is not installed here. Its hash is preserved; train locally or supply that exact checkpoint before replaying."
+        : "No checkpoint was available when this report was recorded. Train and save one before replaying.";
+      el("replays").append(note);
+    }
+  });
+  draw();
+})();
+  </script>
+</body>
+</html>

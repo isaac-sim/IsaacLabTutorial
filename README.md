@@ -10,6 +10,13 @@ Training uses **Newton MJWarp physics** and the **Newton renderer** for the came
 Follow the [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
 course for guided lessons.
 
+## Microduck locomotion
+
+The [hands-on Microduck learning path](docs/locomotion/README.md) starts with a short fresh PPO run,
+then explores joint sliders, observations, reward rescoring, and hardware effects on flat ground.
+It uses a separate [pinned locomotion environment](environments/locomotion/pyproject.toml) for the
+experimental Microduck/BAM source task. The SO-101 setup below keeps its existing dependencies.
+
 ## Setup
 
 Linux x86-64 or Windows 11, Python 3.12, Git LFS, an NVIDIA GPU with a CUDA 13-compatible driver, and `uv`.
