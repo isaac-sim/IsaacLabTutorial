@@ -18,6 +18,15 @@ from isaaclab_rl.rsl_rl import (
 
 
 @configclass
+class MicroDuckSuperMimicTaskCfg(RslRlSuperMimicTaskCfg):
+    """Keep exact reward values and optionally estimate gradients of the hard air-time window."""
+
+    class_name = "isaaclab_tutorial.locomotion.supermimic:MicroDuckTask"
+    air_time_gradient_width: float = 0.0
+    """Sigmoid-window width in seconds for the backward pass; zero keeps the hard derivative."""
+
+
+@configclass
 class MicroDuckSuperMimicRunnerCfg(RslRlSuperMimicRunnerCfg):
     """Fit a Duck world model and optimize its history actor through short imagined rollouts."""
 
@@ -42,7 +51,7 @@ class MicroDuckSuperMimicRunnerCfg(RslRlSuperMimicRunnerCfg):
     world_model = RslRlWorldModelCfg(hidden_dims=(512, 512, 512), label_hidden_dims=(256, 128))
     critic = RslRlMLPModelCfg(hidden_dims=[256, 128], activation="elu", obs_normalization=True)
     algorithm = RslRlSuperMimicAlgorithmCfg(
-        task_cfg=RslRlSuperMimicTaskCfg(class_name="isaaclab_tutorial.locomotion.supermimic:MicroDuckTask"),
+        task_cfg=MicroDuckSuperMimicTaskCfg(),
         replay_buffer_size=1_000_000,
         max_replay_memory_fraction=0.3,
         updates_per_step=0.4,

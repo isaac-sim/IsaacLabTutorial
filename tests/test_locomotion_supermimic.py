@@ -45,7 +45,7 @@ def duck_env():
 def test_differentiable_duck_heads_match_pre_reset_simulator_rewards_and_sensor_features(duck_env):
     env = duck_env
     obs, _ = env.reset(seed=42)
-    task = MicroDuckTask(env, device=env.device)
+    task = MicroDuckTask(env, device=env.device, air_time_gradient_width=0.025)
     previous = torch.zeros(16, 2, 14, device=env.device)
     nonzero_terms = set()
     for step in range(256):
@@ -83,9 +83,15 @@ def test_differentiable_duck_heads_match_pre_reset_simulator_rewards_and_sensor_
     differentiable = list(task.representation.unflatten(flat))
     stationary_feet = torch.zeros_like(differentiable[6], requires_grad=True)
     differentiable[6] = stationary_feet
+    air_time = torch.zeros_like(differentiable[7], requires_grad=True)
+    differentiable[7] = air_time
     task.reward(state, action, differentiable, obs["goal"], previous, final["labels"]).sum().backward()
     assert torch.isfinite(flat.grad).all() and flat.grad.abs().max() > 0
     assert torch.isfinite(stationary_feet.grad).all()
+    # Forward values remain the exact physical window while this optional estimator
+    # supplies a useful gradient toward entering it from a double-stance state.
+    assert air_time.grad is not None, "Air-time reward supplied no gradient"
+    assert torch.isfinite(air_time.grad).all() and air_time.grad.abs().max() > 0
 
 
 @pytest.mark.integration

@@ -63,6 +63,14 @@ This diagnostic adds Gaussian noise with a raw-action standard deviation of 0.05
 
 The adapter currently requires nominal, undelayed sensor features and flat terrain. It rejects reward-function replacements, changed foot ordering, enabled persistent head-bias rewards, corruption and unsupported sensor transforms because these require an extended state or matching actor model. Preserve these guards when adding robustness experiments.
 
+### Investigate the hard air-time window
+
+The nominal Duck air-time reward counts feet whose air time falls strictly inside a fixed interval. Its exact derivative is zero almost everywhere. This matters for a policy trained by differentiating imagined returns: fitting that reward's forward values does not provide a gradient toward entering the rewarded interval.
+
+An opt-in experiment keeps the exact hard-window forward value and adds a straight-through sigmoid-window backward estimator. Set `agent.algorithm.task_cfg.air_time_gradient_width=0.025` to use a 25 ms sigmoid width, or leave it at `0.0` for the exact hard derivative. The simulator reward, its weights, thresholds, and BAM actuators remain unchanged. The estimator changes the optimization gradient and must be recorded as an experimental setting.
+
+The physical parity test also runs this estimator: every per-term and total reward still matches the real simulator, and an air-time input below the window receives a finite nonzero gradient. Compare widths on independent new trials; establish actual command tracking before describing the result as walking.
+
 For OSMO, use [lesson 15's workflow](15-flash-sac.md) with `learner=supermimic`, `iterations=10000`, and `horizon=8`, `16`, or `32`. Publish the source first and provide its full commit SHA as `source_revision`; jobs never read uncommitted files.
 
 **Record:** does a longer imagined horizon improve actual command tracking and survival, or only imagined return?

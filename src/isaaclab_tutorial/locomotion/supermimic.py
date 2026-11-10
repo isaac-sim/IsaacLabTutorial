@@ -11,6 +11,7 @@ no PD surrogate is used to generate rewards or replace the servo dynamics.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import torch
@@ -146,7 +147,10 @@ class MicroDuckTask(DifferentiableTask):
 
     num_labels = 6
 
-    def __init__(self, env: ManagerBasedRLEnv, device: str = "cpu"):
+    def __init__(self, env: ManagerBasedRLEnv, device: str = "cpu", air_time_gradient_width: float = 0.0):
+        if not math.isfinite(air_time_gradient_width) or air_time_gradient_width < 0:
+            raise ValueError("Air-time gradient width must be a finite, nonnegative number of seconds.")
+        self.air_time_gradient_width = air_time_gradient_width
         owner = env.unwrapped
         robot = owner.scene["robot"]
         joints, _, _, _ = _selections(owner)
@@ -352,9 +356,15 @@ class MicroDuckTask(DifferentiableTask):
             elif name == "action_rate_l2":
                 value = (actions - prev_actions[..., -1, :]).square().sum(-1)
             elif name == "air_time":
-                value = ((next_state[7] > p["threshold_min"]) & (next_state[7] < p["threshold_max"])).float().sum(
-                    -1
-                ) * moving
+                air = next_state[7]
+                window = ((air > p["threshold_min"]) & (air < p["threshold_max"])).float()
+                if self.air_time_gradient_width:
+                    smooth = torch.sigmoid((air - p["threshold_min"]) / self.air_time_gradient_width) - torch.sigmoid(
+                        (air - p["threshold_max"]) / self.air_time_gradient_width
+                    )
+                    # Keep the exact measured reward, with an explicit optional backward estimator.
+                    window = window + (smooth - smooth.detach())
+                value = window.sum(-1) * moving
             elif name == "foot_clearance":
                 value = ((next_state[11] - p["target_height"]).abs() * foot_speed).sum(-1) * moving
             elif name == "foot_swing_height":
