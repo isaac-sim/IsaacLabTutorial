@@ -128,6 +128,8 @@ for row, profile in enumerate(profiles):
                    "--effects", str(effects), "--seeds", "0", "1", "2", "--output", str(output)]
         for checkpoint in models[profile]:
             command.extend(["--checkpoint", checkpoint])
+        if (output / "configuration.json").is_file():
+            command.append("--resume")
         subprocess.run(command, check=True)
         report = json.loads((output / "report.json").read_text())
         assert report["complete"] and not report["errors"]
@@ -150,7 +152,7 @@ print("Open outputs/robustness/grid.png and the individual report.json files.")
 PY_MATRIX
 ```
 
-The starter grid uses one independent training seed and three matched starts: **48 attempted evaluations**. Its cross-training-seed standard deviation stays unavailable. Every cell reports response and survival separately; numerical failures remain invalid attempted outcomes. Incomplete/errored collections stop the script instead of becoming a finished grid. Keep the individual reports to inspect why a cell failed.
+The starter grid uses one independent training seed and three matched starts: **48 attempted evaluations**. Its cross-training-seed standard deviation stays unavailable. Every cell reports response and survival separately; numerical failures remain invalid attempted outcomes. Incomplete/errored collections stop the script instead of becoming a finished grid. Rerunning the unchanged script resumes existing cells and starts missing ones; the qualifier rejects changed settings, sources or policies. Choose a new root output directory for a different experiment. Keep the individual reports to inspect why a cell failed.
 
 For the broader planned comparison, train all four profiles with the lesson-8 longer budget and training seeds **42, 0 and 1**. Put three paths per profile in the JSON, then change the evaluation seed arguments to `0` through `9`. That produces **480 attempts** across twelve independently trained policies. Compare the per-policy rates and their sample standard deviation in each report. An outside-range delay, such as 60 ms, is a separate sensitivity condition, not another in-range result.
 
