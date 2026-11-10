@@ -31,6 +31,48 @@ These are teaching interventions, not measured hardware tolerances. Noise is add
 
 Every application constructs a fresh trial and clears its histories. Backlash additionally changes the physical topology. The comparison retains all 28 raw coordinates and matches the known output-angle mapping against the nominal robot, requiring zero initial passive displacement and velocity. It cannot hide a different initial motor state behind equal summed output angles.
 
+## Watch a bounded reversal
+
+**Predict:** is gearbox play a delayed target, or a difference between servo and output angle? Try a supported joint without needing a trained policy:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/actuator_workshop.py --backlash --output outputs/play-reversal
+```
+
+Choose **4 degrees**, then **Reset and run reversal**. Watch the actual target, servo coordinate and passive play; the mechanical output is their sum. Pause or single-step to inspect a reversal. After completion the physical pose is held. Changing the amplitude slider prepares the next run; every run starts from the same reset and is retained in its own `trial-…/receipt.json`.
+
+![Actual native actuator controls over a recorded supported Duck pose, showing distinct motor-buffer and actor-feature times, servo and passive angles, and uniquely identified sensor age](media/actuator-panel.jpg)
+
+This is the working native panel at an actual recorded state: body pose at 1.800 s, motor buffers at 1.795 s, and actor velocity feature sampled at 1.780 s. The capture uses recorded transforms with zero replay physics. Open the live workshop to change the next experiment.
+
+Now relaunch with **only** `--command-delay-ms 20` added. Predict which signal shifts. Add `--observation-delay-ms 40` in another fresh launch to inspect the separate sensor history. The root stays fixed above the floor, all other joints request their reference angles, and no policy is choosing actions. Observation lag therefore changes the displayed actor features without changing this prescribed command program.
+
+![Four actual simulated head-yaw reversals show requested and delayed targets, servo angle, passive play, and summed mechanical output, including residual position error after the target returns home](media/actuator-reversal.jpg)
+
+These are simulated 4° sweeps with seed 0: nominal, play alone, both delays without play, and both delays with play. Each retains 600 native physics samples and 150 control samples. All actual servo/root starts match; passive coordinates start at zero. The play coordinate traverses only part of its available clearance here. The asset difference also adds the documented 14 mg; these plots do not measure hardware backlash or qualify walking.
+
+![Actual target and actor-velocity samples distinguish a 20 ms actuator queue from a 40 ms sensor history, including reset startup and the sawtooth age of a held control decision](media/actuator-clocks.jpg)
+
+**Spot the difference:** the queue receives a frame every 5 ms, even while a control decision is held for 20 ms. After startup its selected frame is 20 ms old, but the originating control decision is 20, 25, 30 or 35 ms old. The velocity feature has its own 20 ms cadence: its uniquely identified age is 0, then 20, then 40 ms in this recording. A repeated or unmatched signal gives **unavailable**, never an invented age. These are simulation-clock identities, not hardware capture/receive timestamps.
+
+<details>
+<summary>Record, rebuild, and inspect the evidence</summary>
+
+Add `--headless` to record one full reversal without a viewer. The [portable recorded study](evidence/actuator-data.json) retains all four traces and one physical snapshot. Redraw the figures without simulation:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/plot_actuator.py --data docs/locomotion/evidence/actuator-data.json --output outputs/rebuilt-actuator
+uv run --project environments/locomotion python scripts/locomotion/capture_actuator.py --receipt docs/locomotion/evidence/actuator-data.json --output outputs/rebuilt-actuator/panel.jpg
+```
+
+To audit newly collected trials, use `plot_actuator.py --study YOUR_STUDY --output YOUR_FIGURES`. It expects `nominal`, `delay`, `backlash`, and `combined` directories with `trial-000/receipt.json`, using exactly the four configurations in the plots. Keep seed 0, joint `head_yaw`, and amplitude 4°. It checks actual starts, clocks, targets, signal-age matches and producer identity before pooling.
+
+The recorder copies actual native buffers after actuator computation and before each integration step. One read-only internal delayed-target array is guarded by the exact pinned BAM source hash; an SDK upgrade requires re-auditing this diagnostic. The independent motor-law check agrees within 3.73×10⁻⁹ Nm in these runs. A run without the recorder produced bitwise identical joint/body/root trajectories, actions and actor velocity inputs at all 150 control frames. [Validation and limitations](evidence/actuator-validation.json) distinguish actual mouse-event checks, simulation checks and recorded-state rendering.
+
+An in-process retry restores the same joint/base state and clears command/sensor histories, but is not promised bitwise identical. In the tested repeated 4° reversal, servo and passive coordinates differed by at most 3.47×10⁻⁷ and 4.20×10⁻⁷ rad. The native previous-solve external-load input also differed at the first tick. Use a fresh launch for controlled comparisons, as the four published conditions do; the workshop preserves each retry separately.
+
+</details>
+
 ## Use a frozen experiment file
 
 <details>

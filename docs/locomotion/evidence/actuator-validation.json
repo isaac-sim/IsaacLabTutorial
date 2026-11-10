@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "kind": "supported-actuator-validation-v1",
+  "hardware_validated": false,
+  "scope": "Actual supported head-yaw simulation, native widget mouse events, public reset checks, and recorded-state rendering. No learned-policy or walking qualification.",
+  "conditions": {
+    "nominal": {
+      "receipt_sha256": "f4e00ab778ca07f401639290ae43056a80cd788090e0e318f4ffe747a8d949de",
+      "settings": {
+        "command_delay_ms": 0,
+        "observation_delay_ms": 0,
+        "noise_scale": 0.0,
+        "voltage": 7.4,
+        "encoder_bias_rad": 0.0,
+        "backlash": false
+      },
+      "physics_samples": 600,
+      "control_samples": 150,
+      "motor_max_absolute_check_error_nm": 3.725290298461914e-09
+    },
+    "delay": {
+      "receipt_sha256": "0a0d60b5469ebd90dbf7303a70c24b48bdd3ff12d3be8c487aa7fce3af193092",
+      "settings": {
+        "command_delay_ms": 20,
+        "observation_delay_ms": 40,
+        "noise_scale": 0.0,
+        "voltage": 7.4,
+        "encoder_bias_rad": 0.0,
+        "backlash": false
+      },
+      "physics_samples": 600,
+      "control_samples": 150,
+      "motor_max_absolute_check_error_nm": 3.725290298461914e-09
+    },
+    "backlash": {
+      "receipt_sha256": "b8542705cbaab079427e8885dec88d39e5dabe7e1f8fe4ad56eb7ba451b63d8f",
+      "settings": {
+        "command_delay_ms": 0,
+        "observation_delay_ms": 0,
+        "noise_scale": 0.0,
+        "voltage": 7.4,
+        "encoder_bias_rad": 0.0,
+        "backlash": true
+      },
+      "physics_samples": 600,
+      "control_samples": 150,
+      "motor_max_absolute_check_error_nm": 3.725290298461914e-09
+    },
+    "combined": {
+      "receipt_sha256": "e2cc766dcaf94d4d9f1ab6599e4c56113d3a006efa45a1b5980d68fe6fbcc99e",
+      "settings": {
+        "command_delay_ms": 20,
+        "observation_delay_ms": 40,
+        "noise_scale": 0.0,
+        "voltage": 7.4,
+        "encoder_bias_rad": 0.0,
+        "backlash": true
+      },
+      "physics_samples": 600,
+      "control_samples": 150,
+      "motor_max_absolute_check_error_nm": 3.725290298461914e-09
+    }
+  },
+  "native_clock": {
+    "physics_dt_s": 0.005,
+    "control_dt_s": 0.02,
+    "combined_fixed_queue_physics_ticks": 4,
+    "combined_steady_queue_frame_age_ms": 20,
+    "combined_steady_source_decision_ages_ms": [
+      20,
+      25,
+      30,
+      35
+    ],
+    "combined_unique_velocity_sample_ages_ms": [
+      0,
+      20,
+      40
+    ],
+    "combined_unique_age_sample_counts": {
+      "0": 1,
+      "20": 1,
+      "40": 148
+    },
+    "sample_age_method": "Unique exact whole-vector match within recorded past history; ambiguous/missing becomes null, not configured lag.",
+    "time_scope": "Simulation tick identity, not hardware capture/receive timestamps."
+  },
+  "observer_noninterference": {
+    "complete": true,
+    "comparison": "bitwise identical Python float lists at every control frame",
+    "control_frames": 150,
+    "fields": [
+      "time_s",
+      "joint_pos_rad",
+      "raw_joint_velocity_rad_s",
+      "actor_joint_velocity_rad_s",
+      "root_pose_xyzw",
+      "body_poses_w",
+      "action"
+    ],
+    "initial_state_equal": true,
+    "untraced_reference_has_physics_callbacks": false,
+    "reference_producer_sha256": "f5a9e806576f31e90d233de720fcd21f7a3cc8727dc0ffee6fc26810b9f5be21"
+  },
+  "native_visualizer_run": {
+    "complete": true,
+    "receipt_sha256": "a159bc2c1cc92c4a820f8772c868a133fb194b9a0b774586131b603532adb6e2",
+    "all_native_values_and_control_frames_bitwise_equal_to_no_visualizer": true,
+    "display_scope": "Pinned visualizer uses its headless GL route without DISPLAY; actual ImGui widgets rendered and clicked separately."
+  },
+  "native_widget_mouse_events": {
+    "actual_imgui_mouse_events": true,
+    "pending_amplitude_deg": 6.1519999504089355,
+    "applied_amplitude_unchanged_deg": 4.0,
+    "run_request_latched": true,
+    "pause_request": true,
+    "single_step_request": true,
+    "scope": "Actual native widgets and requests only; simulation lifecycle verified separately.",
+    "physics_steps": 0
+  },
+  "repeated_reset": {
+    "actual_same_recorder_reused": true,
+    "trials": 2,
+    "physics_ticks_per_trial": 600,
+    "control_steps_per_trial": 150,
+    "reset_initial_state_equal": true,
+    "all_native_values_bitwise_equal": false,
+    "first_native_external_load_nm": [
+      -9.896557457977906e-07,
+      2.5043264031410217e-06
+    ],
+    "max_absolute_native_column_differences": {
+      "requested_target_rad": 0.0,
+      "actual_delayed_target_rad": 0.0,
+      "servo_pos_rad": 3.46451997756958e-07,
+      "play_pos_rad": 4.194153007119894e-07,
+      "servo_vel_rad_s": 1.6391277313232422e-06,
+      "play_vel_rad_s": 2.0252191461622715e-06,
+      "motor_torque_nm": 1.1920928955078125e-07,
+      "effective_voltage_v": 0.0,
+      "actuator_effort_nm": 1.1920928955078125e-07,
+      "friction_budget_nm": 1.2200325727462769e-07
+    },
+    "paused_readout_checks": 3,
+    "paused_counter_unchanged": 240,
+    "physics_samples_per_single_control_step": 4,
+    "scope": "Public physical/history reset and same actual recorder; no UI-driven lifecycle claim."
+  },
+  "reset_limitation": "Same in-process joint/root starts, target histories and sample counts; tiny physical differences retained. First native previous-solve load differs. Fresh processes were used for the four controlled conditions. No upstream/private reset state modified.",
+  "private_api_scope": "One read-only DriveBam._delayed_target array, guarded by exact bam.py SHA256. All simulator state remains untouched by the recorder.",
+  "producer_sha256": {
+    "scripts/locomotion/actuator_workshop.py": "c2e493c8b61f9e3c54e5960e11f2aa9a7d72822fbdc5bb4c9612bf1d3cd28be6",
+    "src/isaaclab_tutorial/locomotion/playground/actuator_trace.py": "8c193e3ff390a8af7f10cd6d445bae521d9325621c909abb23425e48cad5fc78",
+    "src/isaaclab_tutorial/locomotion/playground/actuator_panel.py": "65837c48614c9aeb30d15648a42d3d3f1461e6c987c114e7f27b9cc5f00f9626"
+  },
+  "files_sha256": {
+    "docs/locomotion/evidence/actuator-data.json": "86b5611e5d97dd14e32a86ceb3848172860f58d3a1793c68d303fc05f12f4551",
+    "scripts/locomotion/plot_actuator.py": "9c350c8e40c153f07cca4574f6ebd9712f7eeaf8bf56bfb469f3d049fda9da15",
+    "scripts/locomotion/capture_actuator.py": "7314f48fe105b349a55c2565ab82d20f24dc4e7af86efa2e1312e22d1b99769e",
+    "docs/locomotion/media/actuator-reversal.jpg": "a827230516b40e9106bd074ad5b9e5bbcb798e35f369daa23478879410aac261",
+    "docs/locomotion/media/actuator-clocks.jpg": "054167eeff9c3132f4b68d705d69e6d49464de5baa36a424621a22872ebe4774",
+    "docs/locomotion/media/actuator-panel.jpg": "5e228adcd5e2c50837571ccaf35b8b87b057681407bec16962fb7fe3328474ac",
+    "docs/locomotion/evidence/actuator-panel.json": "a9d5ef5b7135f455c81f149071b8adbd92fa2af5f33ef5a34a59f76f8e4fc43f"
+  },
+  "qualification_limitations": [
+    "Supported root, one small head joint motion, three seconds, one seed.",
+    "Four configurations are illustrative diagnostics; they do not establish robustness, hardware tolerances, or full clearance traversal.",
+    "Native mouse request checks, simulation lifecycle checks and recorded-state capture are separate evidence; no manual desktop walkthrough is claimed."
+  ],
+  "final_diagnostic_fix_verification": "Fresh re-recording of all four conditions retained bitwise identical 600 native and 150 control samples per condition, after adding interruption columns/timestamps. Prior observer/non-visualizer and visualizer proof therefore applies to the unchanged actual data.",
+  "actual_interrupt": {
+    "receipt_sha256": "2a45e3c9a47748131d181dd198739ea00f9e9a9bd6c55600737f0f80b1cdfaff",
+    "end_reason": "KeyboardInterrupt: ",
+    "complete": false,
+    "control_samples": 19,
+    "physics_samples": 76,
+    "column_names_and_clock_retained": true,
+    "overflow": false,
+    "red_then_green": "Real SIGINT first exposed missing partial-trace columns; diagnostic metadata fix passes the same native interruption check."
+  },
+  "portable_rebuild": {
+    "data_byte_identical": true,
+    "images_byte_identical": true
+  },
+  "vector_masters": "Renderer also emits actual SVG masters alongside JPEG derivatives; only small JPEGs are committed."
+}

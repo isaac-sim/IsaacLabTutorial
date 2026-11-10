@@ -100,6 +100,10 @@
     {
       "path": "docs/locomotion/evidence/robust-delay-runtime.json",
       "sha256": "ef5265480182afbfb90c6d93eabafb774370798e8a1faef9967c000c1d2e90d2"
+    },
+    {
+      "path": "docs/locomotion/evidence/actuator-validation.json",
+      "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -135,7 +139,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/README.md",
-          "sha256": "a8ee3e2144fcdcbf1101e0cecc0557b022a3ddb11ff89cb6d3c2b6e14dc60b3d"
+          "sha256": "699e42acbefc32375835d8cc08acfc5dec66886555bcfabfaa4ea4fa2aadbbea"
         }
       ],
       "acceptance": "Inference path cannot be mistaken for a controller that needs rewards or critic values on hardware.",
@@ -261,7 +265,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/04-actions.md",
-          "sha256": "96e2a12e93d1a76d9f04f0426647f3dfbd3a2f3dba62e32bbf3db42cd5d3a35b"
+          "sha256": "97e91b83a3b01b948b8630db17f12dbb79710c932dc5a634139440935605db7a"
         }
       ],
       "acceptance": "Order, clipping, and bias signs agree with the actual action and actuator implementation.",
@@ -285,7 +289,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/04-actions.md",
-          "sha256": "96e2a12e93d1a76d9f04f0426647f3dfbd3a2f3dba62e32bbf3db42cd5d3a35b"
+          "sha256": "97e91b83a3b01b948b8630db17f12dbb79710c932dc5a634139440935605db7a"
         }
       ],
       "acceptance": "Numeric intervals match the frozen configuration; actuator command latency is not conflated with decimation.",
@@ -693,7 +697,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "ad68d03269728f32f51f277ae91aaa188aab32a5647dce4b364e667823d7df6c"
+          "sha256": "3d1c80af4feb041275077815ea8676dccd8fbef34ced770e9eaf555a02688eb7"
         }
       ],
       "acceptance": "It explains state-dependent play rather than random noise; motor/output labels are verified for the chosen model.",
@@ -712,8 +716,25 @@
       "id": "V28",
       "topic": "backlash-reversal-trace",
       "kind": "measured_plot",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/actuator-reversal.jpg",
+          "sha256": "a827230516b40e9106bd074ad5b9e5bbcb798e35f369daa23478879410aac261"
+        },
+        {
+          "path": "docs/locomotion/media/actuator-panel.jpg",
+          "sha256": "5e228adcd5e2c50837571ccaf35b8b87b057681407bec16962fb7fe3328474ac"
+        },
+        {
+          "path": "docs/locomotion/evidence/actuator-data.json",
+          "sha256": "86b5611e5d97dd14e32a86ceb3848172860f58d3a1793c68d303fc05f12f4551"
+        },
+        {
+          "path": "docs/locomotion/evidence/actuator-validation.json",
+          "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
+        }
+      ],
       "acceptance": "Actual trace and coordinate definitions are retained; a simulated trace is never labeled a hardware measurement.",
       "required_labels": [
         "Time s",
@@ -725,24 +746,32 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Record servo and passive output coordinates during a bounded reversal; retain timestamps."
+      "remaining": null
     },
     {
       "id": "V29",
       "topic": "observation-command-latency",
-      "kind": "schematic",
-      "status": "partial",
+      "kind": "measured_plot",
+      "status": "produced",
       "outputs": [
         {
-          "path": "docs/locomotion/11-effects.md",
-          "sha256": "ad68d03269728f32f51f277ae91aaa188aab32a5647dce4b364e667823d7df6c"
+          "path": "docs/locomotion/04-actions.md",
+          "sha256": "97e91b83a3b01b948b8630db17f12dbb79710c932dc5a634139440935605db7a"
         },
         {
-          "path": "docs/locomotion/media/signal-delay40.jpg",
-          "sha256": "7d9b334ac7cff62d9f66852ad38d71ef773c8fc4492b1f44f8fff360b1859c77"
+          "path": "docs/locomotion/11-effects.md",
+          "sha256": "3d1c80af4feb041275077815ea8676dccd8fbef34ced770e9eaf555a02688eb7"
+        },
+        {
+          "path": "docs/locomotion/media/actuator-clocks.jpg",
+          "sha256": "054167eeff9c3132f4b68d705d69e6d49464de5baa36a424621a22872ebe4774"
+        },
+        {
+          "path": "docs/locomotion/evidence/actuator-validation.json",
+          "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
         }
       ],
-      "acceptance": "Clock conversions and event order agree with instrumented pulse tests, including empty-buffer behavior.",
+      "acceptance": "Clock conversions and event order agree with actual native target changes and whole-vector actor/raw matching, including empty-buffer startup. Hardware capture/receive timestamps stay a separate hardware gate.",
       "required_labels": [
         "Observation age",
         "Command delay",
@@ -753,7 +782,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Actual raw-versus-actor control-clock trace exists. Per-physics-step applied targets and hardware capture/receive ages remain."
+      "remaining": null
     },
     {
       "id": "V30",
@@ -1241,16 +1270,20 @@
     {
       "id": "I07",
       "title": "Reality-gap sandbox",
-      "status": "partial",
+      "status": "implemented",
       "entry": "scripts/locomotion/effects_workshop.py",
       "lesson": "docs/locomotion/11-effects.md",
       "evidence": [
         {
           "path": "docs/locomotion/evidence/effects-validation.json",
           "sha256": "370828e6a7806fff731305037f9d50c3db15f7691ba0f18124260580ac9a8a83"
+        },
+        {
+          "path": "docs/locomotion/evidence/actuator-validation.json",
+          "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
         }
       ],
-      "scope": "Native effects, latched apply, matched starts/ghosts and raw-versus-actor signal plots; per-physics applied-target age and bounded reversal views remain."
+      "scope": "Native effects, latched apply, matched starts/ghosts, bounded supported reversal with amplitude/pause/single-step controls, actual 5 ms requested/delayed targets and servo/play response, and uniquely matched actor-velocity age. In-process retry limitations are recorded."
     },
     {
       "id": "I08",

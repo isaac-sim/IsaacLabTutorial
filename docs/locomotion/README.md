@@ -16,7 +16,7 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 6. [Map the reality gap](10-reality-gap.md), [investigate delays/backlash](11-effects.md), [train for robustness](12-robustness.md), and [export for deployment](13-deployment.md).
 7. Finish with the Duck adaptations of [SuperMimic](14-super-mimic.md) and [FlashSAC](15-flash-sac.md), using the separate pinned workflows environment.
 
-The runnable path includes supported/free-base joint control, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/retraining, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. The exploratory lessons preserve their measured successes and failures; the qualified SuperMimic recipe explicitly uses teacher data and initialization. Calibrated hardware transfer remains a measured checkpoint.
+The runnable path includes supported/free-base joint control, a bounded actuator reversal with actual 5 ms delay telemetry, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/retraining, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. The exploratory lessons preserve their measured successes and failures; the qualified SuperMimic recipe explicitly uses teacher data and initialization. Calibrated hardware transfer remains a measured checkpoint.
 
 ## How to use the lessons
 

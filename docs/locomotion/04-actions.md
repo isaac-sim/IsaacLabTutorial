@@ -1,6 +1,14 @@
 # 4. Follow one action into the robot
 
-Return to the puppet and choose one joint. Change its target slightly and inspect the measured value. Predict what happens if you reverse the target.
+**Try:** open a supported head-yaw experiment. No checkpoint is needed.
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/actuator_workshop.py --output outputs/my-reversal
+```
+
+In **Supported actuator workshop**, choose a small amplitude and press **Reset and run reversal**. The duck holds, sweeps, reverses, then returns its target home over three simulated seconds. Compare requested target, actual delayed target and measured servo angle in the native viewer's live plots. Pause at a control boundary or take a single control step. Try another amplitude; it applies to the next run, which is saved separately.
+
+**Predict:** when the target returns home, must the joint already be home? The motor has dynamics and friction. The slider requests motion; it does not prescribe the measured trajectory. [Add delay and mechanical play](11-effects.md#watch-a-bounded-reversal) once you can identify these signals. Add `--headless` to record one complete trial without a viewer.
 
 The tutorial preserves the robot's explicit 14-servo order: five left-leg joints, four head/neck joints, then five right-leg joints. The asset's internal order can differ. Selecting by name with `preserve_order=True` keeps observations and actions consistent.
 

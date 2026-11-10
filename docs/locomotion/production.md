@@ -30,6 +30,8 @@ Only small JPEG derivatives live in this repository. Full trajectory receipts, c
 
 The native panel reference images use [one portable physical snapshot](evidence/playground-snapshot.json), extracted from an actual playground recording. Recreate them with `capture_playground.py --receipt docs/locomotion/evidence/playground-snapshot.json --mode observations --output outputs/panel/observations.jpg` (or `--mode joints`) in the pinned locomotion environment. The tool draws the live workshop's actual widgets over the recorded body poses using public Newton/ImGui APIs; it creates no solver or physics steps. Captures label their recorded-state scope and retain camera, asset, source, input and image hashes. Renderer timing text can vary between machines.
 
+The supported actuator activity also has [portable native traces and a physical snapshot](evidence/actuator-data.json). `plot_actuator.py --data ...` rebuilds its reversal/clock figures without simulation; `capture_actuator.py --receipt ...` renders the same native widgets over the retained physical state with no replay physics. Its [validation](evidence/actuator-validation.json) keeps mouse-event checks, recorder noninterference, actual repeated resets and their tiny residual differences distinct.
+
 ## Keep the learner in control
 
 Open each lesson with an action or prediction, show an observable result, then reveal the explanation. Each slider must state whether it changes the next command, merely rescales a recorded score, or launches a fresh experiment. GUI callbacks request changes at a control boundary; they must not advance physics independently.

@@ -1,0 +1,24 @@
+{
+  "kind": "recorded-native-actuator-panel-v1",
+  "receipt_sha256": "86b5611e5d97dd14e32a86ceb3848172860f58d3a1793c68d303fc05f12f4551",
+  "source_full_receipt_sha256": "e2cc766dcaf94d4d9f1ab6599e4c56113d3a006efa45a1b5980d68fe6fbcc99e",
+  "frame_index": 90,
+  "physical_pose_time_s": 1.8,
+  "motor_buffer_time_s": 1.795,
+  "actor_feature_time_s": 1.78,
+  "physics_steps_during_capture": 0,
+  "asset_provenance": {
+    "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk_backlash.usd",
+    "name": "microduck_walk_backlash.usd",
+    "sha256": "0fe30a47867d8f33761f3fc5537aa6983a45cb26cc536eff9c3d2a030066a97b",
+    "bytes": 7486953,
+    "authored_mass_sum_kg": 0.7372571745752339,
+    "authored_mass_entries": 32,
+    "composed_nonanonymous_usd_layers": 1
+  },
+  "source_sha256": {
+    "scripts/locomotion/capture_actuator.py": "7314f48fe105b349a55c2565ab82d20f24dc4e7af86efa2e1312e22d1b99769e",
+    "src/isaaclab_tutorial/locomotion/playground/actuator_panel.py": "65837c48614c9aeb30d15648a42d3d3f1461e6c987c114e7f27b9cc5f00f9626"
+  },
+  "image_sha256": "5e228adcd5e2c50837571ccaf35b8b87b057681407bec16962fb7fe3328474ac"
+}
