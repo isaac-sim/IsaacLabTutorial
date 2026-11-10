@@ -105,7 +105,7 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
         "action_len": 14,
         "robot": {"model": "microduck", "hw_rev": 1, "servos": "xl330", "control_hz": 50},
         "name": f"tutorial-flat-{receipt.get('algorithm', 'ppo')}",
-        "description": "Tutorial flat gait; simulated evaluation only.",
+        "description": "Microduck policy export; simulation response and inference parity are assessed separately.",
         "kind": "perpetual",
         "slot": "walk",
         "entry_pose": "standing",
@@ -125,6 +125,9 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
         "eval": {
             "seed": receipt["seed"],
             "simulation": receipt["metrics"],
+            "simulation_qualified": receipt.get("qualification", {}).get("passed"),
+            "response_qualification": receipt.get("qualification"),
+            "start_condition": receipt.get("start_condition"),
             "onnx_parity": parity,
             "onnx_sha256": onnx_sha256,
             "hardware_validated": False,

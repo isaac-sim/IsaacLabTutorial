@@ -15,6 +15,7 @@ from pathlib import Path
 
 from isaaclab_tutorial.locomotion.comparison import RecordedComparison
 from isaaclab_tutorial.locomotion.playground.ghost import show_comparison
+from isaaclab_tutorial.locomotion.protocols import START_PROTOCOLS
 
 
 def main() -> None:
@@ -24,6 +25,7 @@ def main() -> None:
     parser.add_argument("--command-delay-ms", type=int, default=0)
     parser.add_argument("--observation-delay-ms", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--start-protocol", choices=START_PROTOCOLS, default="nominal-v1")
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--record-only", action="store_true", help="Produce matched receipts without opening playback.")
@@ -34,7 +36,7 @@ def main() -> None:
         parser.error("Comparison policies must be saved checkpoints, not a moving 'latest' selector.")
     evaluate = Path(__file__).with_name("evaluate.py")
     args.output.mkdir(parents=True, exist_ok=True)
-    common = ["--seed", str(args.seed), "--seconds", str(args.seconds)]
+    common = ["--seed", str(args.seed), "--seconds", str(args.seconds), "--start-protocol", args.start_protocol]
     for name, checkpoint, effects in (
         ("reference", args.checkpoint, []),
         (
