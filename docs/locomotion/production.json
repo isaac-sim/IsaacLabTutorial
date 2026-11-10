@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "373d8cd065cfc2949c5dbf64b0e2ae6be51a3760",
+  "source_revision": "7661009a54217473cb2ad8d3351525264363fb64",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -104,6 +104,18 @@
     {
       "path": "docs/locomotion/evidence/actuator-validation.json",
       "sha256": "4a1268cfd224b91c51697cd5dfc2aa66a5c36125c2235ba8a578453ef709bc40"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-panel-capture.json",
+      "sha256": "92b0561081d492b74fe0d31c1c215fcdbbf09d834f5705fcca917e0af607fcd2"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-panel-validation.json",
+      "sha256": "566eee1dcd0bbc4d071f768a5370ebb9c00e2b8fdc647d6a0d7902ac4be79e2f"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-panel-data.json",
+      "sha256": "cc5f97e70a251e81495d72edf97b671cad30561bac351610273b219f0e57c377"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -1209,7 +1221,7 @@
       "id": "V43",
       "topic": "reward-workshop-panel",
       "kind": "interactive_panel_reference",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/reward-comparison.jpg",
@@ -1218,6 +1230,10 @@
         {
           "path": "docs/locomotion/media/reward-policy-ghost.jpg",
           "sha256": "fb5e1ccc7ab12b594265e69a92bd27033865754cfee4ff5c8a6fc57e371bfc5b"
+        },
+        {
+          "path": "docs/locomotion/media/reward-workshop.jpg",
+          "sha256": "0b9175e8b023945585bb514693082d2b94b85f6a92d9957034a700eca154c766"
         }
       ],
       "acceptance": "Same-trajectory scoring is truthful; term-width changes recompute the real term from sufficient data. Retraining is explicit and receives the saved snapshot. Any alternate motion has an actual rollout receipt; rescoring does not change poses. Both objectives and external task metrics remain visible.",
@@ -1233,7 +1249,7 @@
       "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Actual reward rescoring and retrained-policy ghost exist; capture the full working controls."
+      "remaining": null
     },
     {
       "id": "V44",
@@ -1373,9 +1389,13 @@
         {
           "path": "docs/locomotion/evidence/reward-validation.json",
           "sha256": "5d7bdcd11cb42f653b20b0e633d82d0e006aeb5ff5513de9d50a791bdd6b310d"
+        },
+        {
+          "path": "docs/locomotion/evidence/reward-panel-validation.json",
+          "sha256": "566eee1dcd0bbc4d071f768a5370ebb9c00e2b8fdc647d6a0d7902ac4be79e2f"
         }
       ],
-      "scope": "Recorded-state rescoring plus real one-factor retraining, both-objective scores and independent policy ghosts."
+      "scope": "Working native controls share their callback with the recorded-state capture: 14 active weights, tracking width, playback and save request. Actual mouse events, unchanged source motion, exported overrides, real one-factor retraining and independent policy ghosts are recorded."
     },
     {
       "id": "I06",
