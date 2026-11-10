@@ -18,6 +18,7 @@ import matplotlib
 import numpy as np
 
 from isaaclab_tutorial.locomotion.comparison import assert_matched_start
+from isaaclab_tutorial.locomotion.effects import EffectSettings
 from isaaclab_tutorial.locomotion.qualification import aggregate_trials
 
 matplotlib.use("Agg")
@@ -68,9 +69,29 @@ def main() -> None:
                     for key in ("start_protocol", "observation_delay_ms", "command_delay_ms")
                 ):
                     raise ValueError("The displayed condition differs from recorded trial conditions.")
+                if trial["conditions"].get("effects") != condition.get("effects"):
+                    raise ValueError("The displayed hardware effects differ from recorded trial conditions.")
             report["label"] = (
                 f"IMU/dq lag {condition['observation_delay_ms']} ms; target lag {condition['command_delay_ms']} ms"
             )
+            if condition.get("effects") is not None:
+                effects = EffectSettings(**condition["effects"])
+                if (
+                    effects.command_delay_ms != condition["command_delay_ms"]
+                    or effects.observation_delay_ms != condition["observation_delay_ms"]
+                ):
+                    raise ValueError("Effect settings and displayed delay labels disagree.")
+                details = []
+                if effects.backlash:
+                    details.append("backlash")
+                if effects.noise_scale:
+                    details.append(f"noise ×{effects.noise_scale:g}")
+                if effects.voltage != 7.4:
+                    details.append(f"{effects.voltage:g} V")
+                if effects.encoder_bias_rad:
+                    details.append(f"encoder bias {effects.encoder_bias_rad:g} rad")
+                if details:
+                    report["label"] += "; " + "; ".join(details)
             reports.append(report)
         for report in reports[1:]:
             baseline_models = {
@@ -113,7 +134,7 @@ def main() -> None:
                             str(paths[1]),
                         ]
                     )
-    except (ValueError, KeyError, OSError) as error:
+    except (ValueError, TypeError, KeyError, OSError) as error:
         parser.error(str(error))
     args.output.mkdir(parents=True, exist_ok=True)
     payload = json.dumps({"reports": reports}, indent=2, allow_nan=False)

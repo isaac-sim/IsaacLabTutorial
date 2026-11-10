@@ -10,8 +10,12 @@ from isaaclab.utils import configclass
 
 from isaaclab_tasks.contrib.microduck import mdp
 from isaaclab_tasks.contrib.microduck.flat_env_cfg import MicroDuckVelocityFlatEnvCfg
+from isaaclab_tasks.utils import PresetCfg
 
 from isaaclab_assets.robots.microduck import MICRODUCK_CFG, MICRODUCK_JOINT_NAMES
+
+from isaaclab_tutorial.locomotion.assets import verify_scene_robot_asset
+from isaaclab_tutorial.locomotion.effects import EffectSettings, apply_effects
 
 
 @configclass
@@ -19,6 +23,7 @@ class ResetEventsCfg:
     """Reset physical state and controller targets together."""
 
     reset_scene = EventTermCfg(func=mdp.reset_scene_to_default, mode="reset", params={"reset_joint_targets": True})
+    asset_lock = EventTermCfg(func=verify_scene_robot_asset, mode="prestartup")
 
 
 @configclass
@@ -71,3 +76,49 @@ class TransferEnvCfg(MicroDuckVelocityFlatEnvCfg):
         self.curriculum.head_pose_range = None
         self.curriculum.head_pose_bias_weight = None
         self.compute_final_obs = True
+
+
+def _training_delays(cfg: NominalEnvCfg) -> None:
+    """Randomize only the two declared delay clocks, preserving reset/buffer behavior of the maintained models."""
+    cfg.scene.robot.actuators["servos"].max_delay = 6
+    cfg.observations.policy.imu.params.update(min_lag=0, max_lag=2)
+    cfg.observations.policy.joint_vel.delay_min_lag = 0
+    cfg.observations.policy.joint_vel.delay_max_lag = 2
+
+
+@configclass
+class DelayEnvCfg(NominalEnvCfg):
+    """Nominal mechanics with randomized command and IMU/joint-velocity delays."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        _training_delays(self)
+
+
+@configclass
+class BacklashEnvCfg(NominalEnvCfg):
+    """Known series-play asset, with no other uncertainty enabled."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Constructors run before Hydra resolves presets. Select the nominal term objects first;
+        # apply_effects supplies the explicitly selected backlash selectors and leaves all weights intact.
+        for group in (self.observations.policy, self.observations.critic):
+            for name in ("joint_pos", "joint_vel"):
+                term = getattr(group, name)
+                if isinstance(term, PresetCfg):
+                    setattr(group, name, term.default)
+        for name in ("dof_pos_limits", "head_pose_tracking", "head_pose_bias"):
+            term = getattr(self.rewards, name)
+            if isinstance(term, PresetCfg):
+                setattr(self.rewards, name, term.default)
+        apply_effects(self, EffectSettings(backlash=True))
+
+
+@configclass
+class CombinedEnvCfg(BacklashEnvCfg):
+    """Backlash plus randomized delays: the fourth cell of the controlled two-factor comparison."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        _training_delays(self)

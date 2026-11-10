@@ -45,6 +45,8 @@ Use a fresh output directory for each workshop. Add `--capture-ui` to render the
 
 This example uses training seed 42 and physical-start seed 0. Both completed 20 seconds; one trial cannot establish robustness. [Simulation and control verification](evidence/effects-validation.json) identifies the configurations, recording hashes, and tested interactions. A separate [three-training-seed delay matrix](09-evaluation.md#find-the-failing-condition) provides the broader delay evidence.
 
+The [locked robot inputs](evidence/asset-lock.json) include the actual USD hashes. The backlash asset adds 14 tiny passive bodies, totaling 14 mg of additional authored mass. Treat the selection as the documented asset intervention; it is not a mathematically identical mass model with a single scalar changed.
+
 <details>
 <summary>Inspect delay clocks and the smaller delay-only launcher</summary>
 

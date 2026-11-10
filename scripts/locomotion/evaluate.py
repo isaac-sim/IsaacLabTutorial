@@ -32,6 +32,7 @@ from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from isaaclab_tasks.utils import resolve_task_config
 
 import isaaclab_tutorial.tasks  # noqa: F401
+from isaaclab_tutorial.locomotion.assets import verify_robot_asset
 from isaaclab_tutorial.locomotion.deployment import (
     build_manifest,
     check_duck_contract,
@@ -40,7 +41,8 @@ from isaaclab_tutorial.locomotion.deployment import (
     staged_bundle,
 )
 from isaaclab_tutorial.locomotion.effects import EffectSettings, apply_effects, mechanical_state
-from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
+from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode
+from isaaclab_tutorial.locomotion.profiles import PROFILE_TASKS, training_profile_metadata, validate_profile_checkpoint
 from isaaclab_tutorial.locomotion.protocols import (
     START_PROTOCOLS,
     analyze_velocity_protocol,
@@ -65,6 +67,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, default=Path("latest"), help="Saved PPO checkpoint or latest.")
     parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo", help="Use the matching pinned environment.")
+    parser.add_argument("--training-profile", choices=tuple(PROFILE_TASKS), default="nominal")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--start-protocol", choices=START_PROTOCOLS, default="nominal-v1")
     parser.add_argument("--seconds", type=float, default=20.0)
@@ -80,6 +83,8 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, default=Path("outputs/evaluation"))
     args = parser.parse_args()
+    if args.agent != "ppo" and args.training_profile != "nominal":
+        parser.error("The controlled training profiles currently support PPO; use the nominal profile for SAC.")
     try:
         if args.effects:
             if args.command_delay_ms or args.observation_delay_ms:
@@ -93,7 +98,9 @@ def main() -> None:
             )
         start_condition = sample_start_condition(args.start_protocol, args.seed)
         experiment = "microduck_tutorial" if args.agent == "ppo" else "microduck_tutorial_sac"
-        args.checkpoint = resolve_checkpoint(args.checkpoint, log_root=Path("logs/rsl_rl") / experiment)
+        args.checkpoint = resolve_checkpoint(
+            args.checkpoint, task=PROFILE_TASKS[args.training_profile], log_root=Path("logs/rsl_rl") / experiment
+        )
     except (ValueError, TypeError, OSError) as error:
         parser.error(str(error))
     if not math.isfinite(args.seconds) or args.seconds < 0.02 or not args.checkpoint.is_file():
@@ -106,7 +113,10 @@ def main() -> None:
         parser.error("Observation delay must be a nonnegative multiple of the 20 ms observation sample.")
     entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else "rsl_rl_sac_cfg_entry_point"
     cfg, agent = resolve_task_config("MicroDuckTutorial-Velocity-Flat", entry_point, overrides=())
-    validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
+    training_cfg = cfg
+    if args.training_profile != "nominal":
+        training_cfg, _ = resolve_task_config(PROFILE_TASKS[args.training_profile], entry_point, overrides=())
+    validate_profile_checkpoint(args.checkpoint, args.training_profile, to_dict(training_cfg), to_dict(agent))
     apply_effects(cfg, effects)
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
@@ -162,6 +172,9 @@ def main() -> None:
                     raise ValueError("The standard Duck runtime requires a single actions[1,14] output.")
             base.reset(seed=args.seed)
             robot = base.scene["robot"]
+            asset_provenance = base.tutorial_asset_provenance
+            if verify_robot_asset(cfg.scene.robot.spawn.usd_path) != asset_provenance:
+                raise ValueError("Robot asset bytes changed while constructing the evaluation scene.")
             descriptor = base.action_manager.get_term("joint_pos").IO_descriptor
             scale = descriptor.scale
             if isinstance(scale, torch.Tensor):
@@ -282,6 +295,9 @@ def main() -> None:
                 "checkpoint": str(args.checkpoint.resolve()),
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
                 "algorithm": args.agent,
+                "training_profile": args.training_profile,
+                "training_task": PROFILE_TASKS[args.training_profile],
+                "training_conditions": training_profile_metadata(args.training_profile),
                 "seed": args.seed,
                 "start_condition": start_condition,
                 "initial_state": initial_state,
@@ -300,6 +316,7 @@ def main() -> None:
                 "joint_names": list(robot.joint_names),
                 "body_names": list(robot.body_names),
                 "asset_url": cfg.scene.robot.spawn.usd_path,
+                "asset_provenance": asset_provenance,
                 "conditions": {
                     "task": "MicroDuckTutorial-Velocity-Flat",
                     "start_protocol": args.start_protocol,
