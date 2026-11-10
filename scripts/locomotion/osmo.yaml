@@ -82,6 +82,7 @@ workflow:
           --agent rsl_rl_sac_cfg_entry_point --num_envs {{ num_envs }} \
           --max_iterations {{ iterations }} --seed {{ seed }} --run_name osmo_sac \
           --visualizer none agent.algorithm.num_updates={{ updates }} \
+          agent.algorithm.schedule_updates=$(( {{ iterations }} * {{ updates }} )) \
           agent.algorithm.actor_learning_rate={{ learning_rate }} \
           agent.algorithm.critic_learning_rate={{ learning_rate }} \
           agent.algorithm.alpha_learning_rate={{ learning_rate }} \
@@ -96,7 +97,7 @@ default-values:
   image: nvcr.io/nvidia/isaac-lab:3.0.0
   image_credential: ""
   source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
-  source_revision: a02f7aac7e5d46f9f4e2ef781d76c9e710156843
+  source_revision: 05021116e7c714b1067c0090d60b4ada4906f867
   platform: ovx-l40
   seed: 42
   num_envs: 4096
