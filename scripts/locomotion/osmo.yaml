@@ -105,6 +105,7 @@ workflow:
                  agent.algorithm.action_noise={{ action_noise }}
                  agent.algorithm.task_cfg.air_time_gradient_width={{ air_time_gradient_width }}
                  agent.algorithm.world_model_window={{ world_model_window }}
+                 agent.algorithm.num_world_model_updates={{ world_model_updates }}
                  agent.algorithm.world_model_warmup_iterations={{ world_model_warmup }}
                  agent.algorithm.lr_decay_iterations={{ lr_decay_iterations }})
         elif [[ "{{ learner }}" == sac ]]; then
@@ -149,6 +150,7 @@ default-values:
   action_noise: 0.1
   world_model_warmup: 500
   world_model_window: 8
+  world_model_updates: 4
   air_time_gradient_width: 0.0
   lr_decay_iterations: 250000
   keep_checkpoints: 0
