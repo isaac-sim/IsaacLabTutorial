@@ -14,8 +14,6 @@ The evaluator first checks the checkpoint's saved training configuration. A diff
 
 When evaluation applies a fixed physical effect, the manifest retains its `conditions`, complete `effect_settings`, and simulated asset URL alongside the qualification result. A passing intervention trial must stay identifiable as that experiment.
 
-The [controlled delay-trained PPO candidate](12-robustness.md#predict-the-result-then-inspect-it) was separately exported and rehearsed under fixed 40 ms observation lag. All 1,000 native/ONNX/Rust actions agreed within tolerance, with maximum difference 8.35e-7. Its manifest records the `delay` training task and sampled distribution separately from that fixed test condition. [Software rehearsal evidence](evidence/robust-delay-runtime.json); sensor/motor I/O and robot-board timing remain outside this workstation check.
-
 Normalization is embedded in the exported actor. Supply the raw assembled 61-value actor observation exactly once; do not normalize it a second time. Preserve the verified 14-action order, reference offsets, scale, bias convention, timing, and inference/reset state.
 
 ## Inspect the standard Duck bundle
@@ -42,9 +40,13 @@ The tutorial trained zero head/body commands; keep those ten slots zero. Outputs
 <details>
 <summary>Trace a joint or IMU signal through the real SDK</summary>
 
-**Try:** the right knee answers on motor ID 13. Which actor position slot and policy action reach it? Open the [source-reviewed signal map](reference/hardware-signal-map.md), follow both directions, then reveal the joint table.
+**Try:** the right knee answers on motor ID 13. Which actor position slot and policy action reach it? Trace the paths in this SDK interface schematic before reading the answer.
 
-The map traces actual bus counts, units, board-specific IMU rotation and median preprocessing into the 61-value actor packet, then follows raw action feedback and the separate mouth mapping back to ordered targets. Its editable master and render receipt are tied to the pinned SDK. This is an interface schematic; calibrated physical wiring and board-side timing still need their own robot checks.
+![Standard Duck SDK sensor, observation and motor-target mapping](media/hardware-signal-map.jpg)
+
+The right knee is action 12, position input 18, velocity input 32 and previous-action input 46 (zero-based indices). SDK joint index 13 differs because the SDK includes a mouth joint outside the policy. Encoder counts are converted to radians before home subtraction; raw actions feed back before home/scale mapping. The trunk IMU needs its configured board rotation and gyro unit conversion before assembling gravity and angular velocity. Its three-sample component median is preprocessing, not a fixed transport delay.
+
+This follows the [pinned standard Duck control implementation](https://github.com/pollen-robotics/microduck/tree/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/crates/duck-control). Calibrated physical wiring and board timing still need robot checks.
 
 </details>
 
@@ -75,7 +77,7 @@ The pinned runtime's intent deadman zeros the velocity command; it does **not** 
 
 The model wrapper also rejects non-finite observations or actions. An inference error takes the runtime's hold path before normal policy targets are proposed.
 
-The PPO actor itself is memoryless, but the control loop still retains previous action and optional target-filter state. Clear that feedback state on re-enable. Exploratory history-based exports additionally carry their declared inference state; see [the SuperMimic reset contract](14-super-mimic.md).
+The PPO actor itself is memoryless, but the control loop still retains previous action and optional target-filter state. Clear that feedback state on re-enable.
 
 </details>
 
@@ -95,7 +97,7 @@ The existing loop counts work that exceeds its period and skips missed ticks. Th
 
 Sensor capture time, bus-read time, inference boundaries and motor-write time are separate events. The runtime's `Sensors` value contains joint and IMU values, not a universal per-channel acquisition timestamp. Its repeated-IMU-read counters also do not prove a numerical capture-to-use age: identical values can come from a stationary robot. Record timestamps where the hardware interface actually provides them, label read/receive times separately, and leave unavailable acquisition ages unavailable. Verify sensor freshness and the intended operator stop/hold behavior in the no-actuation robot rehearsal before enabling motion.
 
-The [pinned source map](evidence/deployment-flow.json) identifies observation assembly, model validation/reset, target mapping, intent gating, hold/clamp behavior and tick accounting. The workstation rehearsal checks the actor boundary; hardware wiring, timing and stop trials remain measured gates.
+The workstation rehearsal checks the actor boundary; hardware wiring, timing and stop trials need measurements on the robot.
 
 </details>
 
@@ -109,7 +111,7 @@ cargo run --release -p duck-control --example policy-rehearsal -- /absolute/path
 
 The tool opens no motor bus. Compare its `actions` against `native-actions.json` with the same tolerances; retain its p50/p95/p99 inference latency and `over_20_ms` count. A workstation's timing is not the robot board's timing. The [runtime's rehearsal documentation](https://github.com/pollen-robotics/microduck/blob/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/docs/recurrent-policies.md) describes prerequisites including ONNX Runtime.
 
-An executed rehearsal of the reference PPO model replayed all 1,000 recorded observations through this Rust example. Maximum action difference from native PPO was **1.20e-6**, within the same tolerances. On the workstation, actor-only latency was p50 **0.011 ms**, p95 **0.014 ms**, p99 **0.026 ms**, with zero calls exceeding 20 ms. These measurements exclude sensor and motor I/O; repeat on the robot board before making a timing claim there. The [rehearsal receipt](evidence/ppo-runtime-rehearsal.json) retains the runtime revision, model/trace hashes, tolerances, and measurement scope.
+An executed rehearsal of the reference PPO model replayed all 1,000 recorded observations through this Rust example. Maximum action difference from native PPO was **1.20e-6**, within the same tolerances. On the workstation, actor-only latency was p50 **0.011 ms**, p95 **0.014 ms**, p99 **0.026 ms**, with zero calls exceeding 20 ms. These measurements exclude sensor and motor I/O; repeat on the robot board before making a timing claim there.
 
 Next run a **no-actuation sensor rehearsal** on the calibrated robot: assemble sensor observations, log sensor age, raw actions, bounded targets and timestamps, and verify the real watchdog/stop behavior. Only then progress through operator-controlled supported standing, free standing, and low-speed trials using the robot's approved limits. Keep every failed attempt and rollback policy with the trial record.
 

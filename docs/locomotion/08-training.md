@@ -12,28 +12,12 @@ uv run --project environments/locomotion python scripts/locomotion/training_work
 
 Open the printed `outputs/training-investigator/index.html` in a browser. No server or GPU is needed to use the generated report. `latest` selects the newest nominal tutorial checkpoint's run. After selecting a run, use its exact directory to keep a later experiment from changing the selection.
 
-If you have not trained yet, explore the supplied recorded comparison:
-
-```bash
-uv run --project environments/locomotion python scripts/locomotion/training_workshop.py --report docs/locomotion/evidence/training-comparison.json
-```
-
-This rebuilds an interactive report from actual captured data. It does not include the authors' checkpoint weights. The replay command appears only when a local checkpoint matches the recorded hash.
-
 <details>
 <summary>See the first attempt's actual progress and replay view</summary>
 
 ![Actual Chrome investigator view of the first fresh PPO run: a mean completed training-episode length curve, 153600 logged transitions, 1000 checkpoint optimizer steps, and the separate evaluation's fall at 5.14 seconds with its exact local replay command](media/first-attempt-investigator.jpg)
 
 The curve contains the 50 raw logged samples. Its mean completed training-episode length ends near 0.825 s. That stochastic training diagnostic and the frozen policy's deterministic 5.14 s evaluation are different measurements; neither proves a useful gait. The table records the actual budget, and the final panel keeps the fall and limited coverage visible.
-
-Explore this one-run report yourself:
-
-```bash
-uv run --project environments/locomotion --locked python scripts/locomotion/training_workshop.py --report docs/locomotion/evidence/first-attempt-training.json --output outputs/first-attempt-investigator
-```
-
-Open its `index.html`, change the diagnostic, and move the timeline. The screenshot includes the exact replay command because its checkpoint was installed on the capture machine. On another machine, the report checks the checkpoint hash again and shows an availability note until that exact model exists locally.
 
 </details>
 
@@ -46,7 +30,7 @@ Open its `index.html`, change the diagnostic, and move the timeline. The screens
 
 ![The real budget calculator shows that 256 ducks collect 6144 transitions per rollout and 307200 in fifty iterations while keeping 1000 optimizer steps](media/training-budget.jpg)
 
-The calculator changes one factor: parallel environments. Its rollout horizon, iteration limit, epochs, minibatches, and seed remain visible. A saved plan is planned evidence; only the next run's actual logs/checkpoint prove that training occurred.
+The calculator changes one factor: parallel environments. Its rollout horizon, iteration limit, epochs, minibatches, and seed remain visible. The calculator is a prediction; inspect the next run's logs and checkpoint to see what actually happened.
 
 The one-factor launcher is available only when the baseline matches the current nominal task and learner configuration. A custom reward, reordered observation vector, changed control timing, or different actor cannot silently revert to defaults. Those runs remain inspectable; use their matching training configuration for a candidate. Changes to these configuration values after saving a plan also stop the launcher. To inspect a saved plan without training, run `scripts/locomotion/train_candidate.py --plan` with its path and `--dry-run` through the locomotion environment.
 
@@ -77,7 +61,7 @@ In the captured example, both runs used seed 42, horizon 24, five epochs, four m
 | 128 ducks | 153,600 | 1,000 | 10.36 s | Fell at 5.14 s; 25.7% coverage |
 | 256 ducks | 307,200 | 1,000 | 10.71 s | Reached 20 s; 100% coverage |
 
-These are actual RTX 5090 measurements, excluding setup and asset downloads. [Recorded curves and hashes](evidence/training-comparison.json) and [capture provenance](evidence/training-validation.json) preserve the evidence. Hardware, caching, and workload affect timing; the table is not a speed promise.
+These are actual RTX 5090 measurements, excluding setup and asset downloads. Hardware, caching, and workload affect timing; the table is not a speed promise.
 
 The surviving candidate still has tracking error. Its short-run stochastic training episodes and deterministic evaluation also measure different behavior. One seed and one deterministic nominal start do not establish a reliable improvement or a reference walking benchmark. Preserve the failed attempt; do not compare its short pre-fall RMSE as if it completed every command segment.
 
@@ -90,7 +74,7 @@ Predict which snapshot first survives, and which follows every command. These th
 
 ![At simulation time 14 seconds, the first checkpoint's fallen pose is explicitly held while the 101-iteration and 1000-iteration policies continue their own recordings; actual transition and optimizer budgets remain visible](media/training-progress.jpg)
 
-[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/training-progress.mp4). [Recording inputs and checksums](reference/downloads.md).
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/training-progress.mp4).
 
 | Saved checkpoint | Completed iterations | Fresh transitions | Optimizer steps | This fixed-start result |
 | --- | ---: | ---: | ---: | --- |
@@ -100,17 +84,13 @@ Predict which snapshot first survives, and which follows every command. These th
 
 `model_0` is saved **after** the first collection/update cycle. It is not an untrained policy. The counts come from checkpoint optimizer counters and contiguous event logs, rather than filenames alone. These snapshots show one learning history and one evaluation start; they do not estimate variation across independent training seeds. Training need not improve monotonically.
 
-[The checkpoint study](evidence/checkpoint-progress.json) retains model/receipt hashes, exact budgets and outcomes. The native-cadence movie contains 1,000 frames over 20 s with no interpolation or playback physics. After the early trial ends, its panel holds the final pre-reset pose and labels the time of its unchanged command/measurement sample. [Media validation](evidence/checkpoint-media-validation.json) records the encoding and input provenance.
-
-To make this comparison from your own longer run, evaluate its selected checkpoints separately using identical starts and commands. For example, repeat this command with `model_100.pt` / `iteration-100` and `model_999.pt` / `iteration-999`:
+To make a comparison from your own longer run, evaluate its selected checkpoints separately using identical starts and commands:
 
 ```bash
-uv run --project environments/locomotion --locked python scripts/locomotion/evaluate.py --checkpoint PATH_TO_YOUR_FULL_RUN/model_0.pt --start-protocol balance-starts-v1 --seed 0 --output outputs/progress/iteration-0
-uv run --project environments/locomotion --locked python scripts/locomotion/collect_checkpoint_progress.py --run PATH_TO_YOUR_FULL_RUN --receipt outputs/progress/iteration-0/receipt.json --receipt outputs/progress/iteration-100/receipt.json --receipt outputs/progress/iteration-999/receipt.json --output outputs/progress/study.json
-uv run --project environments/locomotion --locked python scripts/locomotion/render_checkpoint_progress.py --study outputs/progress/study.json --output outputs/progress/progress.mp4 --thumbnail outputs/progress/progress.jpg
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint PATH_TO_YOUR_FULL_RUN/model_0.pt --start-protocol balance-starts-v1 --seed 0 --output outputs/progress/iteration-0
 ```
 
-Replace the run-directory placeholder with your saved run. The collector checks actual models, progress, matching physical conditions, starts and commands, and recomputes each trial's metrics before labeling it. The renderer checks the exact receipt bytes again. Preserving the early failure is part of the experiment.
+Replace the run-directory placeholder with your saved run. Repeat with `model_100.pt` and `model_999.pt`, choosing a distinct output directory each time. Open a matched pair with `compare.py --reference FIRST_RECEIPT --candidate SECOND_RECEIPT` through the locomotion environment. Preserve the early failure when interpreting progress.
 
 </details>
 

@@ -8,11 +8,10 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
 from pathlib import Path
 
-# Audited with USD composition: each robot has one non-anonymous layer, containing its physics/geometry.
-# Masses below are authored USD MassAPI sums, not a runtime aggregate or measured hardware weight.
+# Each reviewed USD contains its physics and geometry in one non-anonymous layer.
+# These are authored MassAPI sums, not runtime aggregates or measured hardware weights.
 LOCKED_ROBOTS = {
     "microduck_walk.usd": {
         "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
@@ -51,39 +50,3 @@ def verify_robot_asset(url: str) -> dict:
 def verify_scene_robot_asset(env, env_ids) -> None:
     """Check the robot before scene construction without altering physics or consuming learner RNG."""
     env.tutorial_asset_provenance = verify_robot_asset(env.cfg.scene.robot.spawn.usd_path)
-
-
-def collect_robot_assets(destination: Path | None = None) -> dict:
-    """Check both models, optionally archive their exact bytes, and record the small authored-mass difference."""
-    from pxr import Usd
-
-    from isaaclab.utils.assets import retrieve_file_path
-
-    from isaaclab_assets.robots.microduck import MICRODUCK_BACKLASH_CFG, MICRODUCK_CFG
-
-    records = []
-    for cfg in (MICRODUCK_CFG, MICRODUCK_BACKLASH_CFG):
-        url = cfg.spawn.usd_path
-        path = Path(retrieve_file_path(url))
-        record = {"url": url, **verify_robot_asset_file(path)}
-        stage = Usd.Stage.Open(str(path))
-        dependencies = {Path(layer.realPath).resolve() for layer in stage.GetUsedLayers() if not layer.anonymous}
-        if dependencies != {path.resolve()}:
-            raise ValueError(
-                "Robot composition has external USD layers; extend the byte lock before publishing results."
-            )
-        if destination is not None:
-            destination.mkdir(parents=True, exist_ok=True)
-            target = destination / path.name
-            shutil.copyfile(path, target)
-            verify_robot_asset_file(target)
-        records.append(record)
-    return {
-        "schema_version": 1,
-        "robots": records,
-        "authored_mass_difference_kg": records[1]["authored_mass_sum_kg"] - records[0]["authored_mass_sum_kg"],
-        "scope": "Self-contained robot USD inputs; simulation configuration overrides are recorded separately.",
-        "backlash_note": (
-            "The 14 extra passive bodies add 14 mg of authored mass. This is an asset-variant intervention."
-        ),
-    }

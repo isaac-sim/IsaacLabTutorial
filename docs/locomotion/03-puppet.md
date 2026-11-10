@@ -11,7 +11,7 @@ uv run --project environments/locomotion python scripts/locomotion/playground.py
 
 ![Native Newton panel showing all 14 named joint sliders in left-leg, right-leg and head groups, with target and measured angles beside a supported Microduck](media/puppet-panel.jpg)
 
-This reference image renders an actual recorded state at 0.92 s using the same widgets as the live workshop. The root is fixed for this supported experiment; the feet need not touch the floor. The gold marker shows the recorded gravity direction. Run the command above to change targets and observe new physics. [Capture provenance](evidence/puppet-panel-capture.json).
+This reference image renders an actual recorded state at 0.92 s using the same widgets as the live workshop. The root is fixed for this supported experiment; the feet need not touch the floor. The gold marker shows the recorded gravity direction. Run the command above to change targets and observe new physics.
 
 </details>
 
@@ -31,9 +31,11 @@ Try this three-move challenge:
 
 ## Find the hinge before moving it
 
-Pick `left_knee` or `head_yaw` on the [joint and frame plate](reference/robot-asset.md). Predict its positive direction, then make a small slider change. The plate maps the actual hinges to the 14 action slots and distinguishes the world and trunk-base frames. Its [front and side views](reference/robot-asset.md#same-home-pose-different-cameras) use one identical recorded home pose.
+Pick `left_knee` or `head_yaw` on the joint plate below. Predict its positive direction, then make a small slider change. The plate maps the actual hinges to the 14 action slots and distinguishes the world and trunk-base frames.
 
-**Try another view:** toggle **Show Collision** and **Show Visual** in Newton's **Visualization** section. Only the sole shapes are active robot colliders in this walking asset. [Compare them with the visible meshes](reference/robot-asset.md#which-geometry-can-make-contact) before removing support.
+![Joint and frame plate for the Microduck action order](media/reference-joints.jpg)
+
+**Try another view:** toggle **Show Collision** and **Show Visual** in Newton's **Visualization** section. Only the sole shapes are active robot colliders in this walking asset. Compare them with the visible meshes before removing support.
 
 ## Remove support
 

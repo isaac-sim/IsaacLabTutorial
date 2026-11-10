@@ -16,13 +16,7 @@ The reward workshop replays **recorded motion**. Move reward-weight sliders and 
 
 This is the baseline policy's actual pose at 6.00 s. The scores integrate all 1000 recorded transitions over 20 seconds. Changing only `action_rate_l2` from −0.1 to −1.0 gives 251.4055 → 244.6884 for this same motion; its measured tracking errors stay unchanged. The candidate **objective** is loaded here; its separately trained policy appears below.
 
-Each original coefficient stays visible above its candidate slider. The disabled `head_pose_bias` term is absent because the recording cannot recover it. **Save candidate and training command** exports a recipe; it does not start training. [Capture, actual mouse-event checks and source hashes](evidence/reward-panel-validation.json).
-
-Rebuild this panel from the compact recorded data without running physics or training:
-
-```bash
-uv run --project environments/locomotion --locked python scripts/locomotion/capture_rewards.py --receipt docs/locomotion/evidence/reward-panel-data.json --candidate docs/locomotion/experiments/reward-action-rate.json --output outputs/reward-panel/reward-workshop.jpg
-```
+Each original coefficient stays visible above its candidate slider. The disabled `head_pose_bias` term is absent because the recording cannot recover it. **Save candidate and training command** exports a recipe; it does not start training.
 
 </details>
 
@@ -35,7 +29,7 @@ The linear tracking reward is `exp(-squared_heading_velocity_error / std²)`. Wi
 
 ![Analytic tracking reward at the actual 0.15 m/s tolerance and an illustrative 0.30 m/s alternative; a second panel includes weight 4 and the 0.02-second control interval](media/reward-shape.jpg)
 
-At the same nonzero velocity error, a larger width gives a larger tracking reward. Both curves equal one at zero error; increasing tolerance does not create better tracking. The right panel shows this term's contribution after its actual weight and control interval are applied. These are equation curves using [recorded nominal parameters](evidence/reward-shape.json), not learned-policy measurements. Rebuild with `uv run --project environments/locomotion python scripts/locomotion/plot_reward_shape.py`.
+At the same nonzero velocity error, a larger width gives a larger tracking reward. Both curves equal one at zero error; increasing tolerance does not create better tracking. The right panel shows this term's contribution after its actual weight and control interval are applied. These are equation curves using the nominal parameters, not learned-policy measurements.
 
 Try the workshop's width slider, then explain why making the score easier to earn could leave task performance unchanged.
 
@@ -49,17 +43,11 @@ We actually trained this candidate from scratch with the same seed and budget as
 
 ![Two actual learned motions scored under both objectives; the stronger-penalty policy survives but scarcely translates, while the baseline tracks commands](media/reward-comparison.jpg)
 
-Both policies stayed upright for 20 seconds. The candidate's forward/backward/lateral response gains were approximately zero, so it failed the locomotion criteria. Its requested-target rate RMS fell from 8.17 to 0.72 rad/s, but the baseline earned more under **both** objectives: 251.41 versus 197.68 under the original, and 244.69 versus 197.62 under the candidate objective. This is a poor learned result, even under its own objective; a changed reward does not guarantee successful optimization. It is one training seed and one physical start, not an aggregate robustness result. [Measurements and provenance](evidence/reward-validation.json).
+Both policies stayed upright for 20 seconds. The candidate's forward/backward/lateral response gains were approximately zero, so it failed the locomotion criteria. Its requested-target rate RMS fell from 8.17 to 0.72 rad/s, but the baseline earned more under **both** objectives: 251.41 versus 197.68 under the original, and 244.69 versus 197.62 under the candidate objective. This is a poor learned result, even under its own objective; a changed reward does not guarantee successful optimization. It is one training seed and one physical start, not an aggregate robustness result.
 
 ![The blue baseline ghost has travelled while the solid stronger-penalty duck remains near its start; both paths retain their world coordinates](media/reward-policy-ghost.jpg)
 
-With those local recordings installed, explore the actual motions:
-
-```bash
-uv run --project environments/locomotion python scripts/locomotion/compare.py --reference outputs/ppo-starts-matrix/trials/train-seed-42/eval-seed-0/receipt.json --candidate outputs/reward-action-rate-candidate/receipt.json
-```
-
-The two actors generated their own observations and actions during independent simulations. The ghost only replays them. To rescore your own recording with this candidate objective, add `--candidate docs/locomotion/experiments/reward-action-rate.json` to the reward-workshop command. Inspect the [per-term contributions](media/reward-terms.jpg): which component was reduced, and which tracking reward was lost?
+To inspect your own comparison, train a candidate with the workshop below, then record both policies from the same physical start. Inspect the [per-term contributions](media/reward-terms.jpg): which component was reduced, and which tracking reward was lost?
 
 <details>
 <summary>Reproduce the longer measured training run</summary>
@@ -96,6 +84,6 @@ uv run --project environments/locomotion python scripts/locomotion/reality_gap.p
 
 Replace both paths with saved checkpoints. Reward-only rescoring keeps one motion stream; this command runs two learned policies. Compare both recorded trajectories under both objectives using the workshop and retain independent tracking/fall metrics. Do not compare only each policy's preferred reward. See [the ghost controls](11-effects.md) for synchronized playback and early-ending markers.
 
-The evaluator uses the common nominal reward configuration when comparing policies. A candidate's training objective is recovered explicitly from its saved parameters, then applied to both recordings during rescoring. The published [numerical comparison](evidence/reward-comparison.json) retains both weight sets. Rebuild its figures without the larger local recordings using `uv run --project environments/locomotion python scripts/locomotion/plot_reward_comparison.py`.
+The evaluator uses the common nominal reward configuration when comparing policies. A candidate's training objective is recovered explicitly from its saved parameters, then applied to both recordings during rescoring.
 
 **Record:** “I increased the score by …; this does/does not demonstrate improved walking because ….”

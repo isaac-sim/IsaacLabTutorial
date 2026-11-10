@@ -31,7 +31,7 @@ DUCK_JOINTS = (
     "right_knee",
     "right_ankle",
 )
-DUCK_HOME_RAD = (0.0, -0.0873, -0.4579, -0.0049, 0.4530, 0.3491, 0.3491, 0.0, 0.0, 0.0, 0.0873, 0.4579, 0.0049, -0.4530)
+DUCK_HOME_RAD = (0.0, -0.0873, -0.4579, -0.0049, 0.453, 0.3491, 0.3491, 0.0, 0.0, 0.0, 0.0873, 0.4579, 0.0049, -0.453)
 OBSERVATION_LAYOUT = {
     "imu": 6,
     "joint_pos": 14,
@@ -71,9 +71,9 @@ def check_duck_contract(contract: dict) -> None:
         raise ValueError("Duck policy joints must follow servo order with the mouth excluded.")
     for field, expected in (("home_rad", DUCK_HOME_RAD), ("action_scale", np.ones(14))):
         actual = np.asarray(contract[field])
-        if actual.shape != (14,) or not np.allclose(actual, expected, atol=1e-6, rtol=0):
+        if actual.shape != (14,) or not np.allclose(actual, expected, atol=1e-06, rtol=0):
             raise ValueError(f"The standard Duck bundle requires the verified {field}.")
-    if not np.isclose(contract["control_dt_s"], 0.02, atol=1e-9, rtol=0):
+    if not np.isclose(contract["control_dt_s"], 0.02, atol=1e-09, rtol=0):
         raise ValueError("The standard Duck runtime consumes this policy at 50 Hz.")
     layout = contract["observation_layout"]
     if list(layout.items()) != list(OBSERVATION_LAYOUT.items()):
@@ -85,7 +85,7 @@ def check_duck_contract(contract: dict) -> None:
 def rehearsal_trace(observations) -> list[dict]:
     """Serialize actual raw policy inputs for Duck's no-actuation policy-rehearsal example."""
     observations = np.asarray(observations, dtype=np.float32)
-    if observations.ndim != 2 or observations.shape[1] != 61 or not len(observations):
+    if observations.ndim != 2 or observations.shape[1] != 61 or (not len(observations)):
         raise ValueError("Rehearsal needs a nonempty sequence of 61-value observations.")
     if not np.isfinite(observations).all():
         raise ValueError("Rehearsal observations must be finite.")
@@ -100,11 +100,11 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
         raise ValueError("A valid simulated trial and executed ONNX parity check are required.")
     return {
         "schema_version": 2,
-        "model_api": 2 if "history" in receipt["contract"] else 1,
+        "model_api": 1,
         "obs_len": 61,
         "action_len": 14,
         "robot": {"model": "microduck", "hw_rev": 1, "servos": "xl330", "control_hz": 50},
-        "name": f"tutorial-flat-{receipt.get('algorithm', 'ppo')}",
+        "name": "tutorial-flat-ppo",
         "description": "Microduck policy export; simulation response and inference parity are assessed separately.",
         "kind": "perpetual",
         "slot": "walk",
@@ -125,7 +125,6 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
             "conditions": receipt.get("training_conditions"),
             "checkpoint": receipt["checkpoint"],
             "checkpoint_sha256": receipt["checkpoint_sha256"],
-            **({"initialization": receipt["training_initialization"]} if "training_initialization" in receipt else {}),
         },
         "eval": {
             "seed": receipt["seed"],

@@ -14,7 +14,7 @@ Pause, scrub, hide the ghost, or switch to side-by-side display. Find the earlie
 
 The image is an offscreen capture of the working native widgets and real recordings. Collapse **Reality-gap experiment** when you want more room for replay controls.
 
-For an immediate activity without training or simulation, [open the included qualification explorer](09-evaluation.md#find-the-failing-condition). It contains actual nominal and delayed trials.
+After recording your own nominal and delayed trials, inspect their coverage in [the qualification explorer](09-evaluation.md#find-the-failing-condition).
 
 ## Try one physical mechanism
 
@@ -55,24 +55,6 @@ These are simulated 4° sweeps with seed 0: nominal, play alone, both delays wit
 
 **Spot the difference:** the queue receives a frame every 5 ms, even while a control decision is held for 20 ms. After startup its selected frame is 20 ms old, but the originating control decision is 20, 25, 30 or 35 ms old. The velocity feature has its own 20 ms cadence: its uniquely identified age is 0, then 20, then 40 ms in this recording. A repeated or unmatched signal gives **unavailable**, never an invented age. These are simulation-clock identities, not hardware capture/receive timestamps.
 
-<details>
-<summary>Record, rebuild, and inspect the evidence</summary>
-
-Add `--headless` to record one full reversal without a viewer. The [portable recorded study](evidence/actuator-data.json) retains all four traces and one physical snapshot. Redraw the figures without simulation:
-
-```bash
-uv run --project environments/locomotion python scripts/locomotion/plot_actuator.py --data docs/locomotion/evidence/actuator-data.json --output outputs/rebuilt-actuator
-uv run --project environments/locomotion python scripts/locomotion/capture_actuator.py --receipt docs/locomotion/evidence/actuator-data.json --output outputs/rebuilt-actuator/panel.jpg
-```
-
-To audit newly collected trials, use `plot_actuator.py --study YOUR_STUDY --output YOUR_FIGURES`. It expects `nominal`, `delay`, `backlash`, and `combined` directories with `trial-000/receipt.json`, using exactly the four configurations in the plots. Keep seed 0, joint `head_yaw`, and amplitude 4°. It checks actual starts, clocks, targets, signal-age matches and producer identity before pooling.
-
-The recorder copies actual native buffers after actuator computation and before each integration step. One read-only internal delayed-target array is guarded by the exact pinned BAM source hash; an SDK upgrade requires re-auditing this diagnostic. The independent motor-law check agrees within 3.73×10⁻⁹ Nm in these runs. A run without the recorder produced bitwise identical joint/body/root trajectories, actions and actor velocity inputs at all 150 control frames. [Validation and limitations](evidence/actuator-validation.json) distinguish actual mouse-event checks, simulation checks and recorded-state rendering.
-
-An in-process retry restores the same joint/base state and clears command/sensor histories, but is not promised bitwise identical. In the tested repeated 4° reversal, servo and passive coordinates differed by at most 3.47×10⁻⁷ and 4.20×10⁻⁷ rad. The native previous-solve external-load input also differed at the first tick. Use a fresh launch for controlled comparisons, as the four published conditions do; the workshop preserves each retry separately.
-
-</details>
-
 ## Use a frozen experiment file
 
 <details>
@@ -91,67 +73,19 @@ On reversal, the passive hinge can traverse its available clearance before loadi
 
 </details>
 
-This runs the same workflow without a desktop, using the supplied backlash snapshot:
+Save your own settings from the viewer, or create a small JSON file for a headless trial. Unspecified fields use nominal defaults:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --effects docs/locomotion/experiments/effects-backlash.json --headless --output outputs/backlash-workshop
+mkdir -p outputs
+printf '{"observation_delay_ms":40}\n' > outputs/delay40.json
+uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --effects outputs/delay40.json --record-only --output outputs/delay-workshop
 ```
 
-Use a fresh output directory for each workshop. Add `--capture-ui` to render the actual native controls offscreen too; `--record-only` omits rendering. Other one-factor snapshots cover [40 ms lag](experiments/effects-delay40.json), [noise](experiments/effects-noise.json), [6.5 V](experiments/effects-low-voltage.json), and [encoder bias](experiments/effects-encoder-bias.json). Change one factor, predict the outcome, and compare task response as well as survival.
-
-**Predict:** does a duck that survives a larger reality gap still follow its commands? Pick one knob in the workshop before revealing the measured study.
-
-<details>
-<summary>Reveal 250 actual frozen-policy attempts</summary>
-
-![Six isolated simulation sweeps distinguish finishing the protocol from following its commands: moderate delay, stronger observation noise and calibration bias can preserve standing while losing command response; large delays cause falls](media/sensitivity.jpg)
-
-One nominal PPO policy, training seed 42, encountered 25 distinct conditions under the same ten `balance-starts-v1` initial states and 20-second command protocol. The nominal ten attempts were evaluated once and reused in each panel. Blue counts full-trial survival; orange counts response qualification. Falls remain in every denominator. All 250 attempts were numerically valid; invalid attempts would be counted separately.
-
-At **20 ms observation lag**, all ten trials survived but none qualified. A **20 ms actuator queue** left eight upright, again with zero qualified responses. Noise scales 2 and 3 also preserved all ten full trials while losing response qualification. The sampled voltage levels and the isolated authored backlash variant qualified on all ten starts. These results describe this one policy and these simulation probes; they do not establish a hardware tolerance or variation across independently trained policies.
-
-![Mean full-trial forward, left and yaw tracking errors for the same six sweeps; grey cells remain unavailable when no valid trial completed, and every column shows complete over attempted count](media/sensitivity-tracking.jpg)
-
-Tracking means use **complete valid trials only**. The 20 ms queue column therefore describes eight of ten attempts; its two falls are absent from that conditional mean but remain in the survival and response counts. At larger delays no trial completed, so full-trial tracking is unavailable. Never read a missing or conditional error without the outcome counts.
-
-**Explain:** why can an overall tracking error look modest while a command segment fails? Inspect the per-segment criteria and failure reasons in the [portable audited study](evidence/sensitivity-study.json). Then try a nearby setting in your own fresh workshop; interpolation between the sampled levels is not a measured failure boundary.
-
-Rebuild both figures without simulation:
-
-```bash
-uv run --project environments/locomotion --locked python scripts/locomotion/summarize_effect_sweeps.py --data docs/locomotion/evidence/sensitivity-study.json --output outputs/rebuilt-sensitivity
-```
-
-[Validation](evidence/sensitivity-validation.json) records the actual source/model/asset locks, OSMO collection hashes, completed jobs and raw-data checks. Calibration bias changes both the actor's joint-position reading and the physical target mapping. The backlash intervention also includes its documented 14 mg authored mass difference. Every other factor uses the exact nominal settings in the plan.
-
-</details>
-
-<details>
-<summary>Repeat a bounded one-policy sensitivity experiment</summary>
-
-Keep one qualified policy frozen. The [declared sweep plan](experiments/sensitivity-plan.json) changes one setting at a time: target delay, observation lag, actor noise scale, fixed voltage, encoder calibration bias, or the authored backlash variant. Its 25 distinct conditions reuse the same ten physical starts. Evaluate the nominal control once, then share those ten baseline trials across all six views.
-
-**Predict:** which setting will first prevent standing, and which might preserve standing while losing command response? The chosen levels are simulation probes, not measured hardware tolerances. This experiment has one independent training seed; the ten reused physical starts do not provide ten independent learned policies.
-
-The encoder-bias intervention applies the same signed constant to all 14 servo encoders. The maintained action term adds that bias to the actor's joint-position reading and subtracts it from the physical joint target. It changes both sides of the interface, rather than only corrupting an observation. Noise scale also has a specific interpretation: it scales the four independent uniform component bounds recorded in the plan. Backlash selects a discrete asset variant; it does not continuously change hinge clearance.
-
-Choose an exact checkpoint and compute its hash with `sha256sum`. Replace the path and digest below with those values:
-
-```bash
-uv run --project environments/locomotion --locked python scripts/locomotion/run_effect_sweep.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --checkpoint-sha256 YOUR_POLICY_SHA256 --mechanism observation_delay_ms --output outputs/sensitivity-observation
-```
-
-The runner launches independent evaluator processes, with no training command. It freezes settings, source and model bytes, retains every attempted outcome, and archives models, resolved parameters, locked assets, reports and receipts. A physical fall remains an evaluation outcome; a process failure leaves the sweep incomplete with its diagnostics preserved. `--workers 3` allows three independent processes if GPU memory permits. For a bounded preflight, add `--case observation_delay_ms-20 --seeds 0` and use a separate output directory. Do not pool that subset as a complete study.
-
-Run `--mechanism nominal` once and repeat for each of the six field names in the plan. Full collection requests 250 attempts, not 250 independent physical starts. Keep response, survival, duration and missing measurements together; do not infer a hardware failure threshold by interpolating a few simulation levels.
-
-</details>
+Replace the checkpoint path with your saved model. Use a fresh output directory for each workshop. `--headless` records and renders without a desktop; `--record-only` omits rendering. Change one factor, predict the outcome, and compare command response as well as survival. A successful simulated trial does not establish a hardware tolerance.
 
 ![Actual independently simulated baseline ghost and backlash candidate, sharing world coordinates and a fixed command protocol](media/ghost-backlash.jpg)
 
-This example uses training seed 42 and physical-start seed 0. Both completed 20 seconds; one trial cannot establish robustness. [Simulation and control verification](evidence/effects-validation.json) identifies the configurations, recording hashes, and tested interactions. A separate [three-training-seed delay matrix](09-evaluation.md#find-the-failing-condition) provides the broader delay evidence.
-
-The [locked robot inputs](evidence/asset-lock.json) include the actual USD hashes. The backlash asset adds 14 tiny passive bodies, totaling 14 mg of additional authored mass. Treat the selection as the documented asset intervention; it is not a mathematically identical mass model with a single scalar changed.
+This example uses training seed 42 and physical-start seed 0. Both completed 20 seconds; one trial cannot establish robustness. The backlash asset adds 14 tiny passive bodies, totaling 14 mg of authored mass. It is a discrete asset intervention, rather than an identical model with one scalar changed.
 
 ## See what the actor actually received
 
@@ -163,18 +97,6 @@ The actor's ankle-velocity input matches the physical value from two control sam
 
 The black trace is the **requested** angle, and the blue trace is the measured servo angle. They differ because an actuator has dynamics and limits. The requested target is not a measured delayed/applied target; these control-boundary samples do not expose every 5 ms actuator step. With the backlash asset, the plot additionally shows servo angle plus passive play as the mechanical output.
 
-After recording any new workshop trial with the current evaluator, inspect it with:
-
-```bash
-uv run --project environments/locomotion python scripts/locomotion/plot_signals.py --receipt outputs/backlash-workshop/trial-00/receipt.json --joint left_ankle --output outputs/backlash-signals/signals.jpg
-```
-
-The recorder reads raw physics alongside the actual actor input at the same pre-step simulation boundary; it does not recompute histories or alter the policy. The published [portable signal data](evidence/signal-delay40.json) rebuilds this exact figure without the full trajectory:
-
-```bash
-uv run --project environments/locomotion python scripts/locomotion/plot_signals.py --data docs/locomotion/evidence/signal-delay40.json --output outputs/signal-rebuild/signals.jpg
-```
-
 These are simulation timestamps. Sensor capture, transport, receive and motor-application timestamps on the real robot still need hardware measurement.
 
 <details>
@@ -182,7 +104,7 @@ These are simulation timestamps. Sensor capture, transport, receive and motor-ap
 
 Predict the effect of a 40 ms observation delay. Choose the exact saved checkpoint from your run directory, then record matching trials and open the ghost viewer:
 
-For an immediate experiment with existing measurements, [open the qualification explorer](09-evaluation.md#find-the-failing-condition). Switch from nominal to 40 ms lag, select a fallen trial, and identify which commands it never reached. The three-training-seed matrix supplies the broader simulation evidence; the one-policy ghost below helps inspect the mechanism.
+The [qualification explorer](09-evaluation.md#find-the-failing-condition) compares your recorded outcomes; the ghost below helps inspect how their motions diverged.
 
 ```bash
 uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_49.pt --seed 0 --observation-delay-ms 40
@@ -204,13 +126,13 @@ uv run --project environments/locomotion python scripts/locomotion/compare.py --
 
 Command delay is separate. Try `--command-delay-ms 20`: it delays actuator targets by four 5 ms physics steps. A 40 ms observation delay spans two 20 ms samples. Converting both from the same step count would be wrong. Histories have startup/reset behavior; inspect and verify it before interpreting the first samples as steady-state latency.
 
-Backlash is state-dependent mechanical play, particularly visible after reversals. It differs from fixed encoder bias, random noise, an action deadband, and pure delay. The maintained transfer task offers a backlash asset through `presets=backlash`; that changes the asset/observation mapping and requires scene reconstruction. A future sandbox control must not pretend the asset can be replaced by changing a scalar on an active scene.
+Backlash is state-dependent mechanical play, particularly visible after reversals. It differs from fixed encoder bias, random noise, an action deadband, and pure delay. The maintained transfer task offers a backlash asset through `presets=backlash`; that changes the asset/observation mapping and requires scene reconstruction. The effects workshop reconstructs the scene when this selection changes.
 
 In one exploratory run (4096 environments, 1000 PPO iterations, training seed 42, evaluation seed 0), the baseline completed 20 seconds while the 40 ms delayed trial fell after 1.62 seconds. This illustrates sensitivity for that saved policy; repeat across independent training/evaluation seeds before drawing a robustness conclusion.
 
 ![Native ghost playback: the baseline remains upright; the delayed candidate's last pre-fall pose is held](media/ghost-delay.jpg)
 
-The image uses a constant side-by-side display offset. Both recorded world paths remain intact. Its [measurement receipt](evidence/delay-preview.json) identifies the checkpoint, source pins, and input recording hashes.
+The image uses a constant side-by-side display offset. Both recorded world paths remain intact.
 
 ![Measured command tracking over the full attempted horizon, with the candidate stopping at its early fall](media/tracking-delay.jpg)
 

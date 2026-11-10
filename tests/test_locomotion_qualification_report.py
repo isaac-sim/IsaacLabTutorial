@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 
 
-def test_matrix_cannot_relabel_nominal_evidence_as_delayed(tmp_path):
+def test_matrix_cannot_relabel_nominal_evidence_as_delayed(tmp_path, qualification_reports):
     root = Path(__file__).resolve().parents[1]
-    report = json.loads((root / "docs/locomotion/evidence/ppo-starts-matrix.json").read_text())
+    report = qualification_reports[0]
     report["configuration"]["observation_delay_ms"] = 40
     source = tmp_path / "mislabeled.json"
     source.write_text(json.dumps(report))
@@ -36,10 +36,12 @@ def test_matrix_cannot_relabel_nominal_evidence_as_delayed(tmp_path):
     assert not output.exists()
 
 
-def test_condition_explorer_rejects_policy_changes_hidden_behind_equal_seed_labels(tmp_path):
+def test_condition_explorer_rejects_policy_changes_hidden_behind_equal_seed_labels(tmp_path, qualification_reports):
     root = Path(__file__).resolve().parents[1]
-    evidence = root / "docs/locomotion/evidence"
-    candidate = json.loads((evidence / "ppo-delay40-matrix.json").read_text())
+    baseline = qualification_reports[0]
+    baseline_source = tmp_path / "baseline.json"
+    baseline_source.write_text(json.dumps(baseline))
+    candidate = qualification_reports[1]
     replacements = {
         model["sha256"]: hashlib.sha256(("different-policy-" + model["sha256"]).encode()).hexdigest()
         for model in candidate["configuration"]["models"]
@@ -56,7 +58,7 @@ def test_condition_explorer_rejects_policy_changes_hidden_behind_equal_seed_labe
             sys.executable,
             str(root / "scripts/locomotion/qualification_workshop.py"),
             "--report",
-            str(evidence / "ppo-starts-matrix.json"),
+            str(baseline_source),
             "--report",
             str(source),
             "--output",
@@ -70,7 +72,6 @@ def test_condition_explorer_rejects_policy_changes_hidden_behind_equal_seed_labe
     assert not output.exists()
 
     # Disjoint attempted evaluation seeds cannot hide changed configured policies either.
-    baseline = json.loads((evidence / "ppo-starts-matrix.json").read_text())
     baseline.update(complete=False, trials=[baseline["trials"][0]])
     candidate.update(complete=False, trials=[candidate["trials"][1]])
     baseline_source = tmp_path / "partial-baseline.json"

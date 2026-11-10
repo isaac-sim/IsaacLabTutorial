@@ -18,7 +18,7 @@ Open **Observation detective (read only)**. Choose the **policy** group and **jo
 
 ![Native observation inspector showing policy and IMU selectors, raw gyro/gravity values, named units and the 61-value actor width next to the actual supported duck state](media/observation-panel.jpg)
 
-The panel uses the real widget code and a recorded physical snapshot. Its gold marker rotates that snapshot's projected-gravity reading into world coordinates for this reference image. Head movement alone leaves the supported trunk's gyro/gravity unchanged. [Capture provenance](evidence/observation-panel-capture.json).
+The panel uses the real widget code and a recorded physical snapshot. Its gold marker rotates that snapshot's projected-gravity reading into world coordinates for this reference image. Head movement alone leaves the supported trunk's gyro/gravity unchanged.
 
 </details>
 

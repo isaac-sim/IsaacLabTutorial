@@ -11,11 +11,11 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 
 ![An actual frozen PPO policy follows the lateral command at 14 seconds on flat ground; its recorded command, measured velocity, checkpoint progress and world-space path remain visible](media/flat-walking-overview.jpg)
 
-[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4). [Recording inputs and checksums](reference/downloads.md).
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4).
 
 This is the longer seed-42 policy after 98,304,000 transitions, independently evaluated from `balance-starts-v1`, physical-start seed 0. The recorded 20-second protocol covers standing, forward, backward, lateral and turning commands. Its overlays use the actual recorded heading-frame forward/left velocities and world-Z yaw rate; the fixed camera preserves the whole world path.
 
-This policy passed the response criteria on this start. It is separate from the short first attempt you will train next, and one movie does not establish robustness. [Its exact checkpoint, asset, camera and native 50 Hz playback receipt](evidence/flat-walking-overview-video.json) identify the recording. Later, [drive a frozen policy yourself](09-evaluation.md) with bounded command sliders.
+This policy passed the response criteria on this start. It is separate from the short first attempt you will train next, and one movie does not establish robustness. Later, [drive a frozen policy yourself](09-evaluation.md) with bounded command sliders.
 
 </details>
 
@@ -25,11 +25,10 @@ This policy passed the response criteria on this start. It is separate from the 
 2. [Play with the puppet duck](03-puppet.md): move joint sliders and compare pose with balance.
 3. [Follow a command through the actuator](04-actions.md).
 4. [Investigate observations](05-observations.md) and [experiment with rewards](06-rewards.md).
-5. [Understand PPO](07-ppo.md), [play with the batch calculator and compare real training curves](08-training.md), then [explore the measured trial matrix and drive the frozen policy](09-evaluation.md).
+5. [Understand PPO](07-ppo.md), [play with the batch calculator and compare real training curves](08-training.md), then [evaluate physical starts and drive the frozen policy](09-evaluation.md).
 6. [Map the reality gap](10-reality-gap.md), [investigate delays/backlash](11-effects.md), [train for robustness](12-robustness.md), and [export for deployment](13-deployment.md).
-7. Finish with the Duck adaptations of [SuperMimic](14-super-mimic.md) and [FlashSAC](15-flash-sac.md), using the separate pinned workflows environment.
 
-The runnable path includes supported/free-base joint control, a bounded actuator reversal with actual 5 ms delay telemetry, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/retraining, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. The exploratory lessons preserve their measured successes and failures; the qualified SuperMimic recipe explicitly uses teacher data and initialization. Calibrated hardware transfer remains a measured checkpoint.
+The runnable path includes supported/free-base joint control, a bounded actuator reversal with actual 5 ms delay telemetry, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/retraining, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. Hardware walking and board-side timing still require calibrated robot trials.
 
 ## How to use the lessons
 
@@ -57,4 +56,21 @@ The frozen policy workshop keeps the observation/action/physics loop running. Le
 
 A **Run** block is an executable command. A **Reference** block explains code; it is not an instruction to paste it. Expected behavior describes what to look for, not a guaranteed training outcome. Checkpoint and hardware paths are inputs you choose explicitly.
 
-Contributors can inspect [the production evidence and visual inventory](production.md) for reproducible figures, activity coverage and remaining publication gates.
+<details>
+<summary>Try a trained policy before your own run is ready</summary>
+
+An optional [PPO policy bundle](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/ppo-reference-policies.tar.gz) contains nominal and delay-trained policies with their saved parameters. Each used 4,096 environments, 24 rollout steps and 1,000 iterations: 98,304,000 transitions. These are separate longer runs from the first-attempt exercise.
+
+Download and unpack the archive from the repository root:
+
+```bash
+mkdir -p outputs/reference-policies
+curl --fail --location https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/ppo-reference-policies.tar.gz -o outputs/ppo-reference-policies.tar.gz
+printf '%s  %s\n' 454a6ed1446a46cda3b8e3acfc2922477c08801aded9aef4f3e516fe1641794a outputs/ppo-reference-policies.tar.gz | sha256sum --check
+tar -xzf outputs/ppo-reference-policies.tar.gz -C outputs/reference-policies
+uv run --project environments/locomotion python scripts/locomotion/playground.py --mode policy --checkpoint outputs/reference-policies/nominal/model_999.pt
+```
+
+Add `--headless --scripted --steps 500` without a desktop. Keep the model's adjacent `run.json` and `params/` files. The delay-trained model requires `--training-profile delay` in the evaluator and effects workshop. Neither is a validated hardware controller.
+
+</details>

@@ -87,19 +87,20 @@ def test_agent_mismatch_stops_before_creating_a_study_or_starting_a_backend(tmp_
     params.mkdir()
     (params / "env.yaml").write_text("scene: {num_envs: 4096}\nsim: {dt: 0.005}\n")
     (params / "agent.yaml").write_text(
-        "algorithm: {class_name: PPO}\nseed: 42\nnum_steps_per_env: 24\nmax_iterations: 1000\nresume: false\n"
+        "algorithm: {class_name: OtherAlgorithm}\nseed: 42\n"
+        "num_steps_per_env: 24\nmax_iterations: 1000\nresume: false\n"
     )
     checkpoint = tmp_path / "model_999.pt"
     checkpoint.write_bytes(b"Opaque checkpoint: the backend must not be asked to interpret the wrong algorithm.")
     output = tmp_path / "study"
     script = Path(__file__).resolve().parents[1] / "scripts/locomotion/qualify.py"
     result = subprocess.run(
-        [sys.executable, str(script), "--checkpoint", str(checkpoint), "--agent", "sac", "--output", str(output)],
+        [sys.executable, str(script), "--checkpoint", str(checkpoint), "--output", str(output)],
         text=True,
         capture_output=True,
         check=False,
     )
-    assert result.returncode == 2 and "agent selection" in result.stderr
+    assert result.returncode == 2 and "trained with PPO" in result.stderr
     assert not output.exists()
 
 
@@ -110,8 +111,8 @@ def test_selected_checkpoint_progress_must_match_before_starting_a_study(tmp_pat
         (directory / "params").mkdir(parents=True)
         (directory / "params/env.yaml").write_text("scene: {num_envs: 4096}\nsim: {dt: 0.005}\n")
         (directory / "params/agent.yaml").write_text(
-            f"algorithm: {{class_name: PPO}}\nseed: {seed}\nnum_steps_per_env: 24\n"
-            "max_iterations: 1000\nresume: false\n"
+            f"algorithm: {{class_name: PPO}}\nseed: {seed}\n"
+            "num_steps_per_env: 24\nmax_iterations: 1000\nresume: false\n"
         )
         checkpoint = directory / f"model_{iteration}.pt"
         torch.save(
@@ -166,68 +167,3 @@ def test_resume_cannot_accept_a_receipt_from_a_failed_process(tmp_path, monkeypa
         runpy.run_path(str(script), run_name="__main__")
     assert len(calls) == 1
     assert not json.loads((output / "report.json").read_text())["complete"]
-
-
-def test_supermimic_cannot_attach_another_policys_teacher_initialization(tmp_path):
-    (tmp_path / "params").mkdir()
-    (tmp_path / "params/env.yaml").write_text("scene: {num_envs: 256}\nsim: {dt: 0.005}\n")
-    (tmp_path / "params/agent.yaml").write_text(
-        "algorithm: {class_name: SuperMimic}\nseed: 42\nnum_steps_per_env: 1\nmax_iterations: 2500\nresume: false\n"
-    )
-    (tmp_path / "run.json").write_text(json.dumps({"task": "MicroDuckTutorial-Velocity-Flat-SuperMimic"}))
-    checkpoint = tmp_path / "model_2499.pt"
-    torch.save({"iter": 2499, "actor_optimizer_state_dict": {"state": {0: {"step": 1000}}}}, checkpoint)
-    (tmp_path / "warmstart.json").write_text(
-        json.dumps(
-            {
-                "status": "complete",
-                "final_checkpoint_sha256": "another-policy",
-                "training_seed": 42,
-                "scope": "Teacher initialization with matched phase budgets",
-                "teacher_checkpoint_sha256": "teacher",
-                "teacher_receipt_sha256": "receipt",
-                "teacher_actual_physical_transitions": 49152000,
-                "producer_sha256": {"warmstart.py": "producer"},
-                "workflow_lock_sha256": "lock",
-                "final_optimizer_step_counters": {"actor_optimizer_state_dict": [1000]},
-                "imitation": {
-                    "optimizer": "Adam",
-                    "learning_rate": 0.0003,
-                    "betas": [0.9, 0.999],
-                    "eps": 1e-8,
-                    "max_gradient_norm": 1,
-                    "cache_samples": 131072,
-                    "batch_size": 1024,
-                    "updates_per_collection_step": 4,
-                    "completed_physical_transitions": 524288,
-                    "planned_physical_transitions": 524288,
-                    "optimizer_steps": 8192,
-                },
-                "model_warmup": {"optimizer_step_counters": [2000], "initial_learning_rate": 0.0002},
-                "native_rl": {
-                    "physical_transitions": 640000,
-                    "initial_learning_rate": 1e-7,
-                    "actor_normalization": "fixed_after_imitation",
-                },
-            }
-        )
-    )
-    output = tmp_path / "study"
-    script = Path(__file__).resolve().parents[1] / "scripts/locomotion/qualify.py"
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(script),
-            "--agent",
-            "supermimic",
-            "--checkpoint",
-            str(checkpoint),
-            "--output",
-            str(output),
-        ],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 2 and "initialization does not match" in result.stderr
-    assert not output.exists()

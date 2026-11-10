@@ -16,12 +16,12 @@ import pytest
 browser_api = pytest.importorskip("playwright.sync_api", reason="Install playwright to run the optional browser check")
 
 
-def test_invalid_evaluation_remains_visible_while_budget_and_curves_work(tmp_path):
+def test_invalid_evaluation_remains_visible_while_budget_and_curves_work(tmp_path, training_report):
     chrome = shutil.which("google-chrome") or shutil.which("chromium")
     if chrome is None:
         pytest.skip("A locally installed Chrome/Chromium is required for this optional check")
     root = Path(__file__).resolve().parents[1]
-    report = json.loads((root / "docs/locomotion/evidence/training-comparison.json").read_text())
+    report = training_report
     # This is the numerical-failure schema produced by evaluate.py, not a truncated successful score.
     report["runs"][0]["evaluation"].update(valid=False, metrics={"invalid_reason": "nan_state"})
     fixture = tmp_path / "report.json"

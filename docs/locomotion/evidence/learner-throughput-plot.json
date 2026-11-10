@@ -1,8 +1,0 @@
-{
-  "scope": "Synchronized local learner workload; sample presentations are not fresh environment experience.",
-  "evidence_sha256": "d3e3e2b5ca122f507b9136644bba785e1ce2ef9a2c2e3bc6845d42f4e968cb3d",
-  "renderer_sha256": "42b6ab381d0234787fe82aa34d71fa3f304c3b6ba7edfda35f7f93358ab4196b",
-  "image_sha256": "b7e23c8b04e0486e5e39d436123a05dfc01d762a0b3c8aa761e83cd4459348a9",
-  "vector_sha256": "e1bbab1c82997be50a3f67474704e7a947f11caa00a34e9314fe221c8f691d7c",
-  "matplotlib_version": "3.11.2"
-}

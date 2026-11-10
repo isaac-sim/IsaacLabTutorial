@@ -27,9 +27,7 @@ An advantage estimates whether an action worked better than expected from its st
 
 ![Analytic PPO objective: positive advantages flatten above ratio 1.2, while negative advantages flatten below 0.8; the unclipped objective remains a straight line](media/ppo-objective.jpg)
 
-The plot maximizes `min(r × A, clip(r, 1 − ε, 1 + ε) × A)`, using `ε = 0.2` and illustrative advantages `A = +1` and `A = −1`. Here `r = exp(new_log_probability − rollout_log_probability)`. RSL-RL minimizes the negative of this expression. These are analytic curves, not training measurements. The clipped and unclipped lines overlap on the side where the objective still discourages a harmful change. [Figure inputs and source](evidence/ppo-objective.json).
-
-Rebuild with `uv run --project environments/locomotion python scripts/locomotion/plot_ppo_objective.py`. Keep the chosen epsilon with your figure when exploring another value.
+The plot maximizes `min(r × A, clip(r, 1 − ε, 1 + ε) × A)`, using `ε = 0.2` and illustrative advantages `A = +1` and `A = −1`. Here `r = exp(new_log_probability − rollout_log_probability)`. RSL-RL minimizes the negative of this expression. These are analytic curves, not training measurements. The clipped and unclipped lines overlap on the side where the objective still discourages a harmful change.
 
 </details>
 
