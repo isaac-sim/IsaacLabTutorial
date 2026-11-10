@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Microduck qualification investigator</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fafafa;
+        --fg: #20262b;
+        --panel: #fff;
+        --line: #bdc7cd;
+        --muted: #56646c;
+        --qualified: #50b88b;
+        --fell: #e79a60;
+        --failed: #a1c7dd;
+        --invalid: #c8b5d6;
+        --accent: #0072b2;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #191d20;
+          --fg: #edf3f5;
+          --panel: #252c30;
+          --line: #586872;
+          --muted: #bcc8ce;
+          --qualified: #204e3d;
+          --fell: #663e20;
+          --failed: #29495b;
+          --invalid: #513f60;
+          --accent: #79c7ff;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        max-width: 1050px;
+        margin: 30px auto;
+        padding: 0 20px;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      h1 {
+        font-size: 27px;
+        margin-bottom: 4px;
+      }
+      h2 {
+        font-size: 21px;
+        margin: 0 0 12px;
+      }
+      h3 {
+        font-size: 17px;
+      }
+      p {
+        overflow-wrap: anywhere;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      section {
+        background: var(--panel);
+        padding: 22px;
+        margin: 22px 0;
+        border-radius: 10px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+      }
+      select,
+      button {
+        font: inherit;
+        color: inherit;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 7px;
+        border-radius: 5px;
+        max-width: 100%;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:focus-visible,
+      select:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .scroll {
+        overflow: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+      td button {
+        min-width: 42px;
+        width: 100%;
+      }
+      .qualified {
+        background: var(--qualified);
+      }
+      .fell {
+        background: var(--fell);
+      }
+      .failed {
+        background: var(--failed);
+      }
+      .invalid {
+        background: var(--invalid);
+      }
+      button[aria-pressed="true"] {
+        outline: 3px solid var(--fg);
+        outline-offset: 1px;
+      }
+      #gains {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      pre {
+        background: var(--bg);
+        padding: 12px;
+        font-size: 13px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .status {
+        padding: 12px;
+        background: var(--bg);
+        border-radius: 5px;
+      }
+      .twocol {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 650px) {
+        .twocol {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Where does the duck struggle?</h1>
+    <p class="muted">
+      Choose a recorded condition. Pick a trial. Inspect what it actually
+      attempted.
+    </p>
+    <section>
+      <label for="condition">Recorded physical condition</label
+      ><select id="condition"></select>
+      <p id="summary" class="status"></p>
+      <div class="scroll">
+        <table aria-label="Qualification matrix">
+          <thead id="grid-head"></thead>
+          <tbody id="grid-body"></tbody>
+        </table>
+      </div>
+      <p class="muted">
+        Q: qualified · F: fell · T: survived but response failed · I: invalid ·
+        –: unattempted. Click or keyboard-select a cell.
+      </p>
+      <p>
+        Switching conditions reveals another saved experiment. It does not
+        change a running simulator or invent a new policy trajectory.
+      </p>
+    </section>
+    <section aria-labelledby="trial-heading">
+      <h2 id="trial-heading">Selected trial</h2>
+      <p id="trial-status" class="status" aria-live="polite"></p>
+      <p id="start"></p>
+      <div class="twocol">
+        <div>
+          <h3>Steady commanded-axis response</h3>
+          <svg
+            id="gains"
+            viewBox="0 0 470 220"
+            role="img"
+            aria-label="Recorded response gains; one means matching the command"
+          ></svg>
+          <p class="muted">
+            After the first second of each segment. Target = 1; accepted range =
+            0.5–1.5. Unattempted or unavailable segments show no bar.
+          </p>
+        </div>
+        <div>
+          <h3>Attempted segment coverage</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Segment</th>
+                <th>Coverage</th>
+                <th>RMSE: forward / left / yaw</th>
+              </tr>
+            </thead>
+            <tbody id="segments"></tbody>
+          </table>
+          <p class="muted">
+            RMSE units: m/s, m/s, rad/s. Early-fall errors cover available
+            samples only.
+          </p>
+        </div>
+      </div>
+      <p id="reasons"></p>
+      <h3>Inspect the matched baseline ghost</h3>
+      <p id="ghost-note"></p>
+      <pre id="ghost-command"></pre>
+    </section>
+    <section>
+      <h2>Compare training seeds, not just pooled episodes</h2>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Training seed</th>
+              <th>Attempts</th>
+              <th>Invalid</th>
+              <th>Full protocol</th>
+              <th>Response qualified</th>
+              <th>Full-trial mean RMSE</th>
+            </tr>
+          </thead>
+          <tbody id="seed-summary"></tbody>
+        </table>
+      </div>
+      <p class="muted">
+        Failed and invalid attempts stay in pass-rate denominators. Error means
+        use complete valid trials only and remain unavailable if none completed.
+        These finite test cases describe the declared starts, conditions, and
+        simulator.
+      </p>
+    </section>
+    <script type="application/json" id="matrix-data">{{REPORT_JSON}}</script>
+    <script>
+      (() => {
+        "use strict";
+        const reports = JSON.parse(
+          document.getElementById("matrix-data").textContent,
+        ).reports;
+        const el = (id) => document.getElementById(id),
+          names = ["stand", "forward", "backward", "lateral", "yaw"];
+        let selectedTraining = reports[0].trials[0].training_seed,
+          selectedSeed = reports[0].trials[0].seed;
+        const number = (value) =>
+          Number.isFinite(value) ? value.toFixed(3) : "unavailable";
+        function status(trial) {
+          if (!trial) return ["–", "", "Unattempted"];
+          if (!trial.valid) return ["I", "invalid", "Invalid trial"];
+          if (trial.metrics.fell) return ["F", "fell", "Fell"];
+          return trial.qualification.passed
+            ? ["Q", "qualified", "Response qualified"]
+            : ["T", "failed", "Response failed"];
+        }
+        function cell(row, text, tag = "td") {
+          const node = document.createElement(tag);
+          node.textContent = text;
+          row.append(node);
+          return node;
+        }
+        reports.forEach((report, index) => {
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = report.label;
+          el("condition").append(option);
+        });
+        function render() {
+          const report = reports[+el("condition").value],
+            summary = report.summary;
+          const rate = summary.qualified_rate_across_training_seeds;
+          el("summary").textContent =
+            `${report.complete ? "Complete study" : "INCOMPLETE study"}: ${report.configuration.start_protocol}; ${report.trials.length}/${report.expected_trials} recorded trials; ${summary.training_seeds} training seeds; ${summary.unique_physical_starts} distinct actual starts. Response pass rate: ${(rate.mean * 100).toFixed(1)}% ± ${rate.sample_std === null ? "unavailable" : (rate.sample_std * 100).toFixed(1) + " percentage points"} sample SD across training seeds.`;
+          el("grid-head").replaceChildren();
+          el("grid-body").replaceChildren();
+          el("seed-summary").replaceChildren();
+          const header = document.createElement("tr");
+          cell(header, "Train / eval seed", "th");
+          report.configuration.seeds.forEach((seed) =>
+            cell(header, seed, "th"),
+          );
+          el("grid-head").append(header);
+          const seeds = report.configuration.models
+            .map((model) => model.training_seed)
+            .sort((a, b) => a - b);
+          seeds.forEach((training) => {
+            const row = document.createElement("tr");
+            cell(row, training, "th");
+            report.configuration.seeds.forEach((seed) => {
+              const trial = report.trials.find(
+                  (item) =>
+                    item.training_seed === training && item.seed === seed,
+                ),
+                result = status(trial);
+              const td = document.createElement("td"),
+                button = document.createElement("button");
+              button.textContent = result[0];
+              button.className = result[1];
+              button.setAttribute(
+                "aria-label",
+                `Training seed ${training}, evaluation seed ${seed}: ${result[2]}`,
+              );
+              button.setAttribute(
+                "aria-pressed",
+                String(training === selectedTraining && seed === selectedSeed),
+              );
+              button.addEventListener("click", () => {
+                selectedTraining = training;
+                selectedSeed = seed;
+                render();
+              });
+              td.append(button);
+              row.append(td);
+            });
+            el("grid-body").append(row);
+            const record = summary.per_training_seed[training],
+              sr = document.createElement("tr");
+            [
+              training,
+              record?.attempts ?? 0,
+              record?.invalid_attempts ?? 0,
+              record?.full_protocol_trials ?? 0,
+              record
+                ? `${(record.qualified_rate * 100).toFixed(1)}%`
+                : "unattempted",
+              record?.full_trial_tracking_rmse_mean
+                ? record.full_trial_tracking_rmse_mean.map(number).join(" / ")
+                : "No full valid trial",
+            ].forEach((value) => cell(sr, value));
+            el("seed-summary").append(sr);
+          });
+          const trial = report.trials.find(
+            (item) =>
+              item.training_seed === selectedTraining &&
+              item.seed === selectedSeed,
+          );
+          const result = status(trial);
+          el("trial-heading").textContent =
+            `Training seed ${selectedTraining}, evaluation seed ${selectedSeed}`;
+          el("trial-status").textContent = !trial
+            ? "This trial has not run."
+            : !trial.valid
+              ? `${result[2]}: ${trial.metrics.invalid_reason}. No valid tracking score.`
+              : `${result[2]}; ${number(trial.metrics.alive_time_s)} s available; ${(trial.metrics.coverage * 100).toFixed(1)}% horizon coverage.`;
+          el("start").textContent = trial
+            ? `Requested initial roll / pitch / heading: ${trial.start_condition.sample.rpy_offset_rad.map((value) => ((value * 180) / Math.PI).toFixed(2) + "°").join(" / ")}. Actual starting root height: ${number(trial.initial_state.root_pos_w[2])} m.`
+            : "";
+          el("segments").replaceChildren();
+          const segments = trial?.qualification?.segments || {};
+          names.forEach((name) => {
+            const data = segments[name],
+              row = document.createElement("tr");
+            cell(row, name);
+            cell(
+              row,
+              data ? `${(data.coverage * 100).toFixed(0)}%` : "unavailable",
+            );
+            cell(
+              row,
+              data?.tracking_rmse
+                ? data.tracking_rmse.map(number).join(" / ")
+                : "unavailable",
+            );
+            el("segments").append(row);
+          });
+          el("reasons").textContent = trial?.qualification?.reasons?.length
+            ? trial.qualification.reasons.join("; ")
+            : trial?.qualification?.passed
+              ? "Every declared response criterion passed for this trial."
+              : "";
+          el("ghost-command").textContent = trial?.ghost_command || "";
+          el("ghost-command").hidden = !trial?.ghost_command;
+          el("ghost-note").textContent = trial?.ghost_command
+            ? "Replay the baseline and selected condition in the native Newton viewer with this command. Paths point to the verified local full recordings."
+            : "A matched ghost needs both full trajectory recordings installed locally with their recorded hashes. The portable numerical report alone does not include those recordings.";
+          drawGains(segments);
+        }
+        function drawGains(segments) {
+          const svg = el("gains"),
+            ns = "http://www.w3.org/2000/svg";
+          svg.replaceChildren();
+          const entries = names
+            .slice(1)
+            .map((name) => [
+              name,
+              segments[name]?.steady_directional_gain ?? null,
+            ]);
+          const finite = entries.map((item) => item[1]).filter(Number.isFinite),
+            low = Math.min(-0.25, ...finite),
+            high = Math.max(1.75, ...finite);
+          const x = (value) => 90 + ((value - low) / (high - low)) * 300;
+          function add(tag, attrs, text) {
+            const node = document.createElementNS(ns, tag);
+            Object.entries(attrs).forEach(([key, value]) =>
+              node.setAttribute(key, value),
+            );
+            if (text !== undefined) node.textContent = text;
+            svg.append(node);
+          }
+          add("rect", {
+            x: x(0.5),
+            y: 10,
+            width: x(1.5) - x(0.5),
+            height: 180,
+            fill: "var(--qualified)",
+            opacity: 0.45,
+          });
+          add("line", {
+            x1: x(1),
+            x2: x(1),
+            y1: 10,
+            y2: 190,
+            stroke: "var(--fg)",
+            "stroke-dasharray": "4 4",
+          });
+          entries.forEach(([name, gain], index) => {
+            const yy = 35 + index * 43;
+            add(
+              "text",
+              {
+                x: 80,
+                y: yy + 5,
+                "text-anchor": "end",
+                fill: "var(--fg)",
+                "font-size": 13,
+              },
+              name,
+            );
+            if (Number.isFinite(gain)) {
+              add("rect", {
+                x: Math.min(x(0), x(gain)),
+                y: yy - 9,
+                width: Math.abs(x(gain) - x(0)),
+                height: 17,
+                fill: "var(--accent)",
+              });
+              add(
+                "text",
+                { x: 405, y: yy + 5, fill: "var(--fg)", "font-size": 13 },
+                gain.toFixed(2),
+              );
+            } else
+              add(
+                "text",
+                { x: 100, y: yy + 5, fill: "var(--muted)", "font-size": 13 },
+                "unavailable",
+              );
+          });
+          [0, 0.5, 1, 1.5].forEach((value) =>
+            add(
+              "text",
+              {
+                x: x(value),
+                y: 211,
+                "text-anchor": "middle",
+                fill: "var(--fg)",
+                "font-size": 12,
+              },
+              value,
+            ),
+          );
+        }
+        el("condition").addEventListener("change", render);
+        render();
+      })();
+    </script>
+  </body>
+</html>

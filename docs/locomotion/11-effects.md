@@ -2,6 +2,8 @@
 
 Predict the effect of a 40 ms observation delay. Choose the exact saved checkpoint from your run directory, then record matching trials and open the ghost viewer:
 
+For an immediate experiment with existing measurements, [open the qualification explorer](09-evaluation.md#find-the-failing-condition). Switch from nominal to 40 ms lag, select a fallen trial, and identify which commands it never reached. The three-training-seed matrix supplies the broader simulation evidence; the one-policy ghost below helps inspect the mechanism.
+
 ```bash
 uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_49.pt --seed 0 --observation-delay-ms 40
 ```
