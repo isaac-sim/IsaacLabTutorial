@@ -14,12 +14,14 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 4. [Investigate observations](05-observations.md) and [experiment with rewards](06-rewards.md).
 5. [Understand PPO](07-ppo.md), [play with the batch calculator and compare real training curves](08-training.md), then [explore the measured trial matrix and drive the frozen policy](09-evaluation.md).
 6. [Map the reality gap](10-reality-gap.md), [investigate delays/backlash](11-effects.md), [train for robustness](12-robustness.md), and [export for deployment](13-deployment.md).
-7. Finish with [Super Mimic](14-super-mimic.md) and [Flash SAC](15-flash-sac.md) when their merged integrations are available.
+7. Finish with the Duck adaptations of [SuperMimic](14-super-mimic.md) and [FlashSAC](15-flash-sac.md), using the separate pinned workflows environment.
 
-The runnable path includes supported/free-base joint control, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/replay, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. Hardware transfer and the Duck adaptations of the two incoming learners remain production checkpoints.
+The runnable path includes supported/free-base joint control, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/retraining, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. The exploratory lessons preserve their measured successes and failures; the qualified SuperMimic recipe explicitly uses teacher data and initialization. Calibrated hardware transfer remains a measured checkpoint.
 
 ## How to use the lessons
 
 **Try → predict → change one thing → observe → explain → retry.** The main path is hands-on; theory panels explain what you have already seen. Record one sentence after each experiment. Keep the seed and reset protocol fixed when comparing changes.
 
 A **Run** block is an executable command. A **Reference** block explains code; it is not an instruction to paste it. Expected behavior describes what to look for, not a guaranteed training outcome. Checkpoint and hardware paths are inputs you choose explicitly.
+
+Contributors can inspect [the production evidence and visual inventory](production.md) for reproducible figures, activity coverage and remaining publication gates.

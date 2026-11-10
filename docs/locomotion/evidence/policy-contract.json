@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "scope": "Actual PPO API1 contract extracted from the byte-verified bundle used in the standard Rust rehearsal. SuperMimic API2 has its own history contract.",
+  "source_manifest_sha256": "e9a290e507f8f4e15a966700f164368ff3569b964be82ca6e1790d18557c1198",
+  "checkpoint_sha256": "bbbd21bed6d7789312d951721597500593f6ca41b3324193dffee6f0a2e85873",
+  "onnx_sha256": "037d084a3a79db39efabeca81e8bd1f32f7d2f459fd3cb7572ff9b8cd118386c",
+  "model_api": 1,
+  "actor_width": 61,
+  "action_width": 14,
+  "robot": {
+    "model": "microduck",
+    "hw_rev": 1,
+    "servos": "xl330",
+    "control_hz": 50
+  },
+  "command": {
+    "encoding": "constant",
+    "idle": [
+      0,
+      0,
+      0
+    ],
+    "twist": "forward m/s, left m/s, yaw rad/s",
+    "head": "four zero commands; nonzero head commands were not trained",
+    "body": "six zero commands; nonzero body commands were not trained"
+  },
+  "contract": {
+    "joint_names": [
+      "left_hip_yaw",
+      "left_hip_roll",
+      "left_hip_pitch",
+      "left_knee",
+      "left_ankle",
+      "neck_pitch",
+      "head_pitch",
+      "head_yaw",
+      "head_roll",
+      "right_hip_yaw",
+      "right_hip_roll",
+      "right_hip_pitch",
+      "right_knee",
+      "right_ankle"
+    ],
+    "home_rad": [
+      0.0,
+      -0.08730000257492065,
+      -0.4578999876976013,
+      -0.004900000058114529,
+      0.453000009059906,
+      0.3490999937057495,
+      0.3490999937057495,
+      0.0,
+      0.0,
+      0.0,
+      0.08730000257492065,
+      0.4578999876976013,
+      0.004900000058114529,
+      -0.453000009059906
+    ],
+    "action_scale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "control_dt_s": 0.02,
+    "observation_layout": {
+      "imu": 6,
+      "joint_pos": 14,
+      "joint_vel": 14,
+      "actions": 14,
+      "velocity_commands": 3,
+      "head_pose_commands": 4,
+      "body_pose_commands": 6
+    },
+    "normalization": "embedded"
+  },
+  "runtime_source": "https://github.com/pollen-robotics/microduck/tree/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+  "runtime_settings": {
+    "action_scale": 1.0,
+    "head_target_filter": 1.0,
+    "leg_target_filter": 1.0,
+    "gain": 200,
+    "evidence_settings_sha256": "7a220de36f0882f4fd998b370b81eef61b63f605bbdcf68bc406068ba2932c49"
+  },
+  "hardware_validated": false
+}

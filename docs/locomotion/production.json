@@ -1,0 +1,1187 @@
+{
+  "schema_version": 1,
+  "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
+  "source_revision": "e538d12006627db8fdfad72945b3bacccd5bc706",
+  "source_lock": [
+    {
+      "path": "environments/locomotion/uv.lock",
+      "sha256": "b0354cdf31de8551ca6493057cfdadac624d7069cb8d61832d7ad427b0be6e29"
+    },
+    {
+      "path": "environments/locomotion/pyproject.toml",
+      "sha256": "b3fa95746130abb19a5bd40ea2c8990fa71f1870ee1b454cc156239b33128c44"
+    },
+    {
+      "path": "docs/locomotion/evidence/asset-lock.json",
+      "sha256": "467d6ae62dbf523c2e2c6701489f6ae83714139c38b6d0b35f386be9a4d91fd3"
+    }
+  ],
+  "policy_and_evaluation_evidence": [
+    {
+      "path": "docs/locomotion/evidence/policy-contract.json",
+      "sha256": "905219f3c088ae3d09f08db1c3c10ece12206916d64156f1fa0c596d3c8f8165"
+    },
+    {
+      "path": "docs/locomotion/evidence/ppo-objective.json",
+      "sha256": "397b8b8c2aa4050d55af1944e6ec62b3ab180b23075b9719033d906d7227b20c"
+    },
+    {
+      "path": "docs/locomotion/evidence/playground-validation.json",
+      "sha256": "6b5ed4f1058b24e58baf599509ac8d99a591d6e78d25d6b182f0b27b3792b196"
+    },
+    {
+      "path": "docs/locomotion/evidence/training-validation.json",
+      "sha256": "66992968edcfc22b8adfbc14bdaa361f7ee3ca7c96876101ab1696a8e52f138e"
+    },
+    {
+      "path": "docs/locomotion/evidence/qualification-validation.json",
+      "sha256": "7895707cccaee848b87a3176a00e3a7aa39df938d8c4df6853765293ca7ea679"
+    },
+    {
+      "path": "docs/locomotion/evidence/reward-validation.json",
+      "sha256": "5d7bdcd11cb42f653b20b0e633d82d0e006aeb5ff5513de9d50a791bdd6b310d"
+    },
+    {
+      "path": "docs/locomotion/evidence/effects-validation.json",
+      "sha256": "370828e6a7806fff731305037f9d50c3db15f7691ba0f18124260580ac9a8a83"
+    },
+    {
+      "path": "docs/locomotion/evidence/ppo-runtime-rehearsal.json",
+      "sha256": "7e35643a393654b16cba08f164c59c514ee5b4d57c391e2614de8353aa380257"
+    },
+    {
+      "path": "docs/locomotion/evidence/sac-physical-start-validation.json",
+      "sha256": "cc9cd4175d39fbe495952d6cd3238aedaa809a923f09f34a7c875fb213f0c276"
+    },
+    {
+      "path": "docs/locomotion/evidence/supermimic-warmstart-fixed-validation.json",
+      "sha256": "76d4957c08951007cf06adbf773d8a58708e8d06f01ed385344e6bd74ce2338d"
+    },
+    {
+      "path": "docs/locomotion/evidence/supermimic-warmstart-heldout-seed2.json",
+      "sha256": "a8eaf8e85b74c1c4664ae5aee8f24dcdad34be36158401bbbad918201fbf0243"
+    }
+  ],
+  "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
+  "review_scope": "Core runtime and evidence checks recorded separately. Missing, partial and hardware outputs remain explicit.",
+  "assets": [
+    {
+      "id": "V01",
+      "topic": "flat-walking-overview",
+      "kind": "simulator_video",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/policy-driving.jpg",
+          "sha256": "96bdf5423d55d41c2fc9d38b06b13d8ae9975a5f5ecc7dc96436a2250e9d87c2"
+        }
+      ],
+      "acceptance": "Checkpoint, task, asset, renderer, camera, seed, and playback speed are recorded; no fabricated velocity overlay.",
+      "required_labels": [
+        "Policy and task",
+        "Simulation time",
+        "Flat ground"
+      ],
+      "dimensions": "1920x1080; native simulation/real time; poster derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Only a real still is published; native-time walking video and camera receipt remain."
+    },
+    {
+      "id": "V02",
+      "topic": "learning-loop",
+      "kind": "schematic",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/05-observations.md",
+          "sha256": "f61ed43fa05c91d962d855dcacf2ff9bcb4df3aa0721abe2ad57bcd637ae03de"
+        }
+      ],
+      "acceptance": "Inference path cannot be mistaken for a controller that needs rewards or critic values on hardware.",
+      "required_labels": [
+        "Observation",
+        "Actor",
+        "Action",
+        "Actuator",
+        "Physics",
+        "Reward",
+        "Training only"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Observation/inference flow exists; add the reward and training-only optimizer branch."
+    },
+    {
+      "id": "V03",
+      "topic": "project-config-map",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/02-first-training.md",
+          "sha256": "5ef4270fd863f14e8be1b912a4fd58c3f3d1aa65702e46df37fe2a8ae4feabda"
+        }
+      ],
+      "acceptance": "Every displayed path exists at the lesson checkpoint; config ownership and runtime execution are distinguished.",
+      "required_labels": [
+        "Task registration",
+        "Environment config",
+        "PPO config",
+        "Logs and checkpoints"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V04",
+      "topic": "verified-cli-output",
+      "kind": "text_excerpt",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Excerpt comes from a saved successful receipt and contains no invented success line or user-specific secret.",
+      "required_labels": [
+        "Working directory",
+        "Command",
+        "Task ID",
+        "Observed output"
+      ],
+      "dimensions": "Selectable text in the lesson; no screenshot required",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Publish a concise real task-list/inspection excerpt with its exact command."
+    },
+    {
+      "id": "V05",
+      "topic": "robot-reference-plate",
+      "kind": "simulator_still",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/puppet-supported.jpg",
+          "sha256": "27444ce090648b752f5b4801f4c7fc3509ab78378a166835d000a381ed108ea3"
+        }
+      ],
+      "acceptance": "Views are actual renders of the selected asset; labels agree with measured joint names and the robot perspective.",
+      "required_labels": [
+        "Front",
+        "Side",
+        "Three-quarter",
+        "Robot left and right"
+      ],
+      "dimensions": "1920x1080 or greater master; readable publication derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Supported three-quarter still exists; same-stance front and side plates remain."
+    },
+    {
+      "id": "V06",
+      "topic": "joints-and-frames",
+      "kind": "annotated_simulator_still",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Servo order matches the action contract; no passive joint is mislabeled as an independently commanded servo.",
+      "required_labels": [
+        "Joint names and order",
+        "Base frame",
+        "World frame",
+        "Positive rotation example"
+      ],
+      "dimensions": "1920x1080 or greater master; readable publication derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Capture actual frames and label all 14 servo joints and world/base axes."
+    },
+    {
+      "id": "V07",
+      "topic": "walking-collision-overlay",
+      "kind": "annotated_simulator_still",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Overlay is obtained from inspected collision geometry, not inferred from the visible mesh.",
+      "required_labels": [
+        "Walking asset",
+        "Sole colliders",
+        "Visual geometry",
+        "Recovery requires a different contact setup"
+      ],
+      "dimensions": "1920x1080 or greater master; readable publication derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Capture the actual walking collision geometry beside visual meshes."
+    },
+    {
+      "id": "V08",
+      "topic": "action-to-actuator",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/04-actions.md",
+          "sha256": "96e2a12e93d1a76d9f04f0426647f3dfbd3a2f3dba62e32bbf3db42cd5d3a35b"
+        }
+      ],
+      "acceptance": "Order, clipping, and bias signs agree with the actual action and actuator implementation.",
+      "required_labels": [
+        "Raw action",
+        "Scale",
+        "Reference pose",
+        "Target rad",
+        "Measured joint rad"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V09",
+      "topic": "physics-control-clock",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/04-actions.md",
+          "sha256": "96e2a12e93d1a76d9f04f0426647f3dfbd3a2f3dba62e32bbf3db42cd5d3a35b"
+        }
+      ],
+      "acceptance": "Numeric intervals match the frozen configuration; actuator command latency is not conflated with decimation.",
+      "required_labels": [
+        "Physics step",
+        "Control step",
+        "Decimation",
+        "Held target",
+        "Time ms"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V10",
+      "topic": "single-joint-response",
+      "kind": "measured_plot",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/puppet-response.jpg",
+          "sha256": "9eb5f0f6acfedfde35f54683ba84f4d71230d518b970afc6c4e858e5f6a757a2"
+        }
+      ],
+      "acceptance": "Raw telemetry and plot script are retained; target and measured position are separate series with identical timestamps.",
+      "required_labels": [
+        "Time s",
+        "Target rad",
+        "Measured position rad",
+        "Joint name"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V11",
+      "topic": "velocity-command-frames",
+      "kind": "schematic",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Arrow directions and frame transforms match the implemented command and evaluation terms.",
+      "required_labels": [
+        "vx m/s",
+        "vy m/s",
+        "Yaw rate rad/s",
+        "Body frame",
+        "World frame"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Produce a frame diagram with a rotated heading example from the actual convention."
+    },
+    {
+      "id": "V12",
+      "topic": "observation-vector",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/13-deployment.md",
+          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+        }
+      ],
+      "acceptance": "Slice widths sum to the actual actor dimension and match the exported policy contract.",
+      "required_labels": [
+        "Term order",
+        "Slice width",
+        "Total width",
+        "Units",
+        "Preprocessing"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V13",
+      "topic": "actor-critic-information",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/05-observations.md",
+          "sha256": "f61ed43fa05c91d962d855dcacf2ff9bcb4df3aa0721abe2ad57bcd637ae03de"
+        }
+      ],
+      "acceptance": "No privileged signal leaks into the actor path; frozen input groups agree with the agent configuration.",
+      "required_labels": [
+        "Actor",
+        "Critic",
+        "Available on robot",
+        "Simulation only",
+        "Normalization"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V14",
+      "topic": "tracking-reward-shape",
+      "kind": "analytic_plot",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Equation, width interpretation, and units are verified from source; plotting data is analytically generated and labeled.",
+      "required_labels": [
+        "Velocity error m/s",
+        "Raw reward",
+        "Configured width",
+        "Illustrative parameter comparison"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "The actual tracking curve is interactive in the reward workshop; publish its analytic figure."
+    },
+    {
+      "id": "V15",
+      "topic": "reward-contributions",
+      "kind": "measured_plot",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/reward-terms.jpg",
+          "sha256": "9be2ce6b958b25fab0f9e65a33af6f41c3060d5482f63c754edc5a1340a6df93"
+        }
+      ],
+      "acceptance": "Logged quantities and control-step scaling are documented; a raw term is not mislabeled as contribution.",
+      "required_labels": [
+        "Time s",
+        "Weighted contribution",
+        "Tracking",
+        "Upright",
+        "Regularization"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V16",
+      "topic": "episode-ending-reset",
+      "kind": "schematic",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Timeline follows actual environment/wrapper ordering and does not use the next episode initial observation as the terminal state.",
+      "required_labels": [
+        "Failure",
+        "Timeout",
+        "Final observation",
+        "Bootstrap",
+        "Reset"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Show true termination versus truncation with the actual pinned timeout bootstrap approximation."
+    },
+    {
+      "id": "V17",
+      "topic": "ppo-iteration",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/07-ppo.md",
+          "sha256": "0dd1653034df2da496b082e4e191299d773d8260e78046b79a17153dd375e409"
+        }
+      ],
+      "acceptance": "Horizon and batch arithmetic match the config; collection and repeated optimizer updates are distinct.",
+      "required_labels": [
+        "N environments",
+        "H control steps",
+        "N times H transitions",
+        "Minibatches",
+        "Fresh rollout"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V18",
+      "topic": "ppo-clipped-objective",
+      "kind": "analytic_plot",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/ppo-objective.jpg",
+          "sha256": "e277e7162d14684e777e758a5b3ede465d3c22dd31355f0c5dc0b61d8eaaa93c"
+        }
+      ],
+      "acceptance": "Both advantage signs use the actual PPO minimum expression; plot is explicitly a conceptual calculation.",
+      "required_labels": [
+        "Probability ratio",
+        "Surrogate objective",
+        "Positive advantage",
+        "Negative advantage",
+        "Clip bounds"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V19",
+      "topic": "advantage-example",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/07-ppo.md",
+          "sha256": "0dd1653034df2da496b082e4e191299d773d8260e78046b79a17153dd375e409"
+        }
+      ],
+      "acceptance": "Arithmetic can be checked by hand; example never labels a one-step residual as a general multi-step advantage estimator.",
+      "required_labels": [
+        "Reward",
+        "Value",
+        "Bootstrap value",
+        "Gamma",
+        "TD residual",
+        "Illustrative numbers"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V20",
+      "topic": "ppo-training-curves",
+      "kind": "measured_plot",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/training-curves.jpg",
+          "sha256": "c96438385709a0dc6af8a914931888b5a5118909f1d01f94fec23c929a0bd9b2"
+        }
+      ],
+      "acceptance": "Data comes from tutorial runs, shows aggregation explicitly, and does not claim convergence from a smoke run.",
+      "required_labels": [
+        "Environment transitions",
+        "Episode duration s",
+        "Tracking metric",
+        "Seed"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V21",
+      "topic": "policy-progress",
+      "kind": "comparison_video",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "All panels are actual evaluated policies; same time interval and evaluation protocol, with falls retained.",
+      "required_labels": [
+        "Checkpoint",
+        "Training transitions",
+        "Command segment",
+        "Simulation time"
+      ],
+      "dimensions": "1920x1080; native simulation/real time; poster derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Capture early/middle/final checkpoints on identical starts, commands and camera."
+    },
+    {
+      "id": "V22",
+      "topic": "command-tracking",
+      "kind": "measured_plot",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/tracking-delay.jpg",
+          "sha256": "07606bbb8d3ca8e42c1987aa8874b0b5db408686d147c3ae0f46eca34961ede0"
+        }
+      ],
+      "acceptance": "Signals share the declared frame and timestamps; early endings are visible instead of silently truncated.",
+      "required_labels": [
+        "Time s",
+        "vx m/s",
+        "vy m/s",
+        "Yaw rate rad/s",
+        "Fall or timeout"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V23",
+      "topic": "evaluation-metrics",
+      "kind": "measured_plot",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/qualification-matrix.jpg",
+          "sha256": "fc490e2584ee35dfbc737747ec996c586fc4d81bb54b9b10dc4ab762bc941e93"
+        }
+      ],
+      "acceptance": "Variation is across independent training seeds; failures remain in denominators and aggregation is reproducible.",
+      "required_labels": [
+        "Training seeds",
+        "Evaluation episodes",
+        "Metric units",
+        "Coverage",
+        "Failure treatment"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "The outcomes grid is published; seed-level standing/action-rate metric views remain."
+    },
+    {
+      "id": "V24",
+      "topic": "real-sim-stance",
+      "kind": "hardware_photo_comparison",
+      "status": "needs_hardware",
+      "outputs": [],
+      "acceptance": "Real photos exist with permission/provenance; matching visuals are not claimed as full dynamic calibration.",
+      "required_labels": [
+        "Real robot",
+        "Simulation",
+        "Calibration pose",
+        "Support condition"
+      ],
+      "dimensions": "1920x1080 or greater master; readable publication derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Requires measured, calibrated robot trials; no simulated stand-in."
+    },
+    {
+      "id": "V25",
+      "topic": "hardware-signal-map",
+      "kind": "schematic",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/13-deployment.md",
+          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+        }
+      ],
+      "acceptance": "Every connection is grounded in the actual hardware API and policy contract; estimates are labeled as estimates.",
+      "required_labels": [
+        "Sensor source",
+        "Units",
+        "Frame transform",
+        "Actor input",
+        "Command output"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "The bundle maps sensor fields; measured hardware signal wiring has not been checked."
+    },
+    {
+      "id": "V26",
+      "topic": "hardware-timing-budget",
+      "kind": "measured_plot",
+      "status": "needs_hardware",
+      "outputs": [],
+      "acceptance": "Clock domains and synchronization are recorded; end-to-end latency is not inferred from unrelated timestamp origins.",
+      "required_labels": [
+        "Time ms",
+        "Sensor age",
+        "Inference",
+        "Transport",
+        "Control deadline"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Requires measured, calibrated robot trials; no simulated stand-in."
+    },
+    {
+      "id": "V27",
+      "topic": "backlash-mechanism",
+      "kind": "schematic",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "It explains state-dependent play rather than random noise; motor/output labels are verified for the chosen model.",
+      "required_labels": [
+        "Reversal",
+        "Mechanical play",
+        "Encoder bias is separate",
+        "Servo and passive coordinates"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Draw conceptual reversal and the actual series-play coordinate mapping."
+    },
+    {
+      "id": "V28",
+      "topic": "backlash-reversal-trace",
+      "kind": "measured_plot",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Actual trace and coordinate definitions are retained; a simulated trace is never labeled a hardware measurement.",
+      "required_labels": [
+        "Time s",
+        "Angle rad",
+        "Reversal",
+        "Backlash condition",
+        "Simulation or hardware"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Record servo and passive output coordinates during a bounded reversal; retain timestamps."
+    },
+    {
+      "id": "V29",
+      "topic": "observation-command-latency",
+      "kind": "schematic",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/11-effects.md",
+          "sha256": "2f7e62e33f309022b839c4b0356eaa94009291efafe9b743202afb2bfbd5b38d"
+        }
+      ],
+      "acceptance": "Clock conversions and event order agree with instrumented pulse tests, including empty-buffer behavior.",
+      "required_labels": [
+        "Observation age",
+        "Command delay",
+        "Physics tick",
+        "Control tick",
+        "Time ms"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Delay clocks are explained; timestamped raw/observed/applied signal traces remain."
+    },
+    {
+      "id": "V30",
+      "topic": "baseline-hardware-sensitivity",
+      "kind": "measured_plot",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/qualification-matrix.jpg",
+          "sha256": "fc490e2584ee35dfbc737747ec996c586fc4d81bb54b9b10dc4ab762bc941e93"
+        },
+        {
+          "path": "docs/locomotion/media/ghost-backlash.jpg",
+          "sha256": "8c6ff9fef8adf64333479eed919d5baed64b10aeaf174492479ca1ff32c141c7"
+        }
+      ],
+      "acceptance": "Each isolated sweep changes one factor; same seeds and evaluation protocol; combined stress is clearly separate.",
+      "required_labels": [
+        "Effect magnitude and units",
+        "Tracking",
+        "Fall fraction",
+        "Controlled factors"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Measured delay and isolated one-policy effects exist; parameter sweeps remain."
+    },
+    {
+      "id": "V31",
+      "topic": "randomization-contract",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/12-robustness.md",
+          "sha256": "b03535c71bbbd6b4aa6aa170700595b6f1371e8d69479fe2bb39df4c0c3de899"
+        }
+      ],
+      "acceptance": "Every interval is measured or explicitly justified; no visually invented hardware tolerances.",
+      "required_labels": [
+        "Parameter",
+        "Range",
+        "Distribution",
+        "Sampling cadence",
+        "Source"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V32",
+      "topic": "robustness-matrix",
+      "kind": "measured_plot",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Matrices use matched task/reward/interface budgets and include nominal tradeoffs; outside-envelope tests are labeled.",
+      "required_labels": [
+        "Training variant",
+        "Evaluation condition",
+        "Budget",
+        "Seeds",
+        "Metric units"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Twelve matched-budget cloud PPO replicates are running; publish all outcomes, not just winners."
+    },
+    {
+      "id": "V33",
+      "topic": "matched-stress-comparison",
+      "kind": "comparison_video",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "All changed factors are declared; a failing panel remains visible and is not replaced with a better seed.",
+      "required_labels": [
+        "Policy",
+        "Perturbation",
+        "Time",
+        "Command"
+      ],
+      "dimensions": "1920x1080; native simulation/real time; poster derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Generate independent matched-start stress replays after those policies finish."
+    },
+    {
+      "id": "V34",
+      "topic": "deployment-dataflow",
+      "kind": "schematic",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/13-deployment.md",
+          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+        }
+      ],
+      "acceptance": "Diagram matches the supported deployed runtime and calibration contract, including inference state/reset handling.",
+      "required_labels": [
+        "Sensor data",
+        "Normalize once",
+        "Actor",
+        "Action mapping",
+        "Deadline",
+        "Stop behavior"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "ONNX/Rust boundary and sensor schema are documented; add the watchdog/timestamp diagram."
+    },
+    {
+      "id": "V35",
+      "topic": "real-sim-walking",
+      "kind": "hardware_video_comparison",
+      "status": "needs_hardware",
+      "outputs": [],
+      "acceptance": "Hardware footage and logs are real and aligned; different initial or environmental conditions are disclosed.",
+      "required_labels": [
+        "Simulation",
+        "Real robot",
+        "Command",
+        "Time",
+        "Support condition"
+      ],
+      "dimensions": "1920x1080; native simulation/real time; poster derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Requires measured, calibrated robot trials; no simulated stand-in."
+    },
+    {
+      "id": "V36",
+      "topic": "deployment-results",
+      "kind": "measured_plot",
+      "status": "needs_hardware",
+      "outputs": [],
+      "acceptance": "Hardware and simulation results stay distinguishable; all attempted trials and operator stops are accounted for.",
+      "required_labels": [
+        "Time and units",
+        "Tracking",
+        "Latency",
+        "Missed deadlines",
+        "Attempted trials"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Requires measured, calibrated robot trials; no simulated stand-in."
+    },
+    {
+      "id": "V37",
+      "topic": "super-mimic-workflow",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/14-super-mimic.md",
+          "sha256": "068cf4f55554386a4147c443488a7ab23d31887fe8891a44b8c0330bb022dd69"
+        }
+      ],
+      "acceptance": "Every stage traces to merged source/docs; no substitution with similarly named Mimic workflows.",
+      "required_labels": [
+        "Verified input",
+        "Training stages",
+        "Learned output",
+        "Evaluation"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V38",
+      "topic": "super-mimic-experiment",
+      "kind": "comparison_video",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/supermimic-normalization.jpg",
+          "sha256": "346968552f0c2d19894d9cac1b88d11d6c354ee54dba565f8dc38ad956d2d991"
+        },
+        {
+          "path": "docs/locomotion/media/supermimic-screen.jpg",
+          "sha256": "3e8dc9825b281501389ed31754a6532075bc9f36675538e873fe294dac9daf36"
+        }
+      ],
+      "acceptance": "Example runs under the merged integration; any supported non-Microduck example is explicitly identified.",
+      "required_labels": [
+        "Supported task and robot",
+        "Target or source if applicable",
+        "Policy output",
+        "Time"
+      ],
+      "dimensions": "1920x1080; native simulation/real time; poster derivative",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Measured model/response/normalization plots exist; native-time experiment video remains."
+    },
+    {
+      "id": "V39",
+      "topic": "ppo-flash-sac-dataflow",
+      "kind": "schematic",
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/15-flash-sac.md",
+          "sha256": "828e6f33084e128d16feff7960c24d1a433f5de779921b8375b6a665586d5aab"
+        }
+      ],
+      "acceptance": "The diagram reflects the merged implementation and distinguishes reuse, update ratio, and terminal-observation handling.",
+      "required_labels": [
+        "Collection",
+        "Rollout",
+        "Replay",
+        "Updates",
+        "Algorithm-specific state"
+      ],
+      "dimensions": "Editable vector master; readable at 960 px content width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": null
+    },
+    {
+      "id": "V40",
+      "topic": "ppo-flash-sac-results",
+      "kind": "measured_plot",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/supermimic-screen.jpg",
+          "sha256": "3e8dc9825b281501389ed31754a6532075bc9f36675538e873fe294dac9daf36"
+        }
+      ],
+      "acceptance": "No superiority claim from one short run; comparison controls task/interface and reports warmup and resource accounting.",
+      "required_labels": [
+        "Environment transitions",
+        "Wall time s",
+        "Quality metrics",
+        "Peak memory",
+        "Seeds",
+        "From scratch or warm-start"
+      ],
+      "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Seeded response and cost tables exist; a matched-data learner-throughput comparison remains."
+    },
+    {
+      "id": "V41",
+      "topic": "puppet-duck-panel",
+      "kind": "interactive_panel_reference",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Capture comes from working controls. Slider mapping, support mode, signs/order, physics response, and reset are verified; no pose teleport is presented as actuator dynamics.",
+      "required_labels": [
+        "Joint name",
+        "Target and measured angle",
+        "Units",
+        "Supported pose or Free balance",
+        "Manual control",
+        "Reset"
+      ],
+      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Puppet controls run; publish a native-panel capture with the selected joint and measured target."
+    },
+    {
+      "id": "V42",
+      "topic": "observation-detective-panel",
+      "kind": "interactive_panel_reference",
+      "status": "missing",
+      "outputs": [],
+      "acceptance": "Displayed slices match the policy contract and change with actual state. Display toggles do not alter policy inputs; privileged values remain labeled.",
+      "required_labels": [
+        "Term and slice",
+        "Units and frame",
+        "Actor or critic",
+        "Raw or processed",
+        "Read-only inspection"
+      ],
+      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Raw/processed actor/critic inspector runs; native-panel capture and gravity arrow remain."
+    },
+    {
+      "id": "V43",
+      "topic": "reward-workshop-panel",
+      "kind": "interactive_panel_reference",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/reward-comparison.jpg",
+          "sha256": "06af7777aac935dbac36fba2d3c7c3f4b88322c0bdd97ef79253a629b131ee1e"
+        },
+        {
+          "path": "docs/locomotion/media/reward-policy-ghost.jpg",
+          "sha256": "fb5e1ccc7ab12b594265e69a92bd27033865754cfee4ff5c8a6fc57e371bfc5b"
+        }
+      ],
+      "acceptance": "Same-trajectory scoring is truthful; term-width changes recompute the real term from sufficient data. Retraining is explicit and receives the saved snapshot. Any alternate motion has an actual rollout receipt; rescoring does not change poses. Both objectives and external task metrics remain visible.",
+      "required_labels": [
+        "Fixed recorded trajectory",
+        "Original and candidate score",
+        "Weight and width",
+        "New training required to change the policy",
+        "Baseline policy",
+        "Candidate policy",
+        "Score comparison or trained motion comparison"
+      ],
+      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Actual reward rescoring and retrained-policy ghost exist; capture the full working controls."
+    },
+    {
+      "id": "V44",
+      "topic": "first-training-attempt",
+      "kind": "interactive_panel_reference",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/training-budget.jpg",
+          "sha256": "ea237f6057897f5b2c5ab51fdeb00d4fa8896d899e4a14776990ed4ff09e52a1"
+        }
+      ],
+      "acceptance": "A genuine short run updates and writes a replayable checkpoint before detailed theory. Failed locomotion is shown honestly and never substituted with an existing trained policy.",
+      "required_labels": [
+        "Fresh PPO run",
+        "Budget",
+        "Iterations and transitions",
+        "Checkpoint path",
+        "Actual result",
+        "Supplied policy kept separate"
+      ],
+      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Early training outcomes and budget explorer exist; publish a compact progress/replay view."
+    },
+    {
+      "id": "V45",
+      "topic": "reality-gap-sandbox-panel",
+      "kind": "interactive_panel_reference",
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/effects-workshop.jpg",
+          "sha256": "7ebf5d75ba753e2522d06049b414b4c3c806960965404987f86be769b79b29fe"
+        }
+      ],
+      "acceptance": "Controls reproduce verified isolated mechanisms; delay clocks are correct, changed factors are recorded, and reset or scene reconstruction is explicit. Ghost is visual-only and cannot affect physics; actual paired runs have matching input protocols and declared differences. Rendering/transparency support is verified or a labeled fallback is used.",
+      "required_labels": [
+        "Effect and units",
+        "Buffer cadence",
+        "Apply timing",
+        "Policy",
+        "Same saved command sequence",
+        "Baseline reference rollout",
+        "Changed condition",
+        "Reference validity",
+        "Shared simulation time",
+        "Fall or trial end"
+      ],
+      "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
+      "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
+      "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
+      "remaining": "Native controls and independently simulated ghosts captured; signal-age/reversal plots remain."
+    }
+  ],
+  "experiences": [
+    {
+      "id": "I01",
+      "title": "Drive a trained duck",
+      "status": "implemented",
+      "entry": "scripts/locomotion/playground.py",
+      "lesson": "docs/locomotion/09-evaluation.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/playground-validation.json",
+          "sha256": "6b5ed4f1058b24e58baf599509ac8d99a591d6e78d25d6b182f0b27b3792b196"
+        }
+      ],
+      "scope": "Real frozen PPO, bounded command sliders, standing/reset and failed-pose hold; no downloadable checkpoint bundle is published."
+    },
+    {
+      "id": "I02",
+      "title": "First fresh PPO attempt",
+      "status": "implemented",
+      "entry": "docs/locomotion/02-first-training.md",
+      "lesson": "docs/locomotion/02-first-training.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/training-validation.json",
+          "sha256": "66992968edcfc22b8adfbc14bdaa361f7ee3ca7c96876101ab1696a8e52f138e"
+        }
+      ],
+      "scope": "Bounded fresh training, actual poor early result, exact checkpoint replay; long-run walking is separately qualified."
+    },
+    {
+      "id": "I03",
+      "title": "Puppet duck",
+      "status": "implemented",
+      "entry": "scripts/locomotion/playground.py",
+      "lesson": "docs/locomotion/03-puppet.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/playground-validation.json",
+          "sha256": "6b5ed4f1058b24e58baf599509ac8d99a591d6e78d25d6b182f0b27b3792b196"
+        }
+      ],
+      "scope": "Real Newton/BAM joint sliders, supported/free base, pause/step/restore/reset; native panel image remains."
+    },
+    {
+      "id": "I04",
+      "title": "Observation detective",
+      "status": "implemented",
+      "entry": "src/isaaclab_tutorial/locomotion/playground/inspector.py",
+      "lesson": "docs/locomotion/05-observations.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/playground-validation.json",
+          "sha256": "6b5ed4f1058b24e58baf599509ac8d99a591d6e78d25d6b182f0b27b3792b196"
+        }
+      ],
+      "scope": "Named actor/critic features, physical raw telemetry and independent display freeze; gravity arrow remains."
+    },
+    {
+      "id": "I05",
+      "title": "Reward workshop",
+      "status": "implemented",
+      "entry": "scripts/locomotion/reward_workshop.py",
+      "lesson": "docs/locomotion/06-rewards.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/reward-validation.json",
+          "sha256": "5d7bdcd11cb42f653b20b0e633d82d0e006aeb5ff5513de9d50a791bdd6b310d"
+        }
+      ],
+      "scope": "Recorded-state rescoring plus real one-factor retraining, both-objective scores and independent policy ghosts."
+    },
+    {
+      "id": "I06",
+      "title": "Training investigator",
+      "status": "implemented",
+      "entry": "scripts/locomotion/training_workshop.py",
+      "lesson": "docs/locomotion/08-training.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/training-validation.json",
+          "sha256": "66992968edcfc22b8adfbc14bdaa361f7ee3ca7c96876101ab1696a8e52f138e"
+        }
+      ],
+      "scope": "Interactive budget calculator, actual TensorBoard curves, frozen plan download with execution-time contract checks."
+    },
+    {
+      "id": "I07",
+      "title": "Reality-gap sandbox",
+      "status": "partial",
+      "entry": "scripts/locomotion/effects_workshop.py",
+      "lesson": "docs/locomotion/11-effects.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/effects-validation.json",
+          "sha256": "370828e6a7806fff731305037f9d50c3db15f7691ba0f18124260580ac9a8a83"
+        }
+      ],
+      "scope": "Native isolated effects, latched apply, matched physical starts and real ghosts; timestamp/age/reversal plots remain."
+    },
+    {
+      "id": "I08",
+      "title": "Explore incoming workflows",
+      "status": "implemented",
+      "entry": "scripts/locomotion/warmstart.py",
+      "lesson": "docs/locomotion/14-super-mimic.md",
+      "evidence": [
+        {
+          "path": "docs/locomotion/evidence/supermimic-warmstart-fixed-validation.json",
+          "sha256": "76d4957c08951007cf06adbf773d8a58708e8d06f01ed385344e6bd74ce2338d"
+        }
+      ],
+      "scope": "Delegated Duck adaptations integrated. FlashSAC and teacher/replay warm-start SuperMimic have measured qualification/export evidence. Pure from-scratch SuperMimic remains unqualified; no rough terrain/recovery scope."
+    }
+  ]
+}
