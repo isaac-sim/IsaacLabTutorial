@@ -97,7 +97,23 @@ Three follow-up seed-42 screens each changed one setting from the 32-step baseli
 
 The 25 ms estimator produced motion, but its final policy moved forward during the backward command and drifted during the standing segment. The 50 ms policy fell; the longer model-fitting window still produced standing. Their intermediate checkpoints also failed the response criteria. All logged losses were finite. One-second device-memory sampling recorded maxima of 3270, 3270, and 3268 MiB respectively; these samples can miss brief allocation peaks.
 
-The [optimization evidence](evidence/supermimic-optimization-screen.json) retains final and intermediate checkpoint hashes, full declared response criteria and failures, saved settings, actual optimizer counters, telemetry hashes, and runner timing. These are exploratory single-seed results. A separate experiment restores the native 250,000-update learning-rate schedule; a longer physical budget is a separate comparison.
+The [optimization evidence](evidence/supermimic-optimization-screen.json) retains final and intermediate checkpoint hashes, full declared response criteria and failures, saved settings, actual optimizer counters, telemetry hashes, and runner timing. These are exploratory single-seed results.
+
+### Restore the native schedule and improve model fitting
+
+Five further seed-42 runs used the native 250,000-update learning-rate schedule and the 25 ms air-time estimator. Their unchanged task/adapter source hashes are recorded in [the native optimization evidence](evidence/supermimic-native-optimization.json). The 16-step run's 10,000-iteration intermediate checkpoint provides the equal-budget horizon comparison; its final checkpoint separately extends the physical budget.
+
+| Imagined horizon and changed setting | Physical transitions | Trainer-reported time on one L40 | Survival | Response qualified |
+| --- | --- | --- | --- | --- |
+| 32, native schedule | 40,960,000 | 2123.42 s | 18.68 s | No |
+| 16, extended budget | 81,920,000 | 3173.05 s | 20.00 s | No |
+| 16, collection noise 0.3 | 40,960,000 | 1554.00 s | 20.00 s | No |
+| 16, collection noise 0.5 | 40,960,000 | 1555.13 s | 20.00 s | No |
+| 32, ten model fits per learner update | 40,960,000 | 2792.19 s | 20.00 s | No |
+
+The native schedule produced forward/backward motion where the earlier screens mostly stood. Increasing physical collection or exploration produced lateral response as well. Ten model fits gave settled gains near the requested values on all four movement commands, but standing drift and tracking errors still failed qualification. These policies learned motion without providing a qualified walking recipe.
+
+The model-fitting screen contains 39,740 actual world-model optimizer steps, compared with 15,896 for the equal-budget four-fit baseline. The longer 16-step run contains 31,896 model, 7474 actor and 149,480 critic steps. All logged losses were finite. The evidence retains final/intermediate failures and one-second sampled memory maxima; a longer run or more finite updates cannot substitute for measured task success.
 
 ### Initialize from a qualified teacher and physical replay
 
@@ -126,6 +142,24 @@ The conservative native learning rate is `1e-7`, with a 16-step imagined horizon
 Use `--adapt-actor-normalization` to repeat the adaptive-statistics ablation. Fixed normalization remains active when native `train_mode()` runs again. For further optimization after loading a checkpoint, call `freeze_actor_normalization(runner.alg.actor)` from `isaaclab_tutorial.locomotion.warmstart` before `runner.learn`: the native normalizer does not serialize its `until` option. Evaluation uses the saved fixed moments automatically. The mode and sample counts are retained in `warmstart.json`.
 
 In seed-42 feasibility trials, the final policy passed the complete response protocol after 1000 native actor updates; rates `1e-6` and `2e-5` lost that behavior. These experiments assess preservation through conservative model-based fine-tuning. They establish neither improvement over the teacher nor successful learning from scratch. Repeat the full pipeline with independently trained teachers and matched physical starts before judging reliability.
+
+### Measured fixed-normalization validation
+
+Fresh runs with the fixed recipe qualified **30/30 trials, with zero falls**, across independent teacher/student seed pairs 42, 0, and 1 and the same ten `balance-starts-v1` samples. Each student received its correspondingly trained SAC teacher. The shared aggregator checked actual starting poses and velocities, counted ten unique physical starts, and retained every attempt.
+
+| Teacher/student training seed | Qualified / attempted | Mean per-trial forward RMSE (m/s) | Mean per-trial yaw RMSE (rad/s) |
+| --- | --- | --- | --- |
+| 42 | 10 / 10 | 0.02421 | 0.08888 |
+| 0 | 10 / 10 | 0.02636 | 0.13036 |
+| 1 | 10 / 10 | 0.02818 | 0.14766 |
+
+Seed-level qualification and survival rates were 100%, with sample standard deviation zero across these three development seed pairs. Each checkpoint contains 6000 world-model optimizer steps, 1000 native actor steps and 20,000 critic steps, in addition to its separately counted imitation work. Both input-normalizer sample counts remained at 524,288; their means and scales stayed exactly fixed. Actor network parameters changed during native optimization, and all logged losses remained finite.
+
+All three 1000-sample native/JIT/ONNX checks passed. The maintained Duck Rust runtime also reproduced two copies of each measured walking episode, resetting history at samples 0 and 1000; maximum action error stayed below 7.7×10⁻⁶ across all 6000 actions. This rehearsal used the workstation CPU, with no robot board, sensors or motor bus. [The fixed-recipe evidence](evidence/supermimic-warmstart-fixed-validation.json) retains phase costs, source/checkpoint/receipt hashes, individual trial metrics and runtime checks. These are simulation results in a declared teaching box.
+
+![Measured normalization regression and fixed-recipe validation](media/supermimic-normalization.jpg)
+
+The traces show the same initial physical state for training seed 1. The adaptive-statistics trace ends at its actual fall; it is never padded with successful samples. The bars report each independent training pair's ten attempts. The data and renderer hashes are recorded in [plot provenance](evidence/supermimic-normalization-plot.json). Reproduce the figure from the committed evidence with `uv run --project environments/workflows --locked python scripts/locomotion/plot_warmstart.py`.
 
 For OSMO, use [lesson 15's workflow](15-flash-sac.md) with `learner=supermimic`, `iterations=10000`, and `horizon=8`, `16`, or `32`. Publish the source first and provide its full commit SHA as `source_revision`; jobs never read uncommitted files.
 
