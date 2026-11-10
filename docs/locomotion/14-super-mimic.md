@@ -175,6 +175,16 @@ After the recipe was frozen, a previously unused teacher/student seed 2 also qua
 
 The traces show the same initial physical state for training seed 1. The adaptive-statistics trace ends at its actual fall; it is never padded with successful samples. The bars report each independent training pair's ten attempts. The data and renderer hashes are recorded in [plot provenance](evidence/supermimic-normalization-plot.json). Reproduce the figure from the committed evidence with `uv run --project environments/workflows --locked python scripts/locomotion/plot_warmstart.py`.
 
+![The adaptive-normalization Duck has fallen while the fixed-normalization Duck continues the recorded command trial](media/supermimic-native-video.jpg)
+
+This frame comes from a complete 20-second, 1920×1080 recording rendered at the original 50 Hz control cadence. Both policies start from the same measured state: teacher/student seed 1, evaluation start 0. Adaptive input moments end in a fall at 5.36 s; fixed moments retain the full qualified response. The failed lane explicitly holds its final recorded pre-reset pose after the fall. Constant display translations separate the lanes; the camera stays fixed over both complete world-space paths, preserving drift. Commands and measured velocities retain m/s and rad/s units. This is teacher-transfer preservation in simulation, with the full teacher cost shown, and makes no learning-from-scratch or hardware claim.
+
+The [video receipt](evidence/supermimic-native-video.json) records original input/checkpoint hashes, the verified robot bytes, camera, all 1000 native frames, codec and MP4 checksum. Reproduce the local MP4 from the original evaluation receipts; publication of the large media file is a separate step:
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/render_supermimic_video.py --adaptive PATH/TO/ADAPTIVE/train-seed-1/eval-seed-0/receipt.json --fixed PATH/TO/FIXED/train-seed-1/eval-seed-0/receipt.json --output outputs/supermimic-native.mp4 --thumbnail outputs/supermimic-native.jpg
+```
+
 For OSMO, use [lesson 15's workflow](15-flash-sac.md) with `learner=supermimic`, `iterations=10000`, and `horizon=8`, `16`, or `32`. Publish the source first and provide its full commit SHA as `source_revision`; jobs never read uncommitted files.
 
 **Record:** does a longer imagined horizon improve actual command tracking and survival, or only imagined return?
