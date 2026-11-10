@@ -21,7 +21,10 @@ from rsl_rl.runners import OnPolicyRunner
 from tensordict import TensorDict
 
 from isaaclab.app import launch_simulation
+from isaaclab.markers import VisualizationMarkers
+from isaaclab.markers.config import RED_ARROW_X_MARKER_CFG
 from isaaclab.utils import to_dict
+from isaaclab.utils.math import quat_apply, quat_from_euler_xyz
 from isaaclab.visualizers import VisualizerCfg
 
 from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
@@ -124,6 +127,13 @@ def main() -> None:
                 for group in ("policy", "critic")
             }
             inspector = ObservationInspector(layouts, joint_names=tuple(joint_names))
+            gravity_marker = None
+            if not args.headless or args.capture:
+                marker_cfg = RED_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.prim_path = "/Visuals/TutorialGravity"
+                marker_cfg.markers["arrow"].scale = (0.12, 0.014, 0.014)
+                marker_cfg.markers["arrow"].visual_material.diffuse_color = (1.0, 0.7, 0.1)
+                gravity_marker = VisualizationMarkers(marker_cfg)
             signals = {"inspector": inspector}
             policy = None
             if policy_mode:
@@ -139,11 +149,25 @@ def main() -> None:
             def display(snapshot, display_time):
                 frame = snapshot["playground"][0]
                 raw = {
+                    "root_pos_w": frame[:3].cpu().numpy(),
+                    "root_quat_xyzw": frame[3:7].cpu().numpy(),
                     "imu": frame[7 + joint_count : 13 + joint_count].cpu().numpy(),
                     "joint_pos": frame[7 : 7 + joint_count][joint_ids].cpu().numpy(),
                     "joint_vel": frame[13 + joint_count : 13 + 2 * joint_count][joint_ids].cpu().numpy(),
                 }
                 inspector.update({group: snapshot[group][0].cpu().numpy() for group in layouts}, raw, display_time)
+                if gravity_marker is not None:
+                    # The copied pose and IMU share the inspector's timestamp, including while frozen.
+                    rotation = torch.as_tensor(inspector.raw["root_quat_xyzw"], device=env.device)[None]
+                    gravity = torch.as_tensor(inspector.raw["imu"][3:6], device=env.device)[None]
+                    direction = quat_apply(rotation, gravity)
+                    yaw = torch.atan2(direction[:, 1], direction[:, 0])
+                    pitch = torch.atan2(-direction[:, 2], torch.linalg.vector_norm(direction[:, :2], dim=-1))
+                    gravity_marker.visualize(
+                        translations=torch.as_tensor(inspector.raw["root_pos_w"], device=env.device)[None]
+                        + torch.tensor([[0.0, 0.12, 0.03]], device=env.device),
+                        orientations=quat_from_euler_xyz(torch.zeros_like(yaw), pitch, yaw),
+                    )
                 controls.measured[:] = raw["joint_pos"]
                 signals["velocity"] = frame[-3:].cpu().tolist()
                 return frame

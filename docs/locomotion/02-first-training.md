@@ -4,13 +4,35 @@
 
 ## Set up
 
-Run from the repository root:
+Get the tutorial source first. While PR #28 is under review, the Microduck path is on its PR branch:
+
+```bash
+git clone https://github.com/isaac-sim/IsaacLabTutorial.git
+cd IsaacLabTutorial
+git fetch origin pull/28/head:microduck-tutorial
+git switch microduck-tutorial
+```
+
+These commands create a fresh checkout. If you already have the repository, fetch and switch there after preserving your own changes. The remaining commands use its root directory and a Bash terminal.
+
+Install the locked locomotion environment:
 
 ```bash
 uv sync --project environments/locomotion --locked
 ```
 
 This creates a separate environment and leaves the root SO-101 lock file unchanged. The locomotion lock pins Isaac Lab commit `90a16f06685dbf7948262eafa628c470b4cdc78c`, Newton commit `42f7def118c2c4299ce493457bafd4e8a22a696e`, RSL-RL 5.5.1, and MuJoCo/MuJoCo Warp 3.15. The environment builds Isaac Lab through its supported aggregate wheel builder so runtime resources are included. Its source revision differs from the root released-wheel setup.
+
+## Verify one duck before training
+
+```bash
+mkdir -p outputs
+git rev-parse HEAD > outputs/tutorial-source.txt
+uv run --project environments/locomotion --locked isaaclab list_envs --keyword MicroDuckTutorial-Velocity-Flat
+uv run --project environments/locomotion --locked isaaclab zero_agent --task MicroDuckTutorial-Velocity-Flat --num_envs 1 --max_steps 2 --visualizer none
+```
+
+Expect the tutorial task in the list and a clean two-step simulation exit. This checks task discovery, asset access and the simulator without optimizing a policy. Missing CUDA, asset-download or import errors need fixing before training. A compatible NVIDIA driver is required; a CPU-only installation does not run these Newton GPU experiments.
 
 ## Run a fresh attempt
 
@@ -66,13 +88,27 @@ Other matching task rows also appear. Registration alone does not launch simulat
 
 </details>
 
+## Keep this first attempt identifiable
+
+Copy the exact printed run directory into the first line below, replacing `YOUR_FIRST_ATTEMPT`. The final checkpoint of this 50-iteration run is normally `model_49.pt`:
+
+```bash
+export DUCK_FIRST_RUN="logs/rsl_rl/microduck_tutorial/YOUR_FIRST_ATTEMPT"
+export DUCK_FIRST_CHECKPOINT="$DUCK_FIRST_RUN/model_49.pt"
+printf 'export DUCK_FIRST_RUN=%q\nexport DUCK_FIRST_CHECKPOINT=%q\n' "$DUCK_FIRST_RUN" "$DUCK_FIRST_CHECKPOINT" > outputs/tutorial.env
+```
+
+Keep these references throughout the course. In a new Bash terminal, run `source outputs/tutorial.env` from the repository root. Reward candidates get their own names; they must not replace this first attempt through a moving `latest` selector.
+
+Let this bounded run finish. If you interrupt it, use an existing saved checkpoint and record its smaller completed budget; an interruption does not guarantee a new checkpoint. For limited GPU memory, try 32 environments and keep that choice in subsequent equal-budget comparisons.
+
 ## Replay what you actually trained
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint latest --capture
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_FIRST_CHECKPOINT" --capture
 ```
 
-This attempts the fixed command protocol and stops at the first fall or timeout. It writes `outputs/evaluation/receipt.json` and a pre-fall image. A native window is optional: add `--viewer` on a graphical desktop. `latest` selects the latest run whose `run.json` identifies the nominal tutorial task, then its highest-numbered checkpoint. An explicitly chosen checkpoint must also belong to that task. For controlled comparisons, pass its exact path so a training job cannot move the selection between trials.
+This attempts the fixed command protocol and stops at the first fall or timeout. It writes `outputs/evaluation/receipt.json` and a pre-fall image. A native window is optional: add `--viewer` on a graphical desktop. An explicitly chosen checkpoint must belong to the nominal task. The convenience selector `latest` also accepts reward-modified runs of that task, so use the saved first-attempt path for this course.
 
 **Look for:** finite learning diagnostics, a real checkpoint, and its actual behavior. Falling, drifting, or barely moving are valid learning observations. A traceback, non-finite state, or missing checkpoint is a software/setup failure to diagnose.
 

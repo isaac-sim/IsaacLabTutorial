@@ -18,7 +18,7 @@ Open **Observation detective (read only)**. Choose the **policy** group and **jo
 
 ![Native observation inspector showing policy and IMU selectors, raw gyro/gravity values, named units and the 61-value actor width next to the actual supported duck state](media/observation-panel.jpg)
 
-The panel uses the real widget code and a recorded physical snapshot. Its gold marker rotates that snapshot's projected-gravity reading into world coordinates for this reference image. Head movement alone leaves the supported trunk's gyro/gravity unchanged.
+The panel uses the real widget code and a recorded physical snapshot. The live gold arrow also rotates the sampled trunk-frame gravity into world coordinates. It is displayed beside the sampled trunk, offset 0.12 m along world Y and 0.03 m upward for visibility. Freezing the display freezes that arrow and its pose together. Head movement alone leaves the supported trunk's gyro/gravity unchanged.
 
 </details>
 
@@ -55,6 +55,10 @@ flowchart LR
 Only the actor branch is exported to the robot. To check individual input indices and units, use [the verified bundle layout](13-deployment.md#inspect-the-standard-duck-bundle). The critic's extra information can improve learning without becoming a sensor available on hardware.
 
 Switch the group to **critic** and find `base_lin_vel`, then `foot_contact_forces`. These are privileged simulation signals. The force feature is `sign(F) × log(1 + |F|)`, with F measured in newtons; its displayed number is not a force in newtons. Each term's panel identifies its coordinates and units.
+
+**Try the gravity cue:** in the supported scene, move only the head. The trunk-mounted IMU and gold arrow should stay unchanged. Repeat with `--free` and watch a body tilt: the world down arrow stays downward while its coordinates in the tilted trunk change. Use a reset to retry. The arrow is display geometry and applies no force.
+
+During training, the velocity-command manager resamples commands at its configured interval and selects standing episodes according to `rel_standing_envs`. The evaluation and scripted driving tools explicitly supply their own schedules. A new slider command is applied at the next control boundary; it is not a new motor target until the frozen actor processes it. Head/body command slots stay zero in this teaching task.
 
 Command velocities use the task's declared heading/world conventions. Forward/lateral linear tracking is measured in the heading frame; yaw tracking uses world angular velocity about Z. Units are m/s, rad/s, and radians unless explicitly converted for display.
 

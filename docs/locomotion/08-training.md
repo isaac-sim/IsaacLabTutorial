@@ -7,10 +7,10 @@
 Start with the run you trained in lesson 2:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/training_workshop.py --run latest
+uv run --project environments/locomotion python scripts/locomotion/training_workshop.py --run "$DUCK_FIRST_RUN"
 ```
 
-Open the printed `outputs/training-investigator/index.html` in a browser. No server or GPU is needed to use the generated report. `latest` selects the newest nominal tutorial checkpoint's run. After selecting a run, use its exact directory to keep a later experiment from changing the selection.
+Open the printed `outputs/training-investigator/index.html` in a browser. No server or GPU is needed to use the generated report. Use `source outputs/tutorial.env` in a new terminal. This selects the exact first run from lesson 2 even if lesson 6 created a newer reward candidate.
 
 <details>
 <summary>See the first attempt's actual progress and replay view</summary>
@@ -49,6 +49,42 @@ Switch **Compare by** between **Completed iterations**, **Fresh transitions**, a
 Select episode length, reward, planar velocity error, and exploration scale in turn. Move **Inspect the timeline** to read actual samples. Curves are unsmoothed; a numerical gap stays visible. Invalid evaluation receipts retain their failure reason without inventing duration or tracking scores. Training velocity errors are the task logger's metrics, not the fixed-protocol evaluation RMSE. Termination diagnostics summarize stored per-environment activations; they are not a held-out fall fraction.
 
 ![Recorded training curves for 128 and 256 ducks show rising episode return and episode length, with different experience budgets and still-substantial velocity error](media/training-curves.jpg)
+
+## Train a longer nominal policy
+
+The first 50 iterations checked that learning and replay work. They were not the full walking recipe. When ready, run a separate nominal policy:
+
+```bash
+uv run --project environments/locomotion --locked isaaclab train --rl_library rsl_rl --task MicroDuckTutorial-Velocity-Flat --num_envs 4096 --max_iterations 1000 --seed 42 --run_name nominal_walking --visualizer none
+```
+
+This requests 98,304,000 transitions and 20,000 minibatch updates. The illustrated reference used an RTX 5090 with 32 GB; the command is not a minimum-memory or duration guarantee. Reduce environments if needed, record the changed budget and evaluate what actually learns. Keep setup/compilation time separate from collection/update time.
+
+Copy the printed directory into these references:
+
+```bash
+export DUCK_WALK_RUN="logs/rsl_rl/microduck_tutorial/YOUR_NOMINAL_WALKING_RUN"
+export DUCK_WALK_CHECKPOINT="$DUCK_WALK_RUN/model_999.pt"
+printf 'export DUCK_WALK_RUN=%q\nexport DUCK_WALK_CHECKPOINT=%q\n' "$DUCK_WALK_RUN" "$DUCK_WALK_CHECKPOINT" >> outputs/tutorial.env
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_WALK_CHECKPOINT" --start-protocol balance-starts-v1 --seed 0 --output outputs/walking-check
+```
+
+Use a saved checkpoint that actually exists if you changed the run length. Inspect both `metrics` and `qualification` in the receipt. Surviving while failing velocity response means the goal remains unmet. You can also use the [optional trained policy](README.md#try-a-trained-policy) to explore later lessons while your own run trains.
+
+<details>
+<summary>Resume a checkpoint without overwriting the first attempt</summary>
+
+Keep the first run intact and start a new output run from its explicit checkpoint:
+
+```bash
+uv run --project environments/locomotion --locked isaaclab train --rl_library rsl_rl --task MicroDuckTutorial-Velocity-Flat --checkpoint "$DUCK_FIRST_CHECKPOINT" --num_envs 128 --max_iterations 10 --seed 42 --run_name resume_first_attempt --visualizer none
+```
+
+Match the original environment count and configuration if you changed them. In this pinned runner, `--checkpoint` loads the model, normalizers and optimizer by default; `--max_iterations 10` requests **ten additional collection/update cycles**. A new simulation starts, so this is not an exact continuation of the old physical states or random stream. The runner's checkpoint index can repeat its loaded index; use optimizer counters and logs when counting completed work.
+
+Compare the loaded and new checkpoint's optimizer steps: ten cycles with five epochs and four minibatches add 200 optimizer updates. Open the new run separately in TensorBoard. The training investigator accepts complete fresh logs beginning at iteration zero and intentionally rejects this resumed history. Do not mix resumed runs into the independent fresh-seed comparison in lesson 9.
+
+</details>
 
 ## Check the behavior separately
 

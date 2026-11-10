@@ -1,9 +1,9 @@
 # 13. Export without changing the policy
 
-First check the learned actor across the native/export boundary:
+Restore the session with `source outputs/tutorial.env` and use your exact nominal walking checkpoint from lesson 8 (or the optional supplied nominal policy). First check the learned actor across the native/export boundary:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint latest --export --output outputs/export-check
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_WALK_CHECKPOINT" --export --output outputs/export-check
 ```
 
 For a controlled robustness checkpoint, add its explicit `--training-profile delay`, `backlash`, or `combined`. The export records the training task/profile separately from the fixed physical conditions actually evaluated.
@@ -40,13 +40,13 @@ The tutorial trained zero head/body commands; keep those ten slots zero. Outputs
 <details>
 <summary>Trace a joint or IMU signal through the real SDK</summary>
 
-**Try:** the right knee answers on motor ID 13. Which actor position slot and policy action reach it? Trace the paths in this SDK interface schematic before reading the answer.
+The [signal-tracing exercise in lesson 10](10-reality-gap.md) checks the knee mapping before introducing hardware effects. Verify that the bundle preserves those same slots:
 
 ![Standard Duck SDK sensor, observation and motor-target mapping](media/hardware-signal-map.jpg)
 
 The right knee is action 12, position input 18, velocity input 32 and previous-action input 46 (zero-based indices). SDK joint index 13 differs because the SDK includes a mouth joint outside the policy. Encoder counts are converted to radians before home subtraction; raw actions feed back before home/scale mapping. The trunk IMU needs its configured board rotation and gyro unit conversion before assembling gravity and angular velocity. Its three-sample component median is preprocessing, not a fixed transport delay.
 
-This follows the [pinned standard Duck control implementation](https://github.com/pollen-robotics/microduck/tree/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/crates/duck-control). Calibrated physical wiring and board timing still need robot checks.
+This follows the [pinned standard Duck control implementation](https://github.com/pollen-robotics/microduck/tree/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/duck-control). Calibrated physical wiring and board timing still need robot checks.
 
 </details>
 
@@ -109,11 +109,35 @@ In a separate checkout of [the standard Duck runtime](https://github.com/pollen-
 cargo run --release -p duck-control --example policy-rehearsal -- /absolute/path/exported/policy.onnx /absolute/path/exported/trace.json > rehearsal.json
 ```
 
-The tool opens no motor bus. Compare its `actions` against `native-actions.json` with the same tolerances; retain its p50/p95/p99 inference latency and `over_20_ms` count. A workstation's timing is not the robot board's timing. The [runtime's rehearsal documentation](https://github.com/pollen-robotics/microduck/blob/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/docs/recurrent-policies.md) describes prerequisites including ONNX Runtime.
+The tool opens no motor bus. From the tutorial repository root, copy or point to the saved `rehearsal.json`, then execute the comparison:
+
+```bash
+uv run --project environments/locomotion python - <<'PY_PARITY'
+import json
+from pathlib import Path
+import numpy as np
+
+native = np.asarray(json.loads(Path("outputs/export-check/exported/native-actions.json").read_text()), dtype=np.float32)
+rehearsal = json.loads(Path("rehearsal.json").read_text())
+actual = np.asarray(rehearsal["actions"], dtype=np.float32)
+assert native.ndim == 2 and native.shape[1] == 14 and len(native) > 0
+assert actual.shape == native.shape
+assert np.isfinite(native).all() and np.isfinite(actual).all()
+np.testing.assert_allclose(actual, native, atol=1e-5, rtol=1e-4)
+print({"samples": len(native), "max_abs_action_error": float(np.max(np.abs(actual-native))),
+       "actor_only_latency_ms": rehearsal["latency_ms"], "over_20_ms": rehearsal["over_20_ms"]})
+PY_PARITY
+```
+
+The shape and finite checks matter: an empty trace or a broadcastable scalar must not pass as policy agreement. Keep p50/p95/p99 inference latency and `over_20_ms` with the result. A workstation's timing is not the robot board's timing. The [runtime's rehearsal documentation](https://github.com/pollen-robotics/microduck/blob/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/docs/recurrent-policies.md) describes prerequisites including ONNX Runtime.
 
 An executed rehearsal of the reference PPO model replayed all 1,000 recorded observations through this Rust example. Maximum action difference from native PPO was **1.20e-6**, within the same tolerances. On the workstation, actor-only latency was p50 **0.011 ms**, p95 **0.014 ms**, p99 **0.026 ms**, with zero calls exceeding 20 ms. These measurements exclude sensor and motor I/O; repeat on the robot board before making a timing claim there.
 
-Next run a **no-actuation sensor rehearsal** on the calibrated robot: assemble sensor observations, log sensor age, raw actions, bounded targets and timestamps, and verify the real watchdog/stop behavior. Only then progress through operator-controlled supported standing, free standing, and low-speed trials using the robot's approved limits. Keep every failed attempt and rollback policy with the trial record.
+Next run a **no-actuation sensor rehearsal** on the calibrated robot using the signal/timestamp record from lesson 10. Keep motor writes disabled by the supported robot setup; the offline Rust example above does not itself acquire real sensors. Assemble the same 61-value packet from calibrated readings and record each tick's raw observations, raw actions, bounded proposed targets and timestamps. Count stale/unavailable samples, non-finite values, range violations and complete-path deadline overruns. Do not infer a safe sensor age from a repeated value.
+
+Replay those captured raw observations through the offline example as a new trace. For native-versus-runtime parity, first generate a new native-action file from the original checkpoint on those exact same observations; use those two matching action files in the comparison. The earlier `native-actions.json` belongs to the simulated trace and cannot be reused for different sensor packets. If native outputs are unavailable, label the replay as a runtime sensor-input rehearsal rather than a native/export parity check.
+
+Separately verify the configured operator stop/hold response on the actual robot: source code says what should happen, while measured timing and observed behavior establish what did happen. Only then progress through operator-controlled supported standing, free standing, and low-speed trials using the robot's approved limits. Keep every failed attempt and rollback policy with the trial record.
 
 Export parity establishes software consistency. Simulated robustness establishes behavior under those simulated conditions. Demonstrated transfer additionally requires calibrated hardware trials and their measured outcomes. The existing Duck deployment runtime is the target; board-side rehearsal and hardware evidence remain to be collected.
 

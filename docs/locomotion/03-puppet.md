@@ -37,6 +37,19 @@ Pick `left_knee` or `head_yaw` on the joint plate below. Predict its positive di
 
 **Try another view:** toggle **Show Collision** and **Show Visual** in Newton's **Visualization** section. Only the sole shapes are active robot colliders in this walking asset. Compare them with the visible meshes before removing support.
 
+<details>
+<summary>Compare the home stance, links and colliders</summary>
+
+| Front: robot left/right | Side: bent-leg home pose | Active contact geometry |
+| --- | --- | --- |
+| ![Front view of the recorded Microduck home stance](media/reference-front.jpg) | ![Side view of the identical home stance](media/reference-side.jpg) | ![Sole collision geometry compared with visible robot meshes](media/reference-collisions.jpg) |
+
+These views use the same simulated home pose. A **link** is a rigid body; a **joint** permits relative motion between links. The trunk pose locates the free robot in the world. A joint angle is relative to its adjacent links, and zero policy action requests the configured home angle, which is nonzero for several leg joints.
+
+**Try:** identify a knee hinge, a sole collider and the trunk frame before touching the sliders. The slider range comes from the joint's configured soft limits. Those limits describe this simulation; they do not establish calibrated hardware limits. Body meshes you can see are not necessarily active colliders. This sole-contact walking asset is not a whole-body fall-recovery contact model.
+
+</details>
+
 ## Remove support
 
 ```bash

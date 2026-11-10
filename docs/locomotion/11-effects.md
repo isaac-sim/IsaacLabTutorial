@@ -1,9 +1,9 @@
 # 11. Turn a reality-gap knob
 
-Predict whether adding 40 ms of sensor lag will change the policy's actions. Open the native Newton experiment using an exact checkpoint from your run:
+Predict whether adding 40 ms of sensor lag will change the policy's actions. Open the native Newton experiment using the exact nominal walking checkpoint saved in lesson 8 (`source outputs/tutorial.env` in a new terminal):
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt
+uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint "$DUCK_WALK_CHECKPOINT"
 ```
 
 In **Reality-gap experiment**, change **IMU/dq delay** from zero to two samples and press **Apply and restart trial**. Playback closes while a fresh candidate is recorded, then reopens beside the same baseline ghost. The policy weights and initial mechanical state remain fixed. Editing a slider alone leaves the displayed recording unchanged; pending edits are labeled.
@@ -78,10 +78,10 @@ Save your own settings from the viewer, or create a small JSON file for a headle
 ```bash
 mkdir -p outputs
 printf '{"observation_delay_ms":40}\n' > outputs/delay40.json
-uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --effects outputs/delay40.json --record-only --output outputs/delay-workshop
+uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint "$DUCK_WALK_CHECKPOINT" --effects outputs/delay40.json --record-only --output outputs/delay-workshop
 ```
 
-Replace the checkpoint path with your saved model. Use a fresh output directory for each workshop. `--headless` records and renders without a desktop; `--record-only` omits rendering. Change one factor, predict the outcome, and compare command response as well as survival. A successful simulated trial does not establish a hardware tolerance.
+Use your saved nominal walking model. Use a fresh output directory for each workshop. `--headless` records and renders without a desktop; `--record-only` omits rendering. Change one factor, predict the outcome, and compare command response as well as survival. A successful simulated trial does not establish a hardware tolerance.
 
 ![Actual independently simulated baseline ghost and backlash candidate, sharing world coordinates and a fixed command protocol](media/ghost-backlash.jpg)
 
@@ -107,7 +107,7 @@ Predict the effect of a 40 ms observation delay. Choose the exact saved checkpoi
 The [qualification explorer](09-evaluation.md#find-the-failing-condition) compares your recorded outcomes; the ghost below helps inspect how their motions diverged.
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_49.pt --seed 0 --observation-delay-ms 40
+uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint "$DUCK_WALK_CHECKPOINT" --seed 0 --observation-delay-ms 40
 ```
 
 Use the same exact checkpoint, seed, and commands. The script changes IMU and joint-velocity observation lag; joint-position and previous-action channels are unchanged. It is a specific sensor-delay experiment, not a claim that every input is delayed.
@@ -143,5 +143,60 @@ uv run --project environments/locomotion python scripts/locomotion/plot_comparis
 ```
 
 **Record:** which signals were delayed, the delay in milliseconds and samples, and whether the policy survived long enough for the change to be interpretable.
+
+</details>
+
+
+<details>
+<summary>Find a sensitivity curve with three settings of one knob</summary>
+
+**Predict:** will 20 ms of observation lag preserve standing but lose command response? Keep one nominal policy, one actual starting state and the 20-second commands fixed. Change only observation delay:
+
+```bash
+for lag in 0 20 40; do
+  uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_WALK_CHECKPOINT" --start-protocol balance-starts-v1 --seed 0 --observation-delay-ms "$lag" --output "outputs/sensitivity/lag-$lag"
+done
+uv run --project environments/locomotion python - <<'PY_SENSITIVITY'
+import json
+from pathlib import Path
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from isaaclab_tutorial.locomotion.comparison import assert_matched_start
+
+lags = [0, 20, 40]
+records = [json.loads(Path(f"outputs/sensitivity/lag-{lag}/receipt.json").read_text()) for lag in lags]
+assert len({r["checkpoint_sha256"] for r in records}) == 1
+assert len({r["start_condition"]["sample_sha256"] for r in records}) == 1
+for lag, r in zip(lags, records):
+    assert r["conditions"]["observation_delay_ms"] == lag
+    assert_matched_start(records[0], r)
+fig, axes = plt.subplots(1, 2, figsize=(9, 3.6), layout="constrained")
+for lag, r in zip(lags, records):
+    if not r["valid"]:
+        axes[0].text(lag, 0, "invalid", rotation=90, ha="center")
+        continue
+    m, q = r["metrics"], r["qualification"]
+    label = "fell" if m["fell"] else "response passed" if q["passed"] else "response failed"
+    axes[0].scatter(lag, 100 * m["coverage"], marker="x" if m["fell"] else "o")
+    axes[0].annotate(label, (lag, 100 * m["coverage"]), fontsize=8, rotation=25)
+    if m["coverage"] >= 1 and not m["fell"]:
+        axes[1].scatter(lag, m["tracking_rmse"][0], color="tab:blue")
+    else:
+        axes[1].text(lag, 0, "unavailable", rotation=90, ha="center", fontsize=8)
+axes[0].set(xlabel="IMU/dq lag (ms)", ylabel="Horizon coverage (%)", ylim=(-5, 125))
+axes[1].set(xlabel="IMU/dq lag (ms)", ylabel="Complete-trial forward RMSE (m/s)")
+axes[1].set_ylim(bottom=0)
+for ax in axes:
+    ax.set_xticks(lags)
+    ax.grid(alpha=0.2)
+fig.savefig("outputs/sensitivity/curve.png", dpi=150)
+print("Open outputs/sensitivity/curve.png; unavailable tracking is not zero error.")
+PY_SENSITIVITY
+```
+
+A failed evaluator process is a software/numerical problem to inspect before interpreting the curve. Ordinary physical falls produce valid diagnostic receipts and remain plotted. A command-line loop alone does not validate those trials: check each receipt's initial state, command trace and effect settings if you change this experiment.
+
+This is one trained policy on one physical start. Repeat with the same additional starts at each lag to investigate sensitivity; independent training seeds are needed to estimate variation across learned policies. Use the ghost viewer on the zero-lag and changed-lag receipts to explain a divergence you see in the curve.
 
 </details>

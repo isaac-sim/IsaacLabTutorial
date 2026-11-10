@@ -17,6 +17,7 @@ class ActuatorPanel:
         self.maximum_deg = maximum_deg
         self.applied_deg = amplitude_deg
         self.effects = effects
+        self.action_scale = 1.0
         self.run_requested = False
         self.running = False
         self.paused = False
@@ -36,10 +37,11 @@ class ActuatorPanel:
             return
         imgui.text(f"Joint: {self.joint} | root fixed above the floor")
         imgui.text_wrapped("Sweep one joint, reverse, then return home. This is a simulated motor experiment.")
-        imgui.text("Next reversal amplitude (degrees)")
+        imgui.text("Next raw-action amplitude (degrees at scale 1)")
+        imgui.text(f"Target offset = raw action x {self.action_scale:g} rad/action")
         imgui.set_next_item_width(-1)
         _, self.amplitude_deg = imgui.slider_float("##reversal_amplitude", self.amplitude_deg, 0.5, self.maximum_deg)
-        imgui.text(f"Recorded/running amplitude: {self.applied_deg:.2f} deg")
+        imgui.text(f"Requested target amplitude: {self.applied_deg * self.action_scale:.2f} deg")
         if not self.running and imgui.button("Reset and run reversal"):
             self.run_requested = True
         if self.running:

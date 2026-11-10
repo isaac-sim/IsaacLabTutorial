@@ -49,6 +49,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--joint", choices=DUCK_JOINTS, default="head_yaw")
     parser.add_argument("--amplitude-deg", type=float, default=4.0)
+    parser.add_argument("--action-scale", type=float, choices=(0.5, 1.0), default=1.0)
     parser.add_argument("--command-delay-ms", type=int, default=0)
     parser.add_argument("--observation-delay-ms", type=int, default=0)
     parser.add_argument("--backlash", action="store_true")
@@ -69,6 +70,7 @@ def main() -> None:
         parser.error(str(error))
     cfg, _ = resolve_task_config("MicroDuckTutorial-Velocity-Flat", "rsl_rl_cfg_entry_point", overrides=())
     apply_effects(cfg, effects)
+    cfg.actions.joint_pos.scale = args.action_scale
     cfg.scene.num_envs = 1
     cfg.scene.robot.spawn.fix_root_link = True
     cfg.scene.robot.init_state.pos = (0.0, 0.0, 0.22)
@@ -94,13 +96,19 @@ def main() -> None:
             home = robot.data.default_joint_pos.torch[0, ids].clone()
             limits = robot.data.soft_joint_pos_limits.torch[0, ids]
             amplitude = math.radians(args.amplitude_deg)
-            if home[selected] - amplitude < limits[selected, 0] or home[selected] + amplitude > limits[selected, 1]:
+            target_amplitude = amplitude * args.action_scale
+            if (
+                home[selected] - target_amplitude < limits[selected, 0]
+                or home[selected] + target_amplitude > limits[selected, 1]
+            ):
                 raise ValueError("The full reversal must remain inside the selected joint's configured soft limits.")
             maximum = min(
                 8.0,
-                math.degrees(float(min(home[selected] - limits[selected, 0], limits[selected, 1] - home[selected]))),
+                math.degrees(float(min(home[selected] - limits[selected, 0], limits[selected, 1] - home[selected])))
+                / args.action_scale,
             )
             panel = ActuatorPanel(args.joint, args.amplitude_deg, maximum, asdict(effects))
+            panel.action_scale = args.action_scale
             controls = round(3.0 / env.step_dt)
             trace = ActuatorTrace(env, args.joint, controls * cfg.decimation)
             # Capture the observer while disabled, then restore real physical/controller/history state.
@@ -115,6 +123,7 @@ def main() -> None:
                     "Supported joint diagnostic; no learned policy, no walking or hardware-transfer qualification."
                 ),
                 "joint": args.joint,
+                "action_scale_rad_per_action": args.action_scale,
                 "seed": args.seed,
                 "supported_root_position_m": [0.0, 0.0, 0.22],
                 "duration_s": 3.0,

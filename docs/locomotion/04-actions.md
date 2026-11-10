@@ -47,4 +47,24 @@ Compare a supported pose with a free-base trial. Actuator response and balance a
 
 **Experiment:** request a small head movement, restore stance, and repeat with a larger movement. Record target and measured values. Never infer torque, speed, or ideal tracking merely from the slider's value.
 
+<details>
+<summary>Change action scale while keeping raw actions fixed</summary>
+
+For `head_yaw`, action slot 7 has home angle 0 rad. A raw action of 0.10 requests 0.10 rad at scale 1, or 0.05 rad at scale 0.5. For `right_knee`, slot 12 has home 0.0049 rad: that same raw action requests 0.1049 or 0.0549 rad before bias compensation. The joint order comes from `DUCK_JOINTS` in `locomotion/deployment.py`.
+
+Predict which trace changes when only scale changes, then run the same bounded raw-action program twice:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/actuator_workshop.py --amplitude-deg 4 --action-scale 1 --output outputs/scale-one
+uv run --project environments/locomotion python scripts/locomotion/actuator_workshop.py --amplitude-deg 4 --action-scale 0.5 --output outputs/scale-half
+```
+
+Run them one at a time and press **Reset and run reversal** in each. Add `--headless` to finish automatically. The amplitude control expresses raw action in degrees at scale 1; the panel separately shows the resulting requested-target amplitude. Scale 0.5 halves that target offset, while the measured response still comes from the real servo model. Each output's `trial-000/receipt.json` records the scale and native target samples.
+
+Changing a puppet target alone would not isolate this question: the puppet inverts the mapping to reach your chosen physical angle. This experiment holds raw actions fixed instead. Scale is set before building the scene; it does not change while a reversal runs. The trained tutorial policy retains scale 1.
+
+**Record:** which quantity halved, and why the measured joint trajectory need not halve exactly.
+
+</details>
+
 **Reference code:** `JointControls.actions()` implements the inverse mapping; the maintained task's `BiasedJointPositionAction` applies it. The source robot config owns the mechanical/actuator parameters.

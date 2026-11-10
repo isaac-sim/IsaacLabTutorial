@@ -4,7 +4,7 @@ Teach a small biped to follow velocity commands on flat ground with PPO. Start b
 
 This development path uses an **opt-in environment** pinned to a public Microduck/BAM source revision and its matching Newton/MuJoCo packages. The repository's root environment continues to serve the SO-101 tutorial. The Microduck task is not assumed to exist in the released Isaac Lab wheel.
 
-Run all commands below from the **repository root**. Python 3.12, uv, and a compatible NVIDIA GPU are required for simulation/training. Native sliders need a graphical desktop; each activity also has a headless route.
+The command examples use a **Bash terminal**. Start with the checkout instructions in [lesson 2](02-first-training.md), then run commands from the **repository root**. Python 3.12, uv, and a compatible NVIDIA GPU are required for simulation/training. Native sliders need a graphical desktop; each activity also has a headless route.
 
 <details>
 <summary>Preview a trained policy following flat-ground commands</summary>
@@ -18,6 +18,8 @@ This is the longer seed-42 policy after 98,304,000 transitions, independently ev
 This policy passed the response criteria on this start. It is separate from the short first attempt you will train next, and one movie does not establish robustness. Later, [drive a frozen policy yourself](09-evaluation.md) with bounded command sliders.
 
 </details>
+
+**Want to drive first?** After setup, [download and drive the optional trained policy](#try-a-trained-policy) before returning to your own fresh training attempt. Use Stand, forward and turn; the weights stay frozen.
 
 ## Your first session
 
@@ -56,6 +58,7 @@ The frozen policy workshop keeps the observation/action/physics loop running. Le
 
 A **Run** block is an executable command. A **Reference** block explains code; it is not an instruction to paste it. Expected behavior describes what to look for, not a guaranteed training outcome. Checkpoint and hardware paths are inputs you choose explicitly.
 
+<a id="try-a-trained-policy"></a>
 <details>
 <summary>Try a trained policy before your own run is ready</summary>
 
@@ -70,6 +73,8 @@ printf '%s  %s\n' 454a6ed1446a46cda3b8e3acfc2922477c08801aded9aef4f3e516fe164179
 tar -xzf outputs/ppo-reference-policies.tar.gz -C outputs/reference-policies
 uv run --project environments/locomotion python scripts/locomotion/playground.py --mode policy --checkpoint outputs/reference-policies/nominal/model_999.pt
 ```
+
+For later lessons, set `export DUCK_WALK_CHECKPOINT=outputs/reference-policies/nominal/model_999.pt`. This supplied model remains separate from `DUCK_FIRST_CHECKPOINT`, the fresh policy you train in lesson 2.
 
 Add `--headless --scripted --steps 500` without a desktop. Keep the model's adjacent `run.json` and `params/` files. The delay-trained model requires `--training-profile delay` in the evaluator and effects workshop. Neither is a validated hardware controller.
 

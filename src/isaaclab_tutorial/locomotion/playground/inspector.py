@@ -71,6 +71,7 @@ def draw_inspector(imgui, inspector: ObservationInspector) -> None:
         return
     _, inspector.frozen = imgui.checkbox("Freeze display snapshot", inspector.frozen)
     imgui.text(f"Snapshot: {inspector.time_s:.3f} s | {'FROZEN' if inspector.frozen else 'LIVE'}")
+    imgui.text_wrapped("Gold arrow: sampled gravity in world coordinates. Freezing also holds its sampled pose.")
     groups = list(inspector.layouts)
     imgui.text("Observation group")
     imgui.set_next_item_width(-1)

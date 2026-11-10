@@ -1,9 +1,9 @@
 # 6. Can a better score hide worse walking?
 
-First evaluate a trained checkpoint so there is a real trajectory to inspect:
+Use the saved first-attempt variables from lesson 2 (`source outputs/tutorial.env` in a new terminal). First evaluate a trained checkpoint so there is a real trajectory to inspect:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint latest
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_FIRST_CHECKPOINT"
 uv run --project environments/locomotion python scripts/locomotion/reward_workshop.py --trajectory outputs/evaluation/receipt.json
 ```
 
@@ -32,6 +32,25 @@ The linear tracking reward is `exp(-squared_heading_velocity_error / std²)`. Wi
 At the same nonzero velocity error, a larger width gives a larger tracking reward. Both curves equal one at zero error; increasing tolerance does not create better tracking. The right panel shows this term's contribution after its actual weight and control interval are applied. These are equation curves using the nominal parameters, not learned-policy measurements.
 
 Try the workshop's width slider, then explain why making the score easier to earn could leave task performance unchanged.
+
+</details>
+
+<details>
+<summary>What do the other reward sliders encourage?</summary>
+
+| Terms | Intended contribution | What excessive weight can hide |
+| --- | --- | --- |
+| `track_lin_vel`, `track_ang_vel` | Follow heading-frame translation and world-Z yaw | Larger tolerance can reward inaccurate motion |
+| `upright`, `pose` | Trunk uprightness and home-like leg pose; pose is standing-only | Standing instead of responding to commands |
+| `body_ang_vel`, `angular_momentum` | Penalize wobble and whole-body angular momentum | Suppressing useful balancing motion |
+| `dof_pos_limits`, `self_collisions` | Penalize soft-limit excursions and configured self-contact | These penalties are not hard safety constraints |
+| `action_rate_l2` | Penalize changes in successive raw actions | Nearly constant actions without walking |
+| `air_time` | Reward touchdown after a 0.125–0.3 s air-time window when moving is commanded | Optimizing foot timing without velocity response |
+| `foot_clearance`, `foot_swing_height` | Penalize the configured clearance/swing-height errors during commanded motion | Unnatural stepping if other objectives are overwhelmed |
+| `foot_slip` | Penalize contact motion during commanded motion | Low slip from simply standing still |
+| `head_pose_tracking` | Track the fixed zero head-command offsets | Spending capacity on posture while locomotion fails |
+
+The feet terms use a moving-command gate at 0.01 command norm in the pinned task. Contact state, air time and touchdown peaks make some terms stateful. Read the actual values in your saved `params/env.yaml`; inactive `head_pose_bias` cannot be reconstructed from this recording.
 
 </details>
 
@@ -66,24 +85,90 @@ Evaluate its exact saved checkpoint with `--start-protocol balance-starts-v1 --s
 
 Try increasing upright/standing-related rewards while reducing velocity tracking. Can a nearly stationary trajectory earn a more attractive score? Compare task metrics before deciding that a larger return is useful.
 
-Select **Save candidate and training command**. The workshop writes `candidate.json`, `scores.json`, a score plot, and `train-candidate.txt`. Inspect the command, then run it in a separate terminal to train a new candidate with an explicit configuration. New training is what can change behavior.
+Select **Save candidate and training command**. The workshop writes `candidate.json`, `scores.json`, a score plot, and `train-candidate.txt`. Inspect the command, then run it in a separate terminal to train a new candidate with an explicit configuration. New training is what can change behavior. Keep the candidate at the same seed, environment count and iteration budget as your first attempt; edit the printed command if you used the low-memory preset. Save its exact path as `DUCK_REWARD_CHECKPOINT` so the first attempt stays identifiable.
 
 For headless rescoring:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/reward_workshop.py --trajectory outputs/evaluation/receipt.json --headless
+uv run --project environments/locomotion python scripts/locomotion/reward_workshop.py --trajectory outputs/evaluation/receipt.json --candidate outputs/reward-workshop/candidate.json --headless --output outputs/reward-rescore
 ```
 
-Add `--candidate outputs/reward-workshop/candidate.json` to reload saved weights. Add `--capture` with `--headless` to render the recorded pose stream.
+This reloads your saved weights and writes the rescored result to a separate directory, preserving the candidate you trained. Add `--capture` with `--headless` to render the recorded pose stream.
 
 Once candidate training writes a checkpoint, compare the two actual policies with a ghost:
 
 ```bash
-uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint logs/rsl_rl/microduck_tutorial/BASELINE_RUN/model_49.pt --candidate-checkpoint logs/rsl_rl/microduck_tutorial/CANDIDATE_RUN/model_49.pt --seed 0
+export DUCK_REWARD_CHECKPOINT="logs/rsl_rl/microduck_tutorial/YOUR_REWARD_RUN/model_49.pt"
+uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint "$DUCK_FIRST_CHECKPOINT" --candidate-checkpoint "$DUCK_REWARD_CHECKPOINT" --seed 0
 ```
 
-Replace both paths with saved checkpoints. Reward-only rescoring keeps one motion stream; this command runs two learned policies. Compare both recorded trajectories under both objectives using the workshop and retain independent tracking/fall metrics. Do not compare only each policy's preferred reward. See [the ghost controls](11-effects.md) for synchronized playback and early-ending markers.
+Replace `YOUR_REWARD_RUN` with the printed candidate run directory before launching. Keep `DUCK_FIRST_CHECKPOINT` from lesson 2. Reward-only rescoring keeps one motion stream; this command runs two learned policies. Compare both recorded trajectories under both objectives using the workshop and retain independent tracking/fall metrics. Do not compare only each policy's preferred reward. See [the ghost controls](11-effects.md) for synchronized playback and early-ending markers.
 
-The evaluator uses the common nominal reward configuration when comparing policies. A candidate's training objective is recovered explicitly from its saved parameters, then applied to both recordings during rescoring.
+The evaluator uses the common nominal reward configuration when comparing policies. The workshop does not automatically recover a candidate's training objective: pass the `candidate.json` you saved before launching its matching training command. If you subsequently edited that recipe, use its actual saved reward values instead.
+
+<details>
+<summary>Fill the four cells of your own score comparison</summary>
+
+After the ghost command records both motions, apply the saved objective to each:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/reward_workshop.py --trajectory outputs/reality-gap/reference/receipt.json --candidate outputs/reward-workshop/candidate.json --headless --output outputs/cross-score/baseline
+uv run --project environments/locomotion python scripts/locomotion/reward_workshop.py --trajectory outputs/reality-gap/candidate/receipt.json --candidate outputs/reward-workshop/candidate.json --headless --output outputs/cross-score/candidate
+```
+
+Each `scores.json` contains `original_score` and `candidate_score`. Put the two files into this table:
+
+| Actual motion | Original objective | Candidate objective |
+| --- | --- | --- |
+| Baseline policy | baseline `original_score` | baseline `candidate_score` |
+| Candidate policy | candidate `original_score` | candidate `candidate_score` |
+
+Read these beside each recording's fall flag, coverage and tracking errors. If a policy falls early, cumulative scores cover different durations and are not a matched-duration ranking. Predict which row should improve under your objective, then explain the actual result.
+
+</details>
+
+<details>
+<summary>Make a reset, a timeout and a fall distinguishable</summary>
+
+In the puppet from lesson 3, press **Reset experiment**: this is an explicit reset, not a physical failure. Then run the fixed evaluator twice with the same first policy:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_FIRST_CHECKPOINT" --seconds 0.04 --output outputs/endings/short
+uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint "$DUCK_FIRST_CHECKPOINT" --output outputs/endings/full
+```
+
+The 0.04-second case is a **recorder horizon**, not the environment's timeout. Inspect its receipt's trajectory length, `terminated`/`truncated` transition fields and ending flags before calling it a timeout. For an actual task time limit, run the full case to the configured 20 seconds; if it falls sooner, that run is a fall instead. The supported two-step experiment below guarantees a time limit without asking a weak policy to balance. To deliberately observe a physical fall, remove support in the puppet and change a knee target, then inspect its saved ending label. Do this only in simulation.
+
+To observe an actual timeout directly, shorten the **supported** inspection task after resolving its configuration:
+
+```bash
+uv run --project environments/locomotion python - <<'PY_TIMEOUT'
+import gymnasium as gym
+import torch
+from isaaclab.app import launch_simulation
+from isaaclab_tasks.utils import resolve_task_config
+import isaaclab_tutorial.tasks
+
+cfg, _ = resolve_task_config("MicroDuckTutorial-Inspect", "rsl_rl_cfg_entry_point", overrides=())
+cfg.episode_length_s = 0.04
+cfg.sim.visualizer_cfgs = []
+with launch_simulation(cfg):
+    env = gym.make("MicroDuckTutorial-Inspect", cfg=cfg)
+    try:
+        env.reset(seed=0)
+        for _ in range(2):
+            obs, reward, terminated, truncated, info = env.step(torch.zeros((1, 14), device=env.unwrapped.device))
+        assert not terminated[0] and truncated[0]
+        print({"terminated": bool(terminated[0]), "truncated": bool(truncated[0]), "info_keys": list(info)})
+    finally:
+        env.close()
+PY_TIMEOUT
+```
+
+The root is supported and fall termination disabled in this inspection configuration. The task itself times out after two control steps; training/evaluation configurations remain unchanged.
+
+A manual reset clears physical/controller history; a fall is a true terminal event; a time limit is truncation. Lesson 7 explains how the pinned runner bootstraps the latter. **Record:** which event you observed and which signal proves it. If your duck never reached a timeout, leave that outcome unobserved rather than inventing one.
+
+</details>
 
 **Record:** “I increased the score by …; this does/does not demonstrate improved walking because ….”

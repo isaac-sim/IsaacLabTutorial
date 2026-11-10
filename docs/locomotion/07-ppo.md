@@ -67,9 +67,46 @@ The evaluator holds the first failed pose rather than letting autoreset conceal 
 
 </details>
 
+<details>
+<summary>Turn three TD residuals into one advantage</summary>
+
+Use illustrative rewards `[0.3, 0.2, 0.1]`, values `[1.0, 0.9, 0.8]`, and a true terminal fall after the third transition. With `γ = 0.99`, the residuals are `[0.191, 0.092, -0.7]`. GAE accumulates backwards with `γλ = 0.9405`:
+
+| Transition | Residual δ | Advantage A = δ + γλ × next A |
+| --- | ---: | ---: |
+| 2, terminal fall | −0.700 | −0.700 |
+| 1 | 0.092 | −0.56635 |
+| 0 | 0.191 | −0.341652175 |
+
+The value targets are `A + V`: approximately `[0.65835, 0.33365, 0.1]`. Positive immediate reward can still lead to negative advantage when the subsequent outcome is worse than the critic expected. This terminal example has no timeout addition; use the earlier table for the pinned runner's separate timeout convention. Advantage normalization during optimization is another step.
+
+**Predict:** if the final reward improves, which earlier advantages change? All preceding advantages receive the discounted effect.
+
+</details>
+
 The maintained PPO recipe uses 24 control steps per environment, discount 0.99, GAE lambda 0.95, clip parameter 0.2, five learning epochs, and four minibatches. A rollout of 128 × 24 contains 3,072 transitions. Fifty iterations collect 153,600 transitions, regardless of how many optimizer minibatches reuse them.
 
 Each epoch splits the rollout into four minibatches of 768 samples. Five epochs give 20 optimizer steps per iteration, or 1,000 over the preview run. The optimizer jointly updates actor and critic; those are not two separate counts of fresh experience. The investigator reads optimizer counters from the actual saved checkpoint alongside the arithmetic prediction.
+
+<details>
+<summary>Find each concept in the actual runner configuration</summary>
+
+The tutorial's `tasks/locomotion/config/microduck/agents/rsl_rl_ppo_cfg.py` inherits the pinned Microduck runner. Your run's `params/agent.yaml` contains the resolved values:
+
+| Concept | Saved configuration field |
+| --- | --- |
+| Rollout horizon | `num_steps_per_env` |
+| Discount and GAE | `algorithm.gamma`, `algorithm.lam` |
+| Probability-ratio clipping | `algorithm.clip_param` |
+| Entropy and value weighting | `algorithm.entropy_coef`, `algorithm.value_loss_coef` |
+| Gradient clipping | `algorithm.max_grad_norm` |
+| Data reuse | `algorithm.num_learning_epochs`, `algorithm.num_mini_batches` |
+| Actor/critic architecture | `actor`, `critic` |
+| Requested update cycles | `max_iterations` |
+
+Read the YAML from `DUCK_FIRST_RUN`. Find gamma, lambda and the epoch count before changing anything. The saved resolved configuration is more informative than the small subclass alone.
+
+</details>
 
 **Experiment:** change only the number of environments in a new short run. Predict the new experience budget and memory use direction. A changed transition budget is a changed experiment; do not call it an equal-data comparison.
 
