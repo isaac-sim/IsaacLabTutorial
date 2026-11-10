@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "e04ca6d980281d6e64f495b6c0ae61847f7adfd9",
+  "source_revision": "905f4e00ea8138b4235ac92d83feec4b74fb4dce",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -842,7 +842,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "3d1c80af4feb041275077815ea8676dccd8fbef34ced770e9eaf555a02688eb7"
+          "sha256": "5aa62483fe425ead0d851d99c9254de1f8f444e528ddd29b81519561dc50789a"
         }
       ],
       "acceptance": "It explains state-dependent play rather than random noise; motor/output labels are verified for the chosen model.",
@@ -905,7 +905,7 @@
         },
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "3d1c80af4feb041275077815ea8676dccd8fbef34ced770e9eaf555a02688eb7"
+          "sha256": "5aa62483fe425ead0d851d99c9254de1f8f444e528ddd29b81519561dc50789a"
         },
         {
           "path": "docs/locomotion/media/actuator-clocks.jpg",

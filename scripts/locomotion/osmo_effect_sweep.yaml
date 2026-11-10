@@ -118,7 +118,7 @@ default-values:
   image: REPLACE_WITH_YOUR_VALIDATED_IMAGE_DIGEST
   image_credential: ""
   source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
-  source_revision: REPLACE_WITH_PUBLISHED_40_CHARACTER_COMMIT
+  source_revision: 905f4e00ea8138b4235ac92d83feec4b74fb4dce
   platform: ovx-l40
   mechanism: nominal
   checkpoint_sha256: REPLACE_WITH_SELECTED_POLICY_SHA256
