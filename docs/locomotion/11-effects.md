@@ -99,6 +99,27 @@ uv run --project environments/locomotion python scripts/locomotion/effects_works
 
 Use a fresh output directory for each workshop. Add `--capture-ui` to render the actual native controls offscreen too; `--record-only` omits rendering. Other one-factor snapshots cover [40 ms lag](experiments/effects-delay40.json), [noise](experiments/effects-noise.json), [6.5 V](experiments/effects-low-voltage.json), and [encoder bias](experiments/effects-encoder-bias.json). Change one factor, predict the outcome, and compare task response as well as survival.
 
+<details>
+<summary>Repeat a bounded one-policy sensitivity experiment</summary>
+
+Keep one qualified policy frozen. The [declared sweep plan](experiments/sensitivity-plan.json) changes one setting at a time: target delay, observation lag, actor noise scale, fixed voltage, encoder calibration bias, or the authored backlash variant. Its 25 distinct conditions reuse the same ten physical starts. Evaluate the nominal control once, then share those ten baseline trials across all six views.
+
+**Predict:** which setting will first prevent standing, and which might preserve standing while losing command response? The chosen levels are simulation probes, not measured hardware tolerances. This experiment has one independent training seed; the ten reused physical starts do not provide ten independent learned policies.
+
+The encoder-bias intervention applies the same signed constant to all 14 servo encoders. The maintained action term adds that bias to the actor's joint-position reading and subtracts it from the physical joint target. It changes both sides of the interface, rather than only corrupting an observation. Noise scale also has a specific interpretation: it scales the four independent uniform component bounds recorded in the plan. Backlash selects a discrete asset variant; it does not continuously change hinge clearance.
+
+Choose an exact checkpoint and compute its hash with `sha256sum`. Replace the path and digest below with those values:
+
+```bash
+uv run --project environments/locomotion --locked python scripts/locomotion/run_effect_sweep.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --checkpoint-sha256 YOUR_POLICY_SHA256 --mechanism observation_delay_ms --output outputs/sensitivity-observation
+```
+
+The runner launches independent evaluator processes, with no training command. It freezes settings, source and model bytes, retains every attempted outcome, and archives models, resolved parameters, locked assets, reports and receipts. A physical fall remains an evaluation outcome; a process failure leaves the sweep incomplete with its diagnostics preserved. `--workers 3` allows three independent processes if GPU memory permits. For a bounded preflight, add `--case observation_delay_ms-20 --seeds 0` and use a separate output directory. Do not pool that subset as a complete study.
+
+Run `--mechanism nominal` once and repeat for each of the six field names in the plan. Full collection requests 250 attempts, not 250 independent physical starts. Keep response, survival, duration and missing measurements together; do not infer a hardware failure threshold by interpolating a few simulation levels.
+
+</details>
+
 ![Actual independently simulated baseline ghost and backlash candidate, sharing world coordinates and a fixed command protocol](media/ghost-backlash.jpg)
 
 This example uses training seed 42 and physical-start seed 0. Both completed 20 seconds; one trial cannot establish robustness. [Simulation and control verification](evidence/effects-validation.json) identifies the configurations, recording hashes, and tested interactions. A separate [three-training-seed delay matrix](09-evaluation.md#find-the-failing-condition) provides the broader delay evidence.

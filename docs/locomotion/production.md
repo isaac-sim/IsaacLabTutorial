@@ -50,4 +50,33 @@ uv run --project environments/locomotion --locked --with playwright python scrip
 
 It requires installed Chrome/Chromium and records the browser version, report/HTML/image hashes and captured rectangle. The replay command appears only when the report builder finds the exact local checkpoint; a report rebuilt elsewhere can correctly show an availability note instead. Do not change the HTML to manufacture an installed policy or a successful evaluation.
 
+## Fixed-policy sensitivity sweeps on OSMO
+
+[The sweep workflow](../../scripts/locomotion/osmo_effect_sweep.yaml) evaluates one mechanism per GPU using the [lesson 11 plan](11-effects.md). Choose the image digest, optional image credential and pool/platform as in lesson 12. Prepare an input archive from the selected run, retaining the exact model and its YAML/run metadata:
+
+```bash
+tar -czf policy-input.tar.gz -C YOUR_RUN model_999.pt run.json params/env.yaml params/agent.yaml
+sha256sum policy-input.tar.gz YOUR_RUN/model_999.pt
+osmo workflow submit scripts/locomotion/osmo_effect_sweep.yaml --pool YOUR_POOL --set workflow_name=duck-sensitivity-preflight mechanism=command_delay_ms eval_seed_count=3 case_name=command_delay_ms-5 --set-string image=YOUR_VALIDATED_IMAGE_DIGEST checkpoint_sha256=YOUR_MODEL_SHA256 policy_archive_sha256=YOUR_ARCHIVE_SHA256
+```
+
+Supply `image_credential=YOUR_CREDENTIAL_NAME` with `--set-string` when required by the registry. The workflow fetches the pinned published source; override its full `source_revision` only with another published producer commit. Upload the archive first, then the readiness marker, using the returned workflow name:
+
+```bash
+osmo workflow rsync upload WORKFLOW evaluate policy-input.tar.gz:/osmo/run/workspace/microduck-input/policy-input.tar.gz
+touch input-ready
+osmo workflow rsync upload WORKFLOW evaluate input-ready:/osmo/run/workspace/microduck-input/input-ready
+```
+
+The task checks the archive digest before extracting it, then checks the selected model digest before any evaluation. Input delivery, execution, and the collection window are bounded. Inspect the preflight's retained reports and archive before production. For the full plan, submit `nominal` once and each of the six mechanism names with `eval_seed_count=10` and an empty `case_name`. Use the same source, image, model and GPU type/driver for every job.
+
+Download `collection/` from the reported output directory, compare `trial-artifacts.tar.gz` with `sha256.json`, inspect `sweep.json`, then release the task promptly:
+
+```bash
+osmo workflow rsync download --no-progress WORKFLOW evaluate /osmo/data/output/collection/:outputs/WORKFLOW
+osmo workflow exec WORKFLOW evaluate --entry "bash -lc 'touch /osmo/run/workspace/microduck-input/collected'"
+```
+
+Failed processes retain their diagnostic archive. A completed mechanism job proves its declared selection finished; only the complete 25-condition, ten-start collection supports the full sweep figure. No new policy is trained by this workflow.
+
 Rough terrain and fall recovery are later tutorial work. Hardware stance/timing/walking evidence remains a measured gate; keep those entries open until the calibrated robot trials exist.
