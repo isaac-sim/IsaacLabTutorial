@@ -118,6 +118,23 @@ In [the native effects workshop](11-effects.md), pass `--training-profile delay`
 
 This pair uses training seed 42 and physical-start seed 0. Both policies experienced the same 40 ms sensor lag. The nominal policy fell at 1.84 s; the delay-trained policy completed 20 s and qualified. Both recorded world paths remain intact. The [comparison receipt](evidence/robustness-validation.json) records input hashes and 1,001 playback frames with zero playback physics. Use the viewer's pause/scrub controls to find where the closed-loop responses diverged.
 
+<details>
+<summary>Inspect the same trials as a native-time ghost comparison</summary>
+
+![At 14 seconds the blue nominal-trained ghost holds its final fallen pose and its own 1.82-second readings, while the white delay-trained candidate follows the lateral command; both retain original world coordinates](media/stress-comparison.jpg)
+
+This poster comes from a new 20-second, 1,000-frame movie of those exact receipts at their native 50 Hz cadence. The blue actor has no collision participation. Its final pre-reset pose and readings are explicitly held after the fall; they are not a prediction of later behavior. The white actor replays body poses from its own independent closed-loop trial. The camera stays fixed, without translating either trajectory.
+
+[The movie receipt](evidence/stress-comparison-video.json) and [decoding/input validation](evidence/core-movie-validation.json) preserve the exact source, model, asset and recording hashes. To render your own matched pair, use the two full evaluation receipts:
+
+```bash
+uv run --project environments/locomotion --locked python scripts/locomotion/render_policy_comparison.py --reference YOUR_BASELINE_RECEIPT --candidate YOUR_CANDIDATE_RECEIPT --output outputs/policy-comparison.mp4 --thumbnail outputs/policy-comparison.jpg
+```
+
+The renderer checks matching physical starts and command prefixes, and recomputes each recorded trial's metrics before labeling it. Use `--reference-label`, `--candidate-label` and `--title` to describe the actual experiment. A label does not replace its receipts. The interactive viewer above and this native movie have separate frame counts; neither advances replay physics.
+
+</details>
+
 The delay-trained seed-42 candidate also passed 1,000 native/JIT/ONNX comparisons and the standard Duck Rust no-actuation rehearsal, with maximum action difference **8.35e-7**. That checks the software boundary for this evaluated condition; [its receipt](evidence/robust-delay-runtime.json) preserves the training profile, fixed test effect, runtime inputs and hardware-validation status.
 
 <details>

@@ -6,6 +6,17 @@ This development path uses an **opt-in environment** pinned to a public Microduc
 
 Run all commands below from the **repository root**. Python 3.12, uv, and a compatible NVIDIA GPU are required for simulation/training. Native sliders need a graphical desktop; each activity also has a headless route.
 
+<details>
+<summary>Preview a trained policy following flat-ground commands</summary>
+
+![An actual frozen PPO policy follows the lateral command at 14 seconds on flat ground; its recorded command, measured velocity, checkpoint progress and world-space path remain visible](media/flat-walking-overview.jpg)
+
+This is the longer seed-42 policy after 98,304,000 transitions, independently evaluated from `balance-starts-v1`, physical-start seed 0. The recorded 20-second protocol covers standing, forward, backward, lateral and turning commands. Its overlays use the actual recorded heading-frame forward/left velocities and world-Z yaw rate; the fixed camera preserves the whole world path.
+
+This policy passed the response criteria on this start. It is separate from the short first attempt you will train next, and one movie does not establish robustness. [Its exact checkpoint, asset, camera and native 50 Hz playback receipt](evidence/flat-walking-overview-video.json) identify the recording. Later, [drive a frozen policy yourself](09-evaluation.md) with bounded command sliders.
+
+</details>
+
 ## Your first session
 
 1. [Set up and try training immediately](02-first-training.md). No PPO theory prerequisite.

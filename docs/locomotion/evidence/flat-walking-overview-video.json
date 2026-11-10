@@ -1,0 +1,110 @@
+{
+  "study_sha256": "093bf2177d2faebd0777a1d1e10be9dd1f5417f1d87739ff9f230edfe749fef8",
+  "renderer_sha256": "5541b8b5da922b93e1ea981fab0ec2cb63f27a5872e97f898f2ca08dcb7162c5",
+  "inputs": [
+    {
+      "receipt_path": "iteration-999/receipt.json",
+      "receipt_sha256": "7be6e33cc4e72e005ab976c423c5ee61f31e50a0131ba9db266cdea8b53dc09f",
+      "checkpoint": "model_999.pt",
+      "checkpoint_sha256": "bbbd21bed6d7789312d951721597500593f6ca41b3324193dffee6f0a2e85873",
+      "completed_iterations": 1000,
+      "collected_transitions": 98304000,
+      "optimizer_steps": 20000,
+      "recorded_collection_and_update_time_s": 265.77048659324646,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.024475870500288377,
+          0.031534004841995346,
+          0.08411666974110502
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "qualified": true,
+      "recorded_frames": 1000,
+      "last_recorded_time_s": 19.98,
+      "held_display_frames": 0
+    }
+  ],
+  "ghost_source_sha256": "4cad4f10047ec0a4e819f1a2b6bde118650d2783fbeca40fadb538bc324131a3",
+  "asset_provenance": {
+    "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
+    "name": "microduck_walk.usd",
+    "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
+    "bytes": 7479847,
+    "authored_mass_sum_kg": 0.7372431745752692,
+    "authored_mass_entries": 18,
+    "composed_nonanonymous_usd_layers": 1
+  },
+  "view": {
+    "eye_m": [
+      0.9200719684614667,
+      1.3851552807046899,
+      1.1251083147727592
+    ],
+    "pitch_deg": -29.49620849656643,
+    "yaw_deg": -135,
+    "identical_fixed_camera": true,
+    "world_translation": "none",
+    "all_recorded_body_origins_plus_0_12m_padding_in_frustum": true
+  },
+  "playback": {
+    "frames": 1000,
+    "duration_s": 20.0,
+    "frame_rate": "50/1",
+    "physics_steps": 0,
+    "interpolation": "none",
+    "tail_hold_s": 0.0,
+    "end_behavior": "Labeled held final pre-reset pose; commands/measurements keep their own sample time."
+  },
+  "video": {
+    "path": "/home/antoiner/Documents/IsaacLab/.worktrees/IsaacLabTutorial/outputs/checkpoint-progress/final/flat-walking-overview.mp4",
+    "sha256": "643f6dacc67e5ede67f193bda710f353279c83d60bbb5eafaa679a559b5767a9",
+    "bytes": 1133673,
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "codec": "h264"
+  },
+  "thumbnail": {
+    "sha256": "98afb3063d90337c91bfd64c2133a78acd019ce9930e654bb4f6ba0395b6655e",
+    "playback_time_s": 14.0
+  },
+  "ffmpeg_command": [
+    "ffmpeg",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-f",
+    "rawvideo",
+    "-pixel_format",
+    "rgb24",
+    "-video_size",
+    "1920x1080",
+    "-framerate",
+    "50",
+    "-i",
+    "pipe:0",
+    "-an",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "fast",
+    "-crf",
+    "20",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    "outputs/checkpoint-progress/final/flat-walking-overview.mp4"
+  ],
+  "hardware_validated": false
+}
