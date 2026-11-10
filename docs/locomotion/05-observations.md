@@ -34,6 +34,17 @@ Projected gravity expresses the world down direction in the robot/sensor frame. 
 
 The critic receives 76 values, including simulation-only linear velocity and foot information. It learns a value estimate during training. The deployed actor must not silently receive those privileged values.
 
+```mermaid
+flowchart LR
+    Shared[IMU, encoders, previous action and commands] --> Actor[61-value actor input]
+    Shared --> Critic[76-value critic input]
+    Privileged[Simulation linear velocity and foot signals] --> Critic
+    Actor --> Action[14 servo actions]
+    Critic --> Learning[Training value estimate]
+```
+
+Only the actor branch is exported to the robot. To check individual input indices and units, use [the verified bundle layout](13-deployment.md#inspect-the-standard-duck-bundle). The critic's extra information can improve learning without becoming a sensor available on hardware.
+
 Switch the group to **critic** and find `base_lin_vel`, then `foot_contact_forces`. These are privileged simulation signals. The force feature is `sign(F) × log(1 + |F|)`, with F measured in newtons; its displayed number is not a force in newtons. Each term's panel identifies its coordinates and units.
 
 Command velocities use the task's declared heading/world conventions. Forward/lateral linear tracking is measured in the heading frame; yaw tracking uses world angular velocity about Z. Units are m/s, rad/s, and radians unless explicitly converted for display.

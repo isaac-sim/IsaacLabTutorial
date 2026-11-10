@@ -20,6 +20,26 @@ uv run --project environments/locomotion isaaclab train --rl_library rsl_rl --ta
 
 The project supplies a complete task so you can run before understanding every manager term. This command starts a fresh learner. It does not load a supplied successful policy.
 
+<details>
+<summary>Where does that command get its settings?</summary>
+
+```mermaid
+flowchart TD
+    CLI[isaaclab train: task ID and CLI overrides] --> Registry[config/microduck/__init__.py: task registry]
+    Registry --> Env[config/microduck/env_cfg.py: NominalEnvCfg]
+    Registry --> Agent[config/microduck/agents/rsl_rl_ppo_cfg.py: PPORunnerCfg]
+    Env --> Terms[Scene, actions, observations, rewards, resets]
+    Terms --> Run[Parallel simulation and learning]
+    Agent --> Run
+    Run --> Files[logs/rsl_rl/microduck_tutorial/run directory]
+    Files --> Params[params/env.yaml and agent.yaml]
+    Files --> Checkpoint[model_N.pt, run.json and TensorBoard events]
+```
+
+Config filenames above are relative to `src/isaaclab_tutorial/tasks/locomotion/`. Generated logs are relative to the repository root. The resolved YAML files capture the settings used, including your overrides. Keep them with the checkpoint; a model file alone does not describe its observation or actuator contract. The robot USD bytes are checked before scene construction; [the asset receipt](evidence/asset-lock.json) records both supported variants.
+
+</details>
+
 The budget is 128 environments × 24 control steps × 50 iterations = **153,600 transitions**. It is a teaching preview, not a promise to learn walking. Compilation and asset download can dominate the first launch. If memory is limited, reduce `--num_envs`; record the changed transition budget.
 
 Find the printed run directory under `logs/rsl_rl/microduck_tutorial/`. Checkpoints are written at the configured interval and at the end. Iterations, episode duration, tracking errors, and fall terminations are more useful together than reward alone.

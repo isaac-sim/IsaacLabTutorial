@@ -14,6 +14,27 @@ The puppet inverts this mapping to turn your desired physical angle into a polic
 
 Physics advances every 5 ms (200 Hz). The policy/control interval contains four physics steps, so actions update every 20 ms (50 Hz). A held position target is still processed by the actuator during the intervening physics steps.
 
+```mermaid
+flowchart LR
+    A[One raw policy action] --> Scale[Multiply by configured scale]
+    Scale --> Home[Add home angle, subtract encoder bias]
+    Home --> Target[Requested position target, rad]
+    Target --> Servo[BAM servo model at each physics step]
+    Servo --> Physics[Joint dynamics and contacts]
+    Physics --> Encoder[Measured position and velocity]
+    Encoder --> Next[Next actor observation]
+```
+
+The nominal case has no command lag. With lag enabled, the actuator's delay buffer selects an older target before computing its response. Mechanical limits, effort limits and servo dynamics belong to the actual configured model; the action formula alone does not guarantee a reachable target.
+
+| Simulation time | 0 ms | 5 ms | 10 ms | 15 ms | 20 ms |
+| --- | --- | --- | --- | --- | --- |
+| Actor input/action | Read state; produce action A | — | — | — | Read new state; produce B |
+| Requested target | A | Hold A | Hold A | Hold A | B |
+| Actuator and physics | Advance 0–5 | Advance 5–10 | Advance 10–15 | Advance 15–20 | Advance 20–25 |
+
+**Predict:** can an observation that arrives 40 ms late be repaired by running physics four times per control interval? More physics steps do not make an old measurement newer; inspect this distinction in [the reality-gap sandbox](11-effects.md).
+
 Compare a supported pose with a free-base trial. Actuator response and balance are different problems: reaching one requested angle does not ensure that the centre of mass stays supported.
 
 **Experiment:** request a small head movement, restore stance, and repeat with a larger movement. Record target and measured values. Never infer torque, speed, or ideal tracking merely from the slider's value.
