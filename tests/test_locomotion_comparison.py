@@ -67,6 +67,13 @@ def test_mismatched_start_or_commands_cannot_be_presented_as_a_matched_reference
     candidate["valid"] = False
     with pytest.raises(ValueError, match="invalid"):
         RecordedComparison(reference, candidate)
+    reference = recording([0.0, 0.1])
+    candidate = copy.deepcopy(reference)
+    for receipt in (reference, candidate):
+        receipt["initial_state"] = copy.deepcopy(receipt["trajectory"][0])
+    candidate["trajectory"][0]["root_pos_w"][0] = 1.0
+    with pytest.raises(ValueError, match="initial"):
+        RecordedComparison(reference, candidate)
 
 
 def test_quaternion_sign_equivalence_is_valid_but_unordered_times_are_not():

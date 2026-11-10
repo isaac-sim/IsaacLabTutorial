@@ -10,6 +10,43 @@ from __future__ import annotations
 import numpy as np
 
 
+def _assert_same_pose(first_a: dict, first_b: dict) -> None:
+    if not np.allclose(first_a["root_pos_w"], first_b["root_pos_w"], atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial positions differ; regenerate the reference.")
+    qa = np.asarray(first_a["root_quat_xyzw"])
+    qb = np.asarray(first_b["root_quat_xyzw"])
+    if not np.allclose(qa, qb, atol=1e-5, rtol=0) and not np.allclose(qa, -qb, atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial orientations differ.")
+    if not np.allclose(first_a["joint_pos_rad"], first_b["joint_pos_rad"], atol=1e-5, rtol=0):
+        raise ValueError("Reference and candidate initial joint positions differ.")
+
+
+def assert_matched_start(reference: dict, candidate: dict) -> None:
+    """Match actual initial mechanics and reset provenance, including numerically invalid later trials."""
+    for field in ("seed", "control_dt_s", "horizon_s", "protocol_id"):
+        if field not in reference or reference[field] != candidate.get(field):
+            raise ValueError(f"Reference and candidate must use the same {field}.")
+    if "start_condition" in reference or "start_condition" in candidate:
+        for field in ("name", "definition_sha256", "sample_sha256"):
+            first = reference.get("start_condition", {}).get(field)
+            if first is None or first != candidate.get("start_condition", {}).get(field):
+                raise ValueError("Reference and candidate must use the same explicit start protocol and sample.")
+        for field in ("root_linear_velocity_w", "root_angular_velocity_w", "joint_vel_rad_s"):
+            first = reference.get("initial_state", {}).get(field)
+            second = candidate.get("initial_state", {}).get(field)
+            if first is None or second is None or not np.allclose(first, second, atol=1e-5, rtol=0):
+                raise ValueError("Reference and candidate initial velocity states differ or are missing.")
+    first_a = reference.get("initial_state", {})
+    first_b = candidate.get("initial_state", {})
+    if "root_pos_w" not in first_a:
+        first_a = reference["trajectory"][0]
+    if "root_pos_w" not in first_b:
+        first_b = candidate["trajectory"][0]
+    if reference.get("joint_names") != candidate.get("joint_names"):
+        raise ValueError("Reference and candidate joint order differs.")
+    _assert_same_pose(first_a, first_b)
+
+
 class RecordedComparison:
     """Validate a matched trial pair and select display frames without changing either recording."""
 
@@ -19,36 +56,16 @@ class RecordedComparison:
         for receipt in (reference, candidate):
             if receipt.get("valid") is not True or not receipt.get("trajectory"):
                 raise ValueError("An invalid or empty trial cannot become a reference comparison.")
+            initial = receipt.get("initial_state", {})
+            if "root_pos_w" in initial:
+                _assert_same_pose(initial, receipt["trajectory"][0])
             dt = receipt["control_dt_s"]
             times = np.asarray([row["t_sim_s"] for row in receipt["trajectory"]], dtype=float)
             if not np.isfinite(dt) or dt <= 0 or not np.isfinite(times).all():
                 raise ValueError("Recorded time and control periods must be finite and positive.")
             if abs(times[0]) > 1e-9 or not np.allclose(np.diff(times), dt, atol=1e-8, rtol=0):
                 raise ValueError("Recorded time must start at zero and follow the declared control period.")
-        for field in ("seed", "control_dt_s", "horizon_s", "protocol_id"):
-            if field not in reference or reference[field] != candidate.get(field):
-                raise ValueError(f"Reference and candidate must use the same {field}.")
-        if "start_condition" in reference or "start_condition" in candidate:
-            for field in ("name", "definition_sha256", "sample_sha256"):
-                first = reference.get("start_condition", {}).get(field)
-                if first is None or first != candidate.get("start_condition", {}).get(field):
-                    raise ValueError("Reference and candidate must use the same explicit start protocol and sample.")
-            for field in ("root_linear_velocity_w", "root_angular_velocity_w", "joint_vel_rad_s"):
-                first = reference.get("initial_state", {}).get(field)
-                second = candidate.get("initial_state", {}).get(field)
-                if first is None or second is None or not np.allclose(first, second, atol=1e-5, rtol=0):
-                    raise ValueError("Reference and candidate initial velocity states differ or are missing.")
-        first_a, first_b = reference["trajectory"][0], candidate["trajectory"][0]
-        if not np.allclose(first_a["root_pos_w"], first_b["root_pos_w"], atol=1e-5, rtol=0):
-            raise ValueError("Reference and candidate initial positions differ; regenerate the reference.")
-        qa = np.asarray(first_a["root_quat_xyzw"])
-        qb = np.asarray(first_b["root_quat_xyzw"])
-        if not np.allclose(qa, qb, atol=1e-5, rtol=0) and not np.allclose(qa, -qb, atol=1e-5, rtol=0):
-            raise ValueError("Reference and candidate initial orientations differ.")
-        if reference.get("joint_names") != candidate.get("joint_names"):
-            raise ValueError("Reference and candidate joint order differs.")
-        if not np.allclose(first_a["joint_pos_rad"], first_b["joint_pos_rad"], atol=1e-5, rtol=0):
-            raise ValueError("Reference and candidate initial joint positions differ.")
+        assert_matched_start(reference, candidate)
         for row_a, row_b in zip(reference["trajectory"], candidate["trajectory"], strict=False):
             if not np.allclose(row_a["command"], row_b["command"], atol=1e-8, rtol=0):
                 raise ValueError("Recorded command sequences differ; this reference is stale.")

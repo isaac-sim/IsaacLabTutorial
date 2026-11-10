@@ -88,6 +88,20 @@ Standing also requires planar drift ≤0.03 m and absolute yaw drift ≤0.15 rad
 
 `valid` means the trial remained numerically usable and uninterrupted. `qualification.passed` means it met this task response test. Export parity checks numerical equivalence of inference implementations; it does not assess walking. A finite failed or standing policy can still export for debugging, with an explicit false qualification in its manifest. Hardware validation is separate.
 
+## Repeat the same physical starts across training seeds
+
+Use independently trained checkpoints from the same recipe and transition budget. Pass each exact checkpoint path once:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/qualify.py --checkpoint logs/rsl_rl/microduck_tutorial/SEED_42_RUN/model_999.pt --checkpoint logs/rsl_rl/microduck_tutorial/SEED_0_RUN/model_999.pt --checkpoint logs/rsl_rl/microduck_tutorial/SEED_1_RUN/model_999.pt --output outputs/ppo-qualification
+```
+
+Replace the three run-directory names with your recorded directories. The default is `balance-starts-v1` under evaluation seeds 0–9. The tool checks recorded training seeds, task/learner settings, checkpoint hashes, and the selected checkpoints' completed collection/optimizer counters before launching. Matching requested iteration limits alone is insufficient. One worker runs by default; `--workers 3` runs three independent simulator processes when GPU memory permits. This is parallel evaluation of isolated trials, not multi-GPU training.
+
+Each trial keeps its full receipt, log, and subprocess exit status under `trials/train-seed-…/eval-seed-…/`. `report.json` records every completed outcome and any infrastructure error. A software failure stops new work and leaves the study incomplete. A numerical trial failure remains an invalid attempted outcome. Resume the exact command with `--resume` to reuse previously accepted matching receipts, including physical failures; it checks the frozen configuration/source, algorithm, checkpoint/sample identity, and recorded receipt checksums. A receipt written by a subsequently failed process cannot become accepted just by resuming.
+
+Read per-training-seed survival and response-pass rates, then their mean and sample standard deviation across training seeds. Invalid and fallen attempts stay in pass-rate denominators. Tracking-error means use only complete valid trials and show their count; if none completed, the mean stays unavailable. A partial study is not a completed benchmark. The summary also counts **actual distinct physical states**, so repeating a deterministic nominal reset cannot manufacture ten different starts.
+
 The receipt includes commanded/measured velocities, root/joint poses, per-term reward rates, original weights, seed, checkpoint hash, and timing. Keep it with comparison plots so a visual result remains auditable.
 
 **Challenge:** find a policy with a good-looking scalar score but insufficient episode coverage. Explain why reward and task success disagree.
