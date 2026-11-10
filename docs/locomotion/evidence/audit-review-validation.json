@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "review_scope": "One fresh read-only review of the whole tutorial branch through 49bdd60 plus the new sensitivity auditor, portable data and final captions/figures; fixes were verified with regression checks, not a second review.",
+  "critical_findings": 0,
+  "important_findings_fixed": [
+    "Both raw-study readers rejected recognized invalid numerical attempts with the evaluator's intentional nonzero diagnostic exit.",
+    "Sensitivity audit assumed model_999.pt rather than the frozen checkpoint bytes."
+  ],
+  "deferred_minor_findings": [],
+  "regression_fixture_scope": "Derived archive fixtures deliberately alter diagnostic classification or an archived basename. These are schema regression inputs, not newly simulated numerical failures or part of the published 730 measured attempts. Original archives remain untouched.",
+  "archived_input_red": [
+    {
+      "probe": "sweep recognized numerical failure",
+      "passed": false,
+      "error": "ValueError: Actual receipt bytes changed or its process failed."
+    },
+    {
+      "probe": "robustness recognized numerical failure",
+      "passed": false,
+      "error": "ValueError: Receipt bytes changed or its process failed."
+    },
+    {
+      "probe": "unchanged policy bytes under a different archived basename",
+      "passed": false,
+      "error": "FileNotFoundError: [Errno 2] No such file or directory: '/tmp/microduck-audit-regression-2rnwb3pr/renamed/sweep/policy/model_999.pt'"
+    }
+  ],
+  "archived_input_green": [
+    {
+      "probe": "sweep recognized numerical failure",
+      "passed": true,
+      "invalid_attempts": 1
+    },
+    {
+      "probe": "robustness recognized numerical failure",
+      "passed": true,
+      "invalid_attempts": 1
+    },
+    {
+      "probe": "unchanged policy bytes under a different archived basename",
+      "passed": true,
+      "attempts": 250
+    }
+  ],
+  "contract_tests": {
+    "passed": 3,
+    "red_log_sha256": "da52fbe1c5b5141eb2c7470303c8324f67e0224e3bb0d07717b2dab5104103a0",
+    "green_log_sha256": "c8f76530cfdf6178cd2e2bec876d6f01b9ac18434d327b23c2af018f3ca07d5a"
+  },
+  "fresh_suites": {
+    "default": {
+      "passed": 148,
+      "skipped": 9,
+      "log_sha256": "fdadadd7c92bb0bba143a72f93c3cc62936e5ca46bc0637578c67959ebd7a293"
+    },
+    "pinned_locomotion": {
+      "passed": 56,
+      "skipped": 3,
+      "log_sha256": "b071926890d41ae092f736ec13b799c5b727cdd90e27f068791e24d9d9dc6741"
+    },
+    "pinned_workflows_with_gpu": {
+      "passed": 60,
+      "skipped": 2,
+      "log_sha256": "1c8d3545da1be76678f850469db6993776a824a5c4bb948e049e910ed294ad2a"
+    }
+  },
+  "post_fix_full_raw_audits": {
+    "robustness_attempts": 480,
+    "sensitivity_attempts": 250,
+    "published_reports_and_four_figures_byte_identical": true,
+    "portable_figure_rebuilds_byte_identical": true
+  },
+  "source_sha256": {
+    "scripts/locomotion/summarize_effect_sweeps.py": "1f91e6218ee59adbd3ea8f97a284295a2b721db77110908e1a8c5a8129b14882",
+    "scripts/locomotion/summarize_robustness.py": "fb4703df544a3cfc1efb1a8e649e4bca06583560eda64600ee8e4169b90dc004",
+    "tests/test_locomotion_study_audits.py": "f99fc03857ada11f2719b0c4734dd7c8f58f1f141ef9e661a502dafc69116f65"
+  },
+  "declined_review_areas_and_disposition": [
+    {
+      "area": "Hardware wiring, sensor freshness, board timing, stop behavior and walking",
+      "disposition": "Remain measured hardware gates; no measurements or actuation are claimed."
+    },
+    {
+      "area": "Manual desktop usability and fresh-OS/empty-cache installation",
+      "disposition": "Automated clean-checkout and native mouse checks are explicitly scoped; these broader checks remain unvalidated."
+    },
+    {
+      "area": "Durable public media delivery",
+      "disposition": "Ten exact artifacts are prepared locally; public URLs await publication."
+    },
+    {
+      "area": "General algorithm superiority or calibrated hardware tolerance",
+      "disposition": "No such claim is made; workload timing and one-policy simulation sensitivity retain their stated limits."
+    },
+    {
+      "area": "Repeated training/cloud/movie runs during review",
+      "disposition": "Reused collected original artifacts; post-fix full raw audits and all appropriate suites ran successfully."
+    }
+  ],
+  "hardware_validated": false
+}

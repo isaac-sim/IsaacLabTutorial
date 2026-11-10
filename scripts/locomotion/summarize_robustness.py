@@ -35,6 +35,29 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def load_trial_receipt(path: Path, trial: dict) -> dict:
+    """Verify recorded bytes and retain recognized numerical diagnostics, not unexplained process failures."""
+    if digest(path) != trial["receipt_sha256"]:
+        raise ValueError("Receipt bytes changed.")
+    receipt = json.loads(path.read_text())
+    if receipt["valid"] is False:
+        reason = receipt["metrics"].get("invalid_reason")
+        known = isinstance(reason, str) and (
+            reason in ("nan_state", "manual_reset") or reason.startswith("invalid_measurements: ")
+        )
+        if (
+            not known
+            or receipt["qualification"].get("invalid_reason") != reason
+            or receipt["qualification"].get("passed") is not False
+        ):
+            raise ValueError("Invalid receipt lacks a consistent recognized diagnostic.")
+        if trial["process_returncode"] not in (0, 1):
+            raise ValueError("Unexpected process failure after a diagnostic receipt.")
+    elif receipt["valid"] is not True or trial["process_returncode"] != 0:
+        raise ValueError("Unexpected process failure or invalid validity flag.")
+    return receipt
+
+
 def actor_digest(path: Path) -> str:
     """Fingerprint actual actor tensors and normalization, independent of checkpoint serialization/optimizer state."""
     import torch
@@ -155,9 +178,7 @@ def audit_trials(paths: list[Path]) -> dict:
                     raise ValueError("Duplicate or unexpected evaluation-start attempt.")
                 seen.add(evaluation_seed)
                 receipt_path = report_path.parent / f"trials/train-seed-{seed}/eval-seed-{evaluation_seed}/receipt.json"
-                if digest(receipt_path) != trial["receipt_sha256"] or trial["process_returncode"] != 0:
-                    raise ValueError("Receipt bytes changed or its process failed.")
-                receipt = json.loads(receipt_path.read_text())
+                receipt = load_trial_receipt(receipt_path, trial)
                 if (
                     receipt["conditions"]["effects"] != effects
                     or receipt["training_profile"] != profile

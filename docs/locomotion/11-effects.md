@@ -99,6 +99,33 @@ uv run --project environments/locomotion python scripts/locomotion/effects_works
 
 Use a fresh output directory for each workshop. Add `--capture-ui` to render the actual native controls offscreen too; `--record-only` omits rendering. Other one-factor snapshots cover [40 ms lag](experiments/effects-delay40.json), [noise](experiments/effects-noise.json), [6.5 V](experiments/effects-low-voltage.json), and [encoder bias](experiments/effects-encoder-bias.json). Change one factor, predict the outcome, and compare task response as well as survival.
 
+**Predict:** does a duck that survives a larger reality gap still follow its commands? Pick one knob in the workshop before revealing the measured study.
+
+<details>
+<summary>Reveal 250 actual frozen-policy attempts</summary>
+
+![Six isolated simulation sweeps distinguish finishing the protocol from following its commands: moderate delay, stronger observation noise and calibration bias can preserve standing while losing command response; large delays cause falls](media/sensitivity.jpg)
+
+One nominal PPO policy, training seed 42, encountered 25 distinct conditions under the same ten `balance-starts-v1` initial states and 20-second command protocol. The nominal ten attempts were evaluated once and reused in each panel. Blue counts full-trial survival; orange counts response qualification. Falls remain in every denominator. All 250 attempts were numerically valid; invalid attempts would be counted separately.
+
+At **20 ms observation lag**, all ten trials survived but none qualified. A **20 ms actuator queue** left eight upright, again with zero qualified responses. Noise scales 2 and 3 also preserved all ten full trials while losing response qualification. The sampled voltage levels and the isolated authored backlash variant qualified on all ten starts. These results describe this one policy and these simulation probes; they do not establish a hardware tolerance or variation across independently trained policies.
+
+![Mean full-trial forward, left and yaw tracking errors for the same six sweeps; grey cells remain unavailable when no valid trial completed, and every column shows complete over attempted count](media/sensitivity-tracking.jpg)
+
+Tracking means use **complete valid trials only**. The 20 ms queue column therefore describes eight of ten attempts; its two falls are absent from that conditional mean but remain in the survival and response counts. At larger delays no trial completed, so full-trial tracking is unavailable. Never read a missing or conditional error without the outcome counts.
+
+**Explain:** why can an overall tracking error look modest while a command segment fails? Inspect the per-segment criteria and failure reasons in the [portable audited study](evidence/sensitivity-study.json). Then try a nearby setting in your own fresh workshop; interpolation between the sampled levels is not a measured failure boundary.
+
+Rebuild both figures without simulation:
+
+```bash
+uv run --project environments/locomotion --locked python scripts/locomotion/summarize_effect_sweeps.py --data docs/locomotion/evidence/sensitivity-study.json --output outputs/rebuilt-sensitivity
+```
+
+[Validation](evidence/sensitivity-validation.json) records the actual source/model/asset locks, OSMO collection hashes, completed jobs and raw-data checks. Calibration bias changes both the actor's joint-position reading and the physical target mapping. The backlash intervention also includes its documented 14 mg authored mass difference. Every other factor uses the exact nominal settings in the plan.
+
+</details>
+
 <details>
 <summary>Repeat a bounded one-policy sensitivity experiment</summary>
 

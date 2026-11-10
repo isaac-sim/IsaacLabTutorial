@@ -180,6 +180,18 @@
     {
       "path": "docs/locomotion/evidence/clean-walkthrough.json",
       "sha256": "0d199ada42ff10a8a0707ebb72053b80178a637f629af2815259a8b113d12e00"
+    },
+    {
+      "path": "docs/locomotion/evidence/sensitivity-study.json",
+      "sha256": "0e9263ea13a6805caa5b88ce5203c04dadd43d0ce3c9912adaf1ccd511e24aef"
+    },
+    {
+      "path": "docs/locomotion/evidence/sensitivity-validation.json",
+      "sha256": "b6c59326eb7c237a6735e293d815bceda30db0cb8fc24a4731963a5da751f0ad"
+    },
+    {
+      "path": "docs/locomotion/evidence/audit-review-validation.json",
+      "sha256": "16e2a7344e539fe0534ec916d1cf77bf1b6e30d76ef3df6a825f20801f222b2b"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -870,7 +882,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "5aa62483fe425ead0d851d99c9254de1f8f444e528ddd29b81519561dc50789a"
+          "sha256": "0e5f440eff5b6a500d271cd6601ac4a38e14e2cf5a157545d0cf26d6ab1e4be3"
         }
       ],
       "acceptance": "It explains state-dependent play rather than random noise; motor/output labels are verified for the chosen model.",
@@ -933,7 +945,7 @@
         },
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "5aa62483fe425ead0d851d99c9254de1f8f444e528ddd29b81519561dc50789a"
+          "sha256": "0e5f440eff5b6a500d271cd6601ac4a38e14e2cf5a157545d0cf26d6ab1e4be3"
         },
         {
           "path": "docs/locomotion/media/actuator-clocks.jpg",
@@ -961,15 +973,23 @@
       "id": "V30",
       "topic": "baseline-hardware-sensitivity",
       "kind": "measured_plot",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
-          "path": "docs/locomotion/media/qualification-matrix.jpg",
-          "sha256": "fc490e2584ee35dfbc737747ec996c586fc4d81bb54b9b10dc4ab762bc941e93"
+          "path": "docs/locomotion/media/sensitivity.jpg",
+          "sha256": "6c8e79bf14f7d384dc85d9b96e8e5f125d727026957dd3a0a8660a78ce1ad9f1"
         },
         {
-          "path": "docs/locomotion/media/ghost-backlash.jpg",
-          "sha256": "8c6ff9fef8adf64333479eed919d5baed64b10aeaf174492479ca1ff32c141c7"
+          "path": "docs/locomotion/media/sensitivity-tracking.jpg",
+          "sha256": "790363eaf65f5742250d75210c9f875c15ca06c455e1043f924234cd4e62e2cb"
+        },
+        {
+          "path": "docs/locomotion/evidence/sensitivity-study.json",
+          "sha256": "0e9263ea13a6805caa5b88ce5203c04dadd43d0ce3c9912adaf1ccd511e24aef"
+        },
+        {
+          "path": "docs/locomotion/evidence/sensitivity-validation.json",
+          "sha256": "b6c59326eb7c237a6735e293d815bceda30db0cb8fc24a4731963a5da751f0ad"
         }
       ],
       "acceptance": "Each isolated sweep changes one factor; same seeds and evaluation protocol; combined stress is clearly separate.",
@@ -982,7 +1002,7 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Measured delay and isolated one-policy effects exist; parameter sweeps remain."
+      "remaining": null
     },
     {
       "id": "V31",
