@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "2dd66a53172364ad23c3619f9337cf21e4d94785",
+  "source_revision": "e04ca6d980281d6e64f495b6c0ae61847f7adfd9",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -128,6 +128,34 @@
     {
       "path": "docs/locomotion/evidence/evaluation-metrics-validation.json",
       "sha256": "43bad4bb82979bd5c41fa595ecb2d7731c5ea2d0cf875fb7ca2dc5fbf0bcca39"
+    },
+    {
+      "path": "docs/locomotion/evidence/checkpoint-progress.json",
+      "sha256": "642780a7942ff3e995eb3e316f2527ff8e32e45d024138a2f09a941072149c68"
+    },
+    {
+      "path": "docs/locomotion/evidence/checkpoint-media-validation.json",
+      "sha256": "fb6b528a2cfe9f1a3fa91d099e7e4d6e7465ff45e77b45bdbaeddba519f9bb0a"
+    },
+    {
+      "path": "docs/locomotion/evidence/first-attempt-checkpoint.json",
+      "sha256": "d78394654233e578ff78bbcb16d21015ab3802c9426f3a575db8f2b58213a7fc"
+    },
+    {
+      "path": "docs/locomotion/evidence/first-attempt-training.json",
+      "sha256": "230dabdea3bab9f81d9077f8623d791e7b1b0b5b961c2776c203314e62077ac4"
+    },
+    {
+      "path": "docs/locomotion/evidence/first-attempt-investigator-capture.json",
+      "sha256": "aadcd2989be66953a30fe0c9bd0aa85e90a8877bee65ba7ddff1baaf19745ff1"
+    },
+    {
+      "path": "docs/locomotion/evidence/training-progress-video.json",
+      "sha256": "afd2989a96540b8e2d2b49a415e974349384bb30c4af1b04d554ed786626b086"
+    },
+    {
+      "path": "docs/locomotion/evidence/first-attempt-video.json",
+      "sha256": "1b9c989ea72baf81ff39d7481c0305dc0ff195539ef732ceac156d3677025a70"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -189,7 +217,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/02-first-training.md",
-          "sha256": "bd6fb441c51dc61d88f98dcd54d7f6c3eaca6a4b3e53836f1eff51862237641e"
+          "sha256": "cfea60756779907bc4203bc308585481e12aa4bca493f5c291938edf0324e338"
         }
       ],
       "acceptance": "Every displayed path exists at the lesson checkpoint; config ownership and runtime execution are distinguished.",
@@ -212,7 +240,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/02-first-training.md",
-          "sha256": "bd6fb441c51dc61d88f98dcd54d7f6c3eaca6a4b3e53836f1eff51862237641e"
+          "sha256": "cfea60756779907bc4203bc308585481e12aa4bca493f5c291938edf0324e338"
         },
         {
           "path": "docs/locomotion/evidence/task-list.json",
@@ -670,8 +698,13 @@
       "id": "V21",
       "topic": "policy-progress",
       "kind": "comparison_video",
-      "status": "missing",
-      "outputs": [],
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/training-progress.jpg",
+          "sha256": "d954510fa6d959626eac718b2241f6798666d4b4fc5c5d9280f432eca23b24d3"
+        }
+      ],
       "acceptance": "All panels are actual evaluated policies; same time interval and evaluation protocol, with falls retained.",
       "required_labels": [
         "Checkpoint",
@@ -682,7 +715,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Capture early/middle/final checkpoints on identical starts, commands and camera."
+      "remaining": "The native 1080p/50 Hz/20 s movie is prepared locally with all actual checkpoints, matched starts, fixed cameras, failure holds and verified source/input/video hashes. Public video and recording-archive URLs remain to publish."
     },
     {
       "id": "V22",
@@ -1275,11 +1308,19 @@
       "id": "V44",
       "topic": "first-training-attempt",
       "kind": "interactive_panel_reference",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/training-budget.jpg",
           "sha256": "ea237f6057897f5b2c5ab51fdeb00d4fa8896d899e4a14776990ed4ff09e52a1"
+        },
+        {
+          "path": "docs/locomotion/media/first-attempt-investigator.jpg",
+          "sha256": "ca55b54527d8f051f3ad5a36d61fcafad9c296a717c46100576282e6842233c1"
+        },
+        {
+          "path": "docs/locomotion/media/first-attempt.jpg",
+          "sha256": "a20c7f7e618a2b7dcab61554cbdc2e1d5457546aac977217fa765881f9127015"
         }
       ],
       "acceptance": "A genuine short run updates and writes a replayable checkpoint before detailed theory. Failed locomotion is shown honestly and never substituted with an existing trained policy.",
@@ -1294,7 +1335,7 @@
       "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Early training outcomes and budget explorer exist; publish a compact progress/replay view."
+      "remaining": null
     },
     {
       "id": "V45",
@@ -1367,9 +1408,13 @@
         {
           "path": "docs/locomotion/evidence/training-validation.json",
           "sha256": "66992968edcfc22b8adfbc14bdaa361f7ee3ca7c96876101ab1696a8e52f138e"
+        },
+        {
+          "path": "docs/locomotion/evidence/checkpoint-media-validation.json",
+          "sha256": "fb6b528a2cfe9f1a3fa91d099e7e4d6e7465ff45e77b45bdbaeddba519f9bb0a"
         }
       ],
-      "scope": "Bounded fresh training, actual poor early result, exact checkpoint replay; long-run walking is separately qualified."
+      "scope": "Actual fresh 128-environment/50-iteration PPO run, realized counters and native recorded failed-policy replay, with a working one-run Chrome investigator capture. The longer walking policy remains a separate run; public movie/recording archive URLs are pending."
     },
     {
       "id": "I03",
