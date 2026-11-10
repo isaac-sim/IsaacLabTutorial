@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from .deployment import check_duck_contract
+from .effects import mechanical_state
+
 
 def _assert_same_pose(first_a: dict, first_b: dict) -> None:
     if not np.allclose(first_a["root_pos_w"], first_b["root_pos_w"], atol=1e-5, rtol=0):
@@ -23,6 +26,27 @@ def _assert_same_pose(first_a: dict, first_b: dict) -> None:
 
 def assert_matched_start(reference: dict, candidate: dict) -> None:
     """Match actual initial mechanics and reset provenance, including numerically invalid later trials."""
+    first_a = reference.get("initial_state", {})
+    first_b = candidate.get("initial_state", {})
+    if reference.get("joint_names") != candidate.get("joint_names"):
+        assets = {str(receipt.get("asset_url", "")).rsplit("/", 1)[-1] for receipt in (reference, candidate)}
+        if assets != {"microduck_walk.usd", "microduck_walk_backlash.usd"}:
+            raise ValueError("Reference and candidate joint order differs outside the known backlash intervention.")
+        try:
+            for receipt in (reference, candidate):
+                check_duck_contract(receipt["contract"])
+        except KeyError as error:
+            raise ValueError(
+                "Cross-asset comparison requires each complete verified Duck inference contract."
+            ) from error
+        for state in (first_a, first_b):
+            # A baseline without play has no counterpart for hidden initial passive motion/displacement.
+            passive = [i for i, name in enumerate(state["joint_names"]) if name.startswith("passive_")]
+            for field in ("joint_pos_rad", "joint_vel_rad_s"):
+                if not np.allclose(np.asarray(state[field])[passive], 0, atol=1e-5, rtol=0):
+                    label = "velocity" if field == "joint_vel_rad_s" else "joint positions"
+                    raise ValueError(f"Cross-asset initial passive {label} must be zero for a matched start.")
+        first_a, first_b = mechanical_state(first_a), mechanical_state(first_b)
     for field in ("seed", "control_dt_s", "horizon_s", "protocol_id"):
         if field not in reference or reference[field] != candidate.get(field):
             raise ValueError(f"Reference and candidate must use the same {field}.")
@@ -32,18 +56,14 @@ def assert_matched_start(reference: dict, candidate: dict) -> None:
             if first is None or first != candidate.get("start_condition", {}).get(field):
                 raise ValueError("Reference and candidate must use the same explicit start protocol and sample.")
         for field in ("root_linear_velocity_w", "root_angular_velocity_w", "joint_vel_rad_s"):
-            first = reference.get("initial_state", {}).get(field)
-            second = candidate.get("initial_state", {}).get(field)
+            first = first_a.get(field)
+            second = first_b.get(field)
             if first is None or second is None or not np.allclose(first, second, atol=1e-5, rtol=0):
                 raise ValueError("Reference and candidate initial velocity states differ or are missing.")
-    first_a = reference.get("initial_state", {})
-    first_b = candidate.get("initial_state", {})
     if "root_pos_w" not in first_a:
         first_a = reference["trajectory"][0]
     if "root_pos_w" not in first_b:
         first_b = candidate["trajectory"][0]
-    if reference.get("joint_names") != candidate.get("joint_names"):
-        raise ValueError("Reference and candidate joint order differs.")
     _assert_same_pose(first_a, first_b)
 
 

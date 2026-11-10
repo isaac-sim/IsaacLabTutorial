@@ -67,6 +67,9 @@ def test_manifest_requires_executed_parity_and_records_standard_runtime_contract
         "seed": 42,
         "metrics": {"fell": False},
         "qualification": {"passed": False, "criteria": {"id": "flat-response-v1"}},
+        "conditions": {"observation_delay_ms": 40},
+        "effect_settings": {"settings": {"backlash": True, "voltage": 6.5}},
+        "asset_url": "assets/microduck_walk_backlash.usd",
         "onnx_parity": {"checked": True, "samples": 2, "max_abs_error": 1e-6},
     }
     manifest = build_manifest(receipt, onnx_sha256="b" * 64)
@@ -76,6 +79,9 @@ def test_manifest_requires_executed_parity_and_records_standard_runtime_contract
     assert manifest["training"]["checkpoint_sha256"] == "a" * 64
     assert manifest["eval"]["simulation_qualified"] is False
     assert manifest["eval"]["response_qualification"] == receipt["qualification"]
+    assert manifest["eval"]["conditions"] == receipt["conditions"]
+    assert manifest["eval"]["effect_settings"] == receipt["effect_settings"]
+    assert manifest["eval"]["asset_url"] == receipt["asset_url"]
     changed = copy.deepcopy(receipt)
     changed["onnx_parity"]["checked"] = False
     with pytest.raises(ValueError, match="parity"):

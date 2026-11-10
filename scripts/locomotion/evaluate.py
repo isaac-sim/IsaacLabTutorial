@@ -39,6 +39,7 @@ from isaaclab_tutorial.locomotion.deployment import (
     rehearsal_trace,
     staged_bundle,
 )
+from isaaclab_tutorial.locomotion.effects import EffectSettings, apply_effects, mechanical_state
 from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
 from isaaclab_tutorial.locomotion.protocols import (
     START_PROTOCOLS,
@@ -74,13 +75,26 @@ def main() -> None:
     )
     parser.add_argument("--command-delay-ms", type=int, default=0)
     parser.add_argument("--observation-delay-ms", type=int, default=0)
+    parser.add_argument(
+        "--effects", type=Path, help="Frozen EffectSettings JSON; rebuilds this independent trial scene."
+    )
     parser.add_argument("--output", type=Path, default=Path("outputs/evaluation"))
     args = parser.parse_args()
     try:
+        if args.effects:
+            if args.command_delay_ms or args.observation_delay_ms:
+                raise ValueError("Choose a frozen --effects file or separate delay flags, not both.")
+            effects = EffectSettings(**json.loads(args.effects.read_text()))
+            args.command_delay_ms = effects.command_delay_ms
+            args.observation_delay_ms = effects.observation_delay_ms
+        else:
+            effects = EffectSettings(
+                command_delay_ms=args.command_delay_ms, observation_delay_ms=args.observation_delay_ms
+            )
         start_condition = sample_start_condition(args.start_protocol, args.seed)
         experiment = "microduck_tutorial" if args.agent == "ppo" else "microduck_tutorial_sac"
         args.checkpoint = resolve_checkpoint(args.checkpoint, log_root=Path("logs/rsl_rl") / experiment)
-    except (ValueError, FileNotFoundError) as error:
+    except (ValueError, TypeError, OSError) as error:
         parser.error(str(error))
     if not math.isfinite(args.seconds) or args.seconds < 0.02 or not args.checkpoint.is_file():
         parser.error("A saved checkpoint and positive --seconds are required.")
@@ -93,6 +107,7 @@ def main() -> None:
     entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else "rsl_rl_sac_cfg_entry_point"
     cfg, agent = resolve_task_config("MicroDuckTutorial-Velocity-Flat", entry_point, overrides=())
     validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
+    apply_effects(cfg, effects)
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
     if args.start_protocol != "nominal-v1":
@@ -101,12 +116,6 @@ def main() -> None:
         )
     cfg.rewards.track_lin_vel.func = RecordedLinearTracking
     cfg.commands.base_velocity.resampling_time_range = (1e9, 1e9)
-    cfg.scene.robot.actuators["servos"].min_delay = args.command_delay_ms // 5
-    cfg.scene.robot.actuators["servos"].max_delay = args.command_delay_ms // 5
-    lag = args.observation_delay_ms // 20
-    cfg.observations.policy.imu.params.update(min_lag=lag, max_lag=lag)
-    cfg.observations.policy.joint_vel.delay_min_lag = lag
-    cfg.observations.policy.joint_vel.delay_max_lag = lag
     cfg.sim.visualizer_cfgs = []
     if args.viewer or args.capture:
         cfg.sim.visualizer_cfgs = VisualizerCfg(
@@ -193,6 +202,7 @@ def main() -> None:
                         "root_quat_xyzw": robot.data.root_link_quat_w.torch[0].cpu().tolist(),
                         "joint_pos_rad": robot.data.joint_pos.torch[0].cpu().tolist(),
                         "body_poses_w": robot.data.body_link_pose_w.torch[0].cpu().tolist(),
+                        "actor_observation": obs["policy"][0].cpu().tolist(),
                     }
                     if args.capture:
                         last_frame = base.sim.visualizers[0].render_rgb_array()
@@ -275,12 +285,14 @@ def main() -> None:
                 "seed": args.seed,
                 "start_condition": start_condition,
                 "initial_state": initial_state,
+                "mechanical_initial_state": mechanical_state(initial_state),
                 "initial_actor_observation": initial_actor_observation,
                 "interactive": args.viewer,
                 "control_dt_s": base.step_dt,
                 "horizon_s": args.seconds,
                 "command_delay_ms": args.command_delay_ms,
                 "observation_delay_ms": args.observation_delay_ms,
+                "effect_settings": effects.manifest(),
                 "metrics": metrics,
                 "qualification": qualification,
                 "trajectory": rows,
@@ -293,6 +305,7 @@ def main() -> None:
                     "start_protocol": args.start_protocol,
                     "command_delay_ms": args.command_delay_ms,
                     "observation_delay_ms": args.observation_delay_ms,
+                    **({"effects": effects.manifest()["settings"]} if args.effects else {}),
                 },
                 "contract": contract,
                 "reward_weights": {

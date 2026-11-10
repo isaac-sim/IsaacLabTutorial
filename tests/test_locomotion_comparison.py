@@ -102,3 +102,50 @@ def test_matching_poses_do_not_hide_different_start_velocities_or_protocols():
     candidate["start_condition"] = sample_start_condition("balance-starts-v1", 42)
     with pytest.raises(ValueError, match="start protocol"):
         RecordedComparison(reference, candidate)
+
+
+def test_known_backlash_variant_matches_mechanical_outputs_but_retains_raw_play_state():
+    from isaaclab_tutorial.locomotion.deployment import DUCK_HOME_RAD, DUCK_JOINTS, OBSERVATION_LAYOUT
+
+    reference = recording([0.0, 0.1])
+    reference["joint_names"] = list(DUCK_JOINTS)
+    reference["asset_url"] = "assets/microduck_walk.usd"
+    reference["contract"] = {
+        "joint_names": list(DUCK_JOINTS),
+        "home_rad": list(DUCK_HOME_RAD),
+        "action_scale": [1.0] * 14,
+        "control_dt_s": 0.02,
+        "observation_layout": OBSERVATION_LAYOUT,
+        "normalization": "embedded",
+    }
+    reference["start_condition"] = sample_start_condition("nominal-v1", 42)
+    for row in reference["trajectory"]:
+        row["joint_pos_rad"] = [0.0] * 14
+    reference["initial_state"] = {
+        **copy.deepcopy(reference["trajectory"][0]),
+        "joint_names": list(DUCK_JOINTS),
+        "root_linear_velocity_w": [0, 0, 0],
+        "root_angular_velocity_w": [0, 0, 0],
+        "joint_vel_rad_s": [0.0] * 14,
+    }
+    candidate = copy.deepcopy(reference)
+    candidate["asset_url"] = "assets/microduck_walk_backlash.usd"
+    candidate["joint_names"] += [f"passive_{name}_backlash" for name in DUCK_JOINTS]
+    candidate["initial_state"]["joint_names"] = candidate["joint_names"]
+    candidate["initial_state"]["joint_pos_rad"] += [0.0] * 14
+    candidate["initial_state"]["joint_vel_rad_s"] += [0.0] * 14
+    for row in candidate["trajectory"]:
+        row["joint_pos_rad"] += [0.0] * 14
+    RecordedComparison(reference, candidate)
+    candidate["contract"]["action_scale"][0] = 0.5
+    with pytest.raises(ValueError, match="action_scale"):
+        RecordedComparison(reference, candidate)
+    candidate["contract"]["action_scale"][0] = 1.0
+    candidate["initial_state"]["joint_vel_rad_s"][-1] = 0.1
+    with pytest.raises(ValueError, match="velocity"):
+        RecordedComparison(reference, candidate)
+    candidate["initial_state"]["joint_vel_rad_s"][-1] = 0.0
+    candidate["initial_state"]["joint_pos_rad"][-1] = 0.01
+    candidate["trajectory"][0]["joint_pos_rad"][-1] = 0.01
+    with pytest.raises(ValueError, match="joint"):
+        RecordedComparison(reference, candidate)

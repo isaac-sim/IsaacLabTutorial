@@ -11,10 +11,14 @@ import math
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from isaaclab_tutorial.locomotion.comparison import RecordedComparison
+
+if TYPE_CHECKING:
+    from .effects import EffectControls
 
 
 def _visual_model(receipt: dict, *, ground: bool):
@@ -53,6 +57,8 @@ def show_comparison(
     side_by_side: bool = False,
     opacity: float = 0.3,
     show_reference: bool = True,
+    effect_controls: EffectControls | None = None,
+    render_ui: bool = False,
 ) -> dict:
     """Display independently recorded trials with shared time/world alignment and end markers."""
     if not 0.0 <= opacity <= 1.0:
@@ -68,7 +74,12 @@ def show_comparison(
         if not receipt.get("body_names") or any("body_poses_w" not in row for row in receipt["trajectory"]):
             raise ValueError("Ghost playback needs body-pose recordings; rerun scripts/locomotion/evaluate.py.")
     models = {}
-    viewer = ViewerGL(width=1280, height=720, headless=headless)
+    # Pyglet can supply an offscreen EGL window while Newton still renders its native widgets.
+    viewer = ViewerGL(
+        width=1440 if render_ui else 1280, height=1000 if render_ui else 720, headless=headless and not render_ui
+    )
+    if headless and render_ui:
+        viewer.gui.ui.refresh_dpi(1.25)
     controls = {
         "time_s": 0.0,
         "paused": False,
@@ -98,17 +109,23 @@ def show_comparison(
         distance = max(0.7, float(np.ptp(paths[:, :2], axis=0).max()) + 0.5)
         viewer.set_camera(wp.vec3(*(center + [distance, distance, distance * 0.6])), pitch=-23.0, yaw=-135.0)
 
-        def panel(imgui) -> None:
+        def panel_contents(imgui) -> None:
+            if effect_controls is not None:
+                effect_controls.draw(imgui)
             imgui.set_next_item_open(True, imgui.Cond_.once)
             if not imgui.collapsing_header("Microduck reference comparison"):
                 return
             imgui.text_wrapped("RECORDED CLOSED-LOOP TRIALS. Blue ghost: baseline. Solid duck: candidate.")
             _, controls["reference"] = imgui.checkbox("Show baseline ghost", controls["reference"])
-            _, controls["opacity"] = imgui.slider_float("Ghost opacity", controls["opacity"], 0.0, 0.8)
-            _, controls["side_by_side"] = imgui.checkbox("Side by side (display offset only)", controls["side_by_side"])
+            imgui.text("Ghost opacity")
+            imgui.set_next_item_width(-1)
+            _, controls["opacity"] = imgui.slider_float("##ghost-opacity", controls["opacity"], 0.0, 0.8)
+            _, controls["side_by_side"] = imgui.checkbox("Side by side", controls["side_by_side"])
             _, controls["trails"] = imgui.checkbox("World path trails", controls["trails"])
             _, controls["paused"] = imgui.checkbox("Pause recorded comparison", controls["paused"])
-            changed, selected = imgui.slider_float("Recorded time (s)", controls["time_s"], 0.0, comparison.duration_s)
+            imgui.text("Recorded time (s)")
+            imgui.set_next_item_width(-1)
+            changed, selected = imgui.slider_float("##recorded-time", controls["time_s"], 0.0, comparison.duration_s)
             if changed:
                 controls.update(time_s=selected, paused=True)
             if imgui.button("Restart both recordings"):
@@ -126,7 +143,20 @@ def show_comparison(
                     imgui.text(f"{name} ended: {ending}; holding its final recorded pose")
             imgui.text_wrapped("No physics is advanced here. Scrubbing changes display time, not simulator state.")
 
-        viewer.register_ui_callback(panel, position="side")
+        def panel(imgui) -> None:
+            size = imgui.get_io().display_size
+            if headless and render_ui:
+                imgui.push_font(None, 17.0)
+            imgui.set_next_window_pos((max(10, size.x - 410), 55), imgui.Cond_.first_use_ever)
+            imgui.set_next_window_size((400, max(200, min(900, size.y - 80))), imgui.Cond_.first_use_ever)
+            visible, _ = imgui.begin("Microduck experiment")
+            if visible:
+                panel_contents(imgui)
+            imgui.end()
+            if headless and render_ui:
+                imgui.pop_font()
+
+        viewer.register_ui_callback(panel, position="free")
         frame_count = 0
         while viewer.is_running():
             frame = comparison.frame(controls["time_s"])
@@ -154,6 +184,8 @@ def show_comparison(
                 )
             viewer.end_frame()
             frame_count += 1
+            if effect_controls is not None and effect_controls.pending is not None:
+                break
             if headless and frame_count >= math.ceil(comparison.duration_s / comparison.control_dt_s) + 1:
                 break
             if not controls["paused"] and not viewer.is_paused():
@@ -166,7 +198,7 @@ def show_comparison(
             from PIL import Image
 
             capture.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(viewer.get_frame(render_ui=not headless).numpy()).save(capture)
+            Image.fromarray(viewer.get_frame(render_ui=not headless or render_ui).numpy()).save(capture)
         return {
             "rendered_frames": frame_count,
             "duration_s": comparison.duration_s,
@@ -175,6 +207,7 @@ def show_comparison(
             "side_by_side": controls["side_by_side"],
             "show_reference": controls["reference"],
             "reference_opacity": controls["opacity"],
+            "native_ui_rendered": viewer.gui is not None,
         }
     finally:
         viewer.close()

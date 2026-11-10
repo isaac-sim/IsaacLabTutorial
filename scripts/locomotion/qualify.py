@@ -19,6 +19,7 @@ from pathlib import Path
 import torch
 import yaml
 
+from isaaclab_tutorial.locomotion.effects import EffectSettings
 from isaaclab_tutorial.locomotion.protocols import START_PROTOCOLS, sample_start_condition
 from isaaclab_tutorial.locomotion.qualification import aggregate_trials
 from isaaclab_tutorial.locomotion.training import training_fingerprints
@@ -75,6 +76,7 @@ def main() -> None:
         parser.error("Delays must be nonnegative multiples of 5 ms (commands) and 20 ms (observations).")
     models = []
     try:
+        EffectSettings(command_delay_ms=args.command_delay_ms, observation_delay_ms=args.observation_delay_ms)
         for checkpoint in args.checkpoint:
             if not checkpoint.is_file():
                 raise ValueError("Choose exact saved checkpoints, not a moving latest selector.")
@@ -120,6 +122,7 @@ def main() -> None:
     producer_paths = [
         evaluate,
         root / "src/isaaclab_tutorial/locomotion/protocols.py",
+        root / "src/isaaclab_tutorial/locomotion/effects.py",
         root / "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py",
     ]
     configuration = {

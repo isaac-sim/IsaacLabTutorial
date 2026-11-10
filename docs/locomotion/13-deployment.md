@@ -10,6 +10,8 @@ This exports JIT and ONNX models using RSL-RL's supported exporter and executes 
 
 The evaluator first checks the checkpoint's saved training configuration. A different observation order, preprocessing, action scale/home pose, model, or actuator contract requires a matching evaluator; the task name and tensor widths alone are insufficient. Reward-only candidates remain valid comparisons. Bundle files are staged and published together after the checks pass. Use a fresh output directory for each export; an existing bundle is preserved.
 
+When evaluation applies a held-out physical effect, the manifest retains its `conditions`, complete `effect_settings`, and simulated asset URL alongside the qualification result. A passing intervention trial must stay identifiable as that experiment.
+
 Normalization is embedded in the exported actor. Supply the raw assembled 61-value actor observation exactly once; do not normalize it a second time. Preserve the verified 14-action order, reference offsets, scale, bias convention, timing, and inference/reset state.
 
 ## Inspect the standard Duck bundle

@@ -14,7 +14,7 @@ Use the [measured nominal/delay matrix](09-evaluation.md#find-the-failing-condit
 
 Start with the [named physical-start protocol](09-evaluation.md#change-the-starting-state-deliberately): run the same checkpoint with `--start-protocol balance-starts-v1` under distinct evaluation seeds. Repeat that exact sample set for each independently trained policy. Inspect the saved actual initial states; changing seed labels on `nominal-v1` does not create state diversity. Combine the same physical starts with `--observation-delay-ms` or `--command-delay-ms` to isolate a held-out delay condition. Report full command-response qualification as well as survival.
 
-The current fixed evaluator targets the nominal-asset observation contract plus its explicit delay controls. Do not load a backlash-trained checkpoint into it and claim a matched backlash evaluation. Extend and validate the asset/preset-aware evaluator and reference-ghost sandbox before making that comparison.
+The current fixed evaluator validates a nominal-trained checkpoint, then can apply [explicit held-out effects](11-effects.md) including the known backlash asset/mapping. This tests a nominal policy under changed hardware conditions. It does not admit an arbitrary transfer-trained checkpoint: that also needs its saved inference semantics checked against the intended evaluation configuration. Keep that distinction when building the robust-training comparison.
 
 Observation history is another explicit architecture experiment: it changes input dimension, reset state, and deployment requirements. Do not add history only on the robot after training.
 

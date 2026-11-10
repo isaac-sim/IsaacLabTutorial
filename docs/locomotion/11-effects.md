@@ -1,4 +1,52 @@
-# 11. Give the policy stale observations
+# 11. Turn a reality-gap knob
+
+Predict whether adding 40 ms of sensor lag will change the policy's actions. Open the native Newton experiment using an exact checkpoint from your run:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt
+```
+
+In **Reality-gap experiment**, change **IMU/dq delay** from zero to two samples and press **Apply and restart trial**. Playback closes while a fresh candidate is recorded, then reopens beside the same baseline ghost. The policy weights and initial mechanical state remain fixed. Editing a slider alone leaves the displayed recording unchanged; pending edits are labeled.
+
+Pause, scrub, hide the ghost, or switch to side-by-side display. Find the earliest visible divergence. Then choose **Restore nominal settings** and apply again. Every application preserves its settings, log, recording, and comparison under a new `trial-…` directory. Closing the viewer finishes the workshop.
+
+![Actual native Newton controls for delay, noise, supply voltage, encoder bias and mechanical play beside the independently recorded baseline ghost and candidate](media/effects-workshop.jpg)
+
+The image is an offscreen capture of the working native widgets and real recordings. Collapse **Reality-gap experiment** when you want more room for replay controls.
+
+For an immediate activity without training or simulation, [open the included qualification explorer](09-evaluation.md#find-the-failing-condition). It contains actual nominal and delayed trials.
+
+## Try one physical mechanism
+
+| Control | What changes | What to inspect |
+| --- | --- | --- |
+| Target delay | BAM command history, in 5 ms physics steps | Requested target versus delayed motor response |
+| IMU/dq delay | IMU and joint-velocity histories, in 20 ms samples | Stale motion readings; position and previous action stay undelayed |
+| Sensor noise multiplier | Uniform angular-velocity, gravity, position and velocity noise | At multiplier 1: bounds ±0.03 rad/s, ±0.01, ±0.001 rad, ±0.25 rad/s respectively |
+| Fixed battery voltage | BAM supply voltage, with sag disabled | Changed available motor response under the same policy |
+| Encoder bias | One signed radian offset applied to every encoder, fixed for the trial | Initial observation offset and the action transform's compensating target offset |
+| Mechanical gearbox play | The actual asset with 14 servo joints plus 14 passive hinges, each spanning ±1° | State-dependent play after reversals; servo and output angle differ |
+
+These are teaching interventions, not measured hardware tolerances. Noise is added when actor observations are computed; the critic stays uncorrupted. Encoder bias is fixed rather than redrawn each step. Battery sag, IMU mounting uncertainty and other hardware effects remain separate mechanisms. The complete settings and cadence are saved in each receipt's `effect_settings`.
+
+Every application constructs a fresh trial and clears its histories. Backlash additionally changes the physical topology. The comparison retains all 28 raw coordinates and matches the known output-angle mapping against the nominal robot, requiring zero initial passive displacement and velocity. It cannot hide a different initial motor state behind equal summed output angles.
+
+## Use a frozen experiment file
+
+This runs the same workflow without a desktop, using the supplied backlash snapshot:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/effects_workshop.py --checkpoint logs/rsl_rl/microduck_tutorial/YOUR_RUN/model_999.pt --effects docs/locomotion/experiments/effects-backlash.json --headless --output outputs/backlash-workshop
+```
+
+Use a fresh output directory for each workshop. Add `--capture-ui` to render the actual native controls offscreen too; `--record-only` omits rendering. Other one-factor snapshots cover [40 ms lag](experiments/effects-delay40.json), [noise](experiments/effects-noise.json), [6.5 V](experiments/effects-low-voltage.json), and [encoder bias](experiments/effects-encoder-bias.json). Change one factor, predict the outcome, and compare task response as well as survival.
+
+![Actual independently simulated baseline ghost and backlash candidate, sharing world coordinates and a fixed command protocol](media/ghost-backlash.jpg)
+
+This example uses training seed 42 and physical-start seed 0. Both completed 20 seconds; one trial cannot establish robustness. [Simulation and control verification](evidence/effects-validation.json) identifies the configurations, recording hashes, and tested interactions. A separate [three-training-seed delay matrix](09-evaluation.md#find-the-failing-condition) provides the broader delay evidence.
+
+<details>
+<summary>Inspect delay clocks and the smaller delay-only launcher</summary>
 
 Predict the effect of a 40 ms observation delay. Choose the exact saved checkpoint from your run directory, then record matching trials and open the ghost viewer:
 
@@ -41,3 +89,5 @@ uv run --project environments/locomotion python scripts/locomotion/plot_comparis
 ```
 
 **Record:** which signals were delayed, the delay in milliseconds and samples, and whether the policy survived long enough for the change to be interpretable.
+
+</details>
