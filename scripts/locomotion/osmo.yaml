@@ -60,12 +60,12 @@ workflow:
             cp "$run_dir"/events.out.tfevents.* "$OUT/collection/"
           fi
           if [[ -d "$OUT/evaluation" ]]; then cp -a "$OUT/evaluation" "$OUT/collection/"; fi
-          for name in exit-status.json source-revision.txt source.sha256 device.csv bootstrap.log training.log evaluation.log; do
+          for name in exit-status.json source-revision.txt source.tar.gz source.sha256 device.csv bootstrap.log training.log evaluation.log; do
             if [[ -f "$OUT/$name" ]]; then cp "$OUT/$name" "$OUT/collection/"; fi
           done
           echo "TRIAL_FINISHED: status $result; download {{output}} with osmo workflow rsync download."
           # Retain failures as well as successes for accounts without an output bucket.
-          # Upload 'collected' to INPUT after downloading to release the task early.
+          # Touch INPUT/collected through workflow exec after downloading to release the task early.
           deadline=$((SECONDS + 300))
           until [[ -f "$INPUT/collected" ]] || (( SECONDS >= deadline )); do sleep 2; done
           exit "$result"
@@ -120,7 +120,7 @@ default-values:
   image: nvcr.io/nvidia/isaac-lab:3.0.0
   image_credential: ""
   source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
-  source_revision: 05021116e7c714b1067c0090d60b4ada4906f867
+  source_revision: cb49a5bec3e7a5486c5c994381910769975bd46e
   platform: ovx-l40
   seed: 42
   num_envs: 4096

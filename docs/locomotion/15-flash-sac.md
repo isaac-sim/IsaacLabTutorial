@@ -65,6 +65,15 @@ Choose the image, platform, and optional image credential for your pool. The wor
 
 Start with one smoke job, then screen update ratios 8/16/32 under the same seed and transition budget. Validate promising settings across fresh seeds before selecting a teaching recipe. PPO warm-start is a separate experiment.
 
+The exit handler stages a compact `collection` directory with the last checkpoint, its parameters, metrics/events, source archive and logs. Collect it during the five-minute window and then release the GPU from an interactive terminal:
+
+```bash
+osmo workflow rsync download WORKFLOW_ID train /osmo/data/output/collection/:outputs/WORKFLOW_ID
+osmo workflow exec WORKFLOW_ID train --entry "bash -lc 'touch /osmo/run/workspace/microduck-input/collected'"
+```
+
+Verify that the downloaded files have nonzero sizes and retain the source/checkpoint hashes before releasing. If your service exposes a different output path, substitute the path shown by its task. Automated collectors must allocate a terminal for `workflow exec` on CLI versions that require one.
+
 Report wall time, actual environment transitions, optimizer updates, throughput excluding warmup, peak memory, task metrics, seeds, and failures. A single short run can teach the workflow; it cannot establish that one algorithm is generally faster or better.
 
 **Record:** did changing replay reuse improve task success, or only increase update throughput?
