@@ -63,7 +63,7 @@ This diagnostic adds Gaussian noise with a raw-action standard deviation of 0.05
 
 ### Measured initial horizon screen
 
-Three seed-42 OSMO runs each collected 40,960,000 physical transitions. Their checkpoints contain 3974 learner iterations, 15,896 world-model optimizer steps, 3474 actor steps and 69,480 critic steps. All logged losses were finite. Each final policy survived the complete 20-second nominal command schedule and passed 1000-sample native/ONNX parity, with maximum action error below 1.69×10⁻⁶.
+Three seed-42 OSMO runs each collected 40,960,000 physical transitions. These short screens overrode the native 250,000-update learning-rate schedule with `agent.algorithm.lr_decay_iterations=4000`, decaying close to its floor by their end. Their checkpoints contain 3974 learner iterations, 15,896 world-model optimizer steps, 3474 actor steps and 69,480 critic steps. All logged losses were finite. Each final policy survived the complete 20-second nominal command schedule and passed 1000-sample native/ONNX parity, with maximum action error below 1.69×10⁻⁶.
 
 | Imagined horizon | Training time on one L40 | Forward tracking RMSE (m/s) | Yaw tracking RMSE (rad/s) |
 | --- | --- | --- | --- |

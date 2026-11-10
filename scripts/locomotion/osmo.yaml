@@ -56,8 +56,14 @@ workflow:
           latest=$(ls "$OUT"/logs/rsl_rl/*/*/model_*.pt 2>/dev/null | sort -V | tail -n 1)
           if [[ -n "$latest" ]]; then
             run_dir=$(dirname "$latest")
-            cp "$latest" "$OUT/collection/"
-            (cd "$OUT/collection" && sha256sum "${latest##*/}" > checkpoint.sha256)
+            if (( {{ keep_checkpoints }} )); then
+              for candidate in "$run_dir"/model_*.pt; do
+                if [[ "${candidate##*/}" != model_0.pt ]]; then cp "$candidate" "$OUT/collection/"; fi
+              done
+            else
+              cp "$latest" "$OUT/collection/"
+            fi
+            (cd "$OUT/collection" && sha256sum model_*.pt > checkpoint.sha256)
             cp -a "$run_dir/params" "$run_dir/run.json" "$OUT/collection/"
             cp "$run_dir"/events.out.tfevents.* "$OUT/collection/"
           fi
@@ -98,7 +104,7 @@ workflow:
                  agent.algorithm.task_cfg.air_time_gradient_width={{ air_time_gradient_width }}
                  agent.algorithm.world_model_window={{ world_model_window }}
                  agent.algorithm.world_model_warmup_iterations={{ world_model_warmup }}
-                 agent.algorithm.lr_decay_iterations=$(( {{ iterations }} * 2 / 5 )))
+                 agent.algorithm.lr_decay_iterations={{ lr_decay_iterations }})
         elif [[ "{{ learner }}" == sac ]]; then
           extra=(agent.algorithm.num_updates={{ updates }}
                  agent.algorithm.schedule_updates=$(( {{ iterations }} * {{ updates }} ))
@@ -130,7 +136,7 @@ default-values:
   image: nvcr.io/nvidia/isaac-lab:3.0.0
   image_credential: ""
   source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
-  source_revision: 0da6663842aa648b3663b4dda46941c7bc31186e
+  source_revision: 70c69553dc0f1e29c74aa950b08af9b7a9dfb34e
   platform: ovx-l40
   seed: 42
   num_envs: 4096
@@ -141,5 +147,7 @@ default-values:
   world_model_warmup: 500
   world_model_window: 8
   air_time_gradient_width: 0.0
+  lr_decay_iterations: 250000
+  keep_checkpoints: 0
   checkpoint_interval: 500
   learning_rate: 0.0003

@@ -246,7 +246,11 @@
       },
       "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
       "nonfinite_logged_losses": {},
-      "events_sha256": "e998c7319920decbd9bfdfac9f829a07f330aec48a980a0c4d46aafca452e6d2"
+      "events_sha256": "e998c7319920decbd9bfdfac9f829a07f330aec48a980a0c4d46aafca452e6d2",
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "lr_final_ratio": 0.03,
+      "world_model_warmup_iterations": 500
     },
     {
       "workflow": "microduck-supermimic-h16-s42-1",
@@ -487,7 +491,11 @@
       },
       "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
       "nonfinite_logged_losses": {},
-      "events_sha256": "1e822b05b227e90dc03fb71b9b22bd75fed1ebc6f7795c62975655037252dc9f"
+      "events_sha256": "1e822b05b227e90dc03fb71b9b22bd75fed1ebc6f7795c62975655037252dc9f",
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "lr_final_ratio": 0.03,
+      "world_model_warmup_iterations": 500
     },
     {
       "workflow": "microduck-supermimic-h32-s42-1",
@@ -728,7 +736,11 @@
       },
       "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
       "nonfinite_logged_losses": {},
-      "events_sha256": "4f87bf42176379f32cde30e1dabddc0b56c8246b612cf657739c7ae4ffe7deb2"
+      "events_sha256": "4f87bf42176379f32cde30e1dabddc0b56c8246b612cf657739c7ae4ffe7deb2",
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "lr_final_ratio": 0.03,
+      "world_model_warmup_iterations": 500
     }
   ]
 }

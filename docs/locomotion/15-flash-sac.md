@@ -83,6 +83,8 @@ osmo workflow exec WORKFLOW_ID train --entry "bash -lc 'touch /osmo/run/workspac
 
 Verify that the downloaded files have nonzero sizes and retain the source/checkpoint hashes before releasing. If your service exposes a different output path, substitute the path shown by its task. Automated collectors must allocate a terminal for `workflow exec` on CLI versions that require one.
 
+For checkpoint selection, `keep_checkpoints=1` retains every nonzero saved checkpoint in the compact collection. Choose a bounded `checkpoint_interval` so this stays small. SuperMimic's `lr_decay_iterations` is measured in learner updates and defaults to the native 250,000; the initial horizon screen explicitly used 4,000. Record this setting alongside the physical transition budget.
+
 Report wall time, actual environment transitions, optimizer updates, throughput excluding warmup, peak memory, task metrics, seeds, and failures. A single short run can teach the workflow; it cannot establish that one algorithm is generally faster or better.
 
 **Record:** did changing replay reuse improve task success, or only increase update throughput?
