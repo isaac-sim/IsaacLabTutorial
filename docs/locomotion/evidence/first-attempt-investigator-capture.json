@@ -1,0 +1,59 @@
+{
+  "scope": "Actual Chrome capture of adjacent curves and replay sections; no UI was hidden or modified for capture.",
+  "browser_version": "157.0.8103.50",
+  "playwright_version": "1.65.0",
+  "source_sha256": "b4882621c3eb69b985d0b5897b9b4b8357f55c418bd7ca155fbd228d2cb49b60",
+  "report_sha256": "230dabdea3bab9f81d9077f8623d791e7b1b0b5b961c2776c203314e62077ac4",
+  "html_sha256": "c96f851aa4366a2481518a9c0c434416b8f7db2d0b83c56107c2eacafdb0a1e5",
+  "checkpoint_sha256": "8b16010990c9e242a294764b1a0aa69fb67d05da4f748910d0943b574f3c6a62",
+  "image_sha256": "ca55b54527d8f051f3ad5a36d61fcafad9c296a717c46100576282e6842233c1",
+  "capture_css_rectangle": {
+    "x": 20,
+    "y": 605.5,
+    "width": 1060,
+    "height": 1397.421875
+  },
+  "device_scale_factor": 2,
+  "recorded_budget": {
+    "num_envs": 128,
+    "rollout_steps": 24,
+    "iterations": 50,
+    "epochs": 5,
+    "minibatches": 4,
+    "rollout_transitions": 3072,
+    "collected_transitions": 153600,
+    "minibatch_size": 768,
+    "optimizer_steps": 1000,
+    "sample_presentations": 768000
+  },
+  "evaluation": {
+    "valid": true,
+    "protocol_id": "flat-velocity-v1",
+    "seed": 0,
+    "conditions": {
+      "task": "MicroDuckTutorial-Velocity-Flat",
+      "start_protocol": "nominal-v1",
+      "command_delay_ms": 0,
+      "observation_delay_ms": 0
+    },
+    "metrics": {
+      "fell": true,
+      "alive_time_s": 5.14,
+      "coverage": 0.257,
+      "tracking_rmse": [
+        0.08820982572579635,
+        0.020412575034154213,
+        0.18646036025876717
+      ],
+      "tracking_units": [
+        "m/s",
+        "m/s",
+        "rad/s"
+      ],
+      "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+    }
+  },
+  "diagnostic": "Train/mean_episode_length",
+  "axis": "Fresh transitions",
+  "javascript_errors": []
+}

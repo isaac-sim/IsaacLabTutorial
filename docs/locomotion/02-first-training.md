@@ -78,4 +78,15 @@ This attempts the fixed command protocol and stops at the first fall or timeout.
 
 **Record:** “My first policy …; the episode ended because ….”
 
+<details>
+<summary>See one actual short attempt</summary>
+
+![The actual 128-environment, 50-iteration policy's final recorded pose: it fell at 5.14 seconds after 153600 fresh transitions, and the replay explicitly holds its last pre-reset sample](media/first-attempt.jpg)
+
+This fresh seed-42 run collected 153,600 transitions and made 1,000 optimizer steps. Its frozen policy fell at 5.14 s in the nominal fixed-command test, covering 25.7% of the intended 20 seconds. The shown replay holds the last recorded pre-reset pose at 5.12 s; no physics continues after the episode ends. This is the short learner's own result. The larger walking policy is a separate run.
+
+Open [its actual training curves and replay information](08-training.md#open-the-investigator) when you reach lesson 8. [Checkpoint, event-log and recording provenance](evidence/checkpoint-media-validation.json) identify this attempt. Your run can differ; keep its own result.
+
+</details>
+
 Do not wait for a good gait before moving on. Next, [control the puppet duck yourself](03-puppet.md).

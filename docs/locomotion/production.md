@@ -40,4 +40,14 @@ Open each lesson with an action or prediction, show an observable result, then r
 
 Ghosts replay independently simulated closed-loop trials with matched actual starts and command schedules. Preserve world-space drift, failure time and incomplete coverage. A ghost is a labeled reference, not a guaranteed alternate future or a hardware measurement.
 
+For checkpoint-progress media, use the collect/render commands in [lesson 8](08-training.md). The collector verifies actual model counters and event logs before labeling the recordings. The native movie uses identical fixed cameras; an early-ending trial holds its last pose with its own sample time. Keep the movie and the relative-path receipt archive together when publishing, and update their URLs and checksums together.
+
+The compact first-attempt screenshot captures the actual investigator's adjacent curves and replay sections. Build a one-run report with its matching evaluation first, then use the optional browser capture tool:
+
+```bash
+uv run --project environments/locomotion --locked --with playwright python scripts/locomotion/capture_first_attempt.py --report-directory outputs/first-attempt-investigator --output outputs/first-attempt-investigator.jpg
+```
+
+It requires installed Chrome/Chromium and records the browser version, report/HTML/image hashes and captured rectangle. The replay command appears only when the report builder finds the exact local checkpoint; a report rebuilt elsewhere can correctly show an availability note instead. Do not change the HTML to manufacture an installed policy or a successful evaluation.
+
 Rough terrain and fall recovery are later tutorial work. Hardware stance/timing/walking evidence remains a measured gate; keep those entries open until the calibrated robot trials exist.
