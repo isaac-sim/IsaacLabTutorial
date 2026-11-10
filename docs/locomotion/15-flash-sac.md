@@ -71,6 +71,13 @@ The exit handler stages a compact `collection` directory with the last checkpoin
 
 ```bash
 osmo workflow rsync download WORKFLOW_ID train /osmo/data/output/collection/:outputs/WORKFLOW_ID
+cd outputs/WORKFLOW_ID/collection
+sha256sum -c source.sha256 checkpoint.sha256
+```
+
+After the checks pass, release the GPU:
+
+```bash
 osmo workflow exec WORKFLOW_ID train --entry "bash -lc 'touch /osmo/run/workspace/microduck-input/collected'"
 ```
 

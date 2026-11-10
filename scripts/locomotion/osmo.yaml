@@ -57,6 +57,7 @@ workflow:
           if [[ -n "$latest" ]]; then
             run_dir=$(dirname "$latest")
             cp "$latest" "$OUT/collection/"
+            (cd "$OUT/collection" && sha256sum "${latest##*/}" > checkpoint.sha256)
             cp -a "$run_dir/params" "$run_dir/run.json" "$OUT/collection/"
             cp "$run_dir"/events.out.tfevents.* "$OUT/collection/"
           fi
@@ -94,6 +95,8 @@ workflow:
         if [[ "{{ learner }}" == supermimic ]]; then
           TASK="$TASK-SuperMimic"
           extra=(agent.algorithm.horizon={{ horizon }}
+                 agent.algorithm.task_cfg.air_time_gradient_width={{ air_time_gradient_width }}
+                 agent.algorithm.world_model_window={{ world_model_window }}
                  agent.algorithm.world_model_warmup_iterations={{ world_model_warmup }}
                  agent.algorithm.lr_decay_iterations=$(( {{ iterations }} * 2 / 5 )))
         elif [[ "{{ learner }}" == sac ]]; then
@@ -127,7 +130,7 @@ default-values:
   image: nvcr.io/nvidia/isaac-lab:3.0.0
   image_credential: ""
   source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
-  source_revision: 510d8e71904ae1876142ae718867377bb8f9119a
+  source_revision: 0da6663842aa648b3663b4dda46941c7bc31186e
   platform: ovx-l40
   seed: 42
   num_envs: 4096
@@ -136,5 +139,7 @@ default-values:
   learner: sac
   horizon: 16
   world_model_warmup: 500
+  world_model_window: 8
+  air_time_gradient_width: 0.0
   checkpoint_interval: 500
   learning_rate: 0.0003
