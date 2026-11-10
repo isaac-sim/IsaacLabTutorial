@@ -43,6 +43,8 @@ An OSMO screen held training seed 42, transition budget and learning-rate decay 
 
 The 32-update setting was then trained independently with seeds 0 and 1. Their RMSE vectors were `(0.02418, 0.02340, 0.09237)` and `(0.02574, 0.02568, 0.09492)`; both also survived all 20 seconds. The saved counters confirm 49,152,000 physical transitions, 48,000 critic updates, 24,000 actor updates, and 24,000 temperature updates in each trial. All three policies passed native/ONNX parity over 1000 observations each, with maximum absolute action error below 2.02×10⁻⁶. Training took 441–450 seconds per 32-update trial on one NVIDIA L40, including learner startup and compilation. Bootstrap, evaluation, and collection time are additional.
 
+After discarding the first 100 collection iterations, the sum of runner collection and learning durations corresponds to 129.8–132.1 thousand physical transitions/s. This measurement excludes logging overhead as well as bootstrap and evaluation. Peak GPU memory was not recorded for these completed trials.
+
 The maintained Duck Rust runtime also reproduced each 1000-sample trace within 2.02×10⁻⁶. This rehearsal ran on the workstation CPU and exercised no robot hardware. These are exploratory nominal results from three training seeds and one deterministic evaluation schedule, with no randomized-state or hardware validation. They support 32 updates as a candidate recipe for this task; they do not establish algorithm superiority. [The compact evidence](evidence/sac-nominal-validation.json) records immutable source revisions, checkpoint hashes, device, budgets, individual timings, metrics and parity.
 
 To reproduce the candidate locally:
@@ -65,7 +67,7 @@ Choose the image, platform, and optional image credential for your pool. The wor
 
 Start with one smoke job, then screen update ratios 8/16/32 under the same seed and transition budget. Validate promising settings across fresh seeds before selecting a teaching recipe. PPO warm-start is a separate experiment.
 
-The exit handler stages a compact `collection` directory with the last checkpoint, its parameters, metrics/events, source archive and logs. Collect it during the five-minute window and then release the GPU from an interactive terminal:
+The exit handler stages a compact `collection` directory with the last checkpoint, its parameters, metrics/events, source archive and logs. New workflow runs also record one-second `gpu-samples.csv` measurements during training; their sampled maximum can miss brief memory peaks. Collect artifacts during the five-minute window and then release the GPU from an interactive terminal:
 
 ```bash
 osmo workflow rsync download WORKFLOW_ID train /osmo/data/output/collection/:outputs/WORKFLOW_ID
