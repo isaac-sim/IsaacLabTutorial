@@ -87,6 +87,18 @@ An opt-in experiment keeps the exact hard-window forward value and adds a straig
 
 The physical parity test also runs this estimator: every per-term and total reward still matches the real simulator, and an air-time input below the window receives a finite nonzero gradient. Compare widths on independent new trials; establish actual command tracking before describing the result as walking.
 
+Three follow-up seed-42 screens each changed one setting from the 32-step baseline, retaining its 40,960,000-transition budget and 4000-update learning-rate schedule:
+
+| Changed setting | Training time on one L40 | Evaluation survival | Forward RMSE (m/s) | Response qualified |
+| --- | --- | --- | --- | --- |
+| Air-time gradient width 25 ms | 2112.88 s | 20.00 s | 0.20021 | No |
+| Air-time gradient width 50 ms | 2224.78 s | 19.24 s | 0.10991 | No |
+| World-model fitting window 16 | 2663.25 s | 20.00 s | 0.10008 | No |
+
+The 25 ms estimator produced motion, but its final policy moved forward during the backward command and drifted during the standing segment. The 50 ms policy fell; the longer model-fitting window still produced standing. Their intermediate checkpoints also failed the response criteria. All logged losses were finite. One-second device-memory sampling recorded maxima of 3270, 3270, and 3268 MiB respectively; these samples can miss brief allocation peaks.
+
+The [optimization evidence](evidence/supermimic-optimization-screen.json) retains final and intermediate checkpoint hashes, full declared response criteria and failures, saved settings, actual optimizer counters, telemetry hashes, and runner timing. These are exploratory single-seed results. A separate experiment restores the native 250,000-update learning-rate schedule; a longer physical budget is a separate comparison.
+
 For OSMO, use [lesson 15's workflow](15-flash-sac.md) with `learner=supermimic`, `iterations=10000`, and `horizon=8`, `16`, or `32`. Publish the source first and provide its full commit SHA as `source_revision`; jobs never read uncommitted files.
 
 **Record:** does a longer imagined horizon improve actual command tracking and survival, or only imagined return?

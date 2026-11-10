@@ -250,7 +250,9 @@
       "initial_learning_rate": 0.0002,
       "lr_decay_iterations": 4000,
       "lr_final_ratio": 0.03,
-      "world_model_warmup_iterations": 500
+      "world_model_warmup_iterations": 500,
+      "workflow_spec_sha256": "118e265c17b73cb9ecb9f6f7de39e5cc1e9d347b4a48db4cd6956a837b85784e",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
     },
     {
       "workflow": "microduck-supermimic-h16-s42-1",
@@ -495,7 +497,9 @@
       "initial_learning_rate": 0.0002,
       "lr_decay_iterations": 4000,
       "lr_final_ratio": 0.03,
-      "world_model_warmup_iterations": 500
+      "world_model_warmup_iterations": 500,
+      "workflow_spec_sha256": "bf9cc6c28f2d4882e488566e05db907d8b18d12ea87d0e5d4662965df73e6b25",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
     },
     {
       "workflow": "microduck-supermimic-h32-s42-1",
@@ -740,7 +744,9 @@
       "initial_learning_rate": 0.0002,
       "lr_decay_iterations": 4000,
       "lr_final_ratio": 0.03,
-      "world_model_warmup_iterations": 500
+      "world_model_warmup_iterations": 500,
+      "workflow_spec_sha256": "ba80dde3c04a2234b2968cec9c5f737135d117d07d46d4b37d7f66e5b0679db2",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
     }
   ]
 }

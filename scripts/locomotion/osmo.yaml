@@ -68,7 +68,7 @@ workflow:
             cp "$run_dir"/events.out.tfevents.* "$OUT/collection/"
           fi
           if [[ -d "$OUT/evaluation" ]]; then cp -a "$OUT/evaluation" "$OUT/collection/"; fi
-          for name in exit-status.json source-revision.txt source.tar.gz source.sha256 device.csv gpu-samples.csv bootstrap.log training.log evaluation.log; do
+          for name in exit-status.json source-revision.txt source.tar.gz source.sha256 trial-script.sh device.csv gpu-samples.csv bootstrap.log training.log evaluation.log; do
             if [[ -f "$OUT/$name" ]]; then cp "$OUT/$name" "$OUT/collection/"; fi
           done
           echo "TRIAL_FINISHED: status $result; download {{output}} with osmo workflow rsync download."
@@ -79,6 +79,7 @@ workflow:
           exit "$result"
         }
         trap finish EXIT
+        cp "$0" "$OUT/trial-script.sh"
         if [[ ! "$TUTORIAL_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
           echo 'A full immutable Git commit SHA is required'; exit 1
         fi

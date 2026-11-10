@@ -1,0 +1,1083 @@
+{
+  "scope": "Exploratory single-training-seed experiments. Exact physical reward values are preserved; optional straight-through gradients are biased optimization estimators. None of these final policies met flat-response-v1.",
+  "qualification_source_revision": "70c69553dc0f1e29c74aa950b08af9b7a9dfb34e",
+  "runs": [
+    {
+      "label": "air25",
+      "workflow": "microduck-supermimic-air25-s42-1",
+      "training_seed": 42,
+      "num_envs": 4096,
+      "collection_iterations": 10000,
+      "physical_transitions": 40960000,
+      "horizon": 32,
+      "world_model_window": 8,
+      "air_time_gradient_width": 0.025,
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "checkpoint_sha256": "d3f15dc6f528c6083c2c5b7a370f08f302213ee3dc74f916ffded29e18366740",
+      "source_revision": "0da6663842aa648b3663b4dda46941c7bc31186e",
+      "training_seconds": 2112.88,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "nonfinite_logged_losses": {},
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.20021412925909213,
+          0.14969975197669458,
+          0.5394103600231175
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "qualification": {
+        "criteria": {
+          "id": "flat-response-v1",
+          "horizon_s": 20.0,
+          "segment_s": 4.0,
+          "settling_s": 1.0,
+          "steady_gain_range": [
+            0.5,
+            1.5
+          ],
+          "standing_max_planar_drift_m": 0.03,
+          "standing_max_abs_yaw_drift_rad": 0.15,
+          "rmse_limits": {
+            "stand": [
+              0.04,
+              0.04,
+              0.15
+            ],
+            "forward": [
+              0.1,
+              0.07,
+              0.3
+            ],
+            "backward": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "lateral": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "yaw": [
+              0.07,
+              0.07,
+              0.3
+            ]
+          },
+          "rmse_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ]
+        },
+        "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+        "passed": false,
+        "reasons": [
+          "stand: incomplete coverage or response outside declared limits",
+          "forward: incomplete coverage or response outside declared limits",
+          "backward: incomplete coverage or response outside declared limits",
+          "lateral: incomplete coverage or response outside declared limits",
+          "yaw: incomplete coverage or response outside declared limits",
+          "standing drift outside declared limits"
+        ],
+        "coverage": 1.0,
+        "segments": {
+          "stand": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.1721032306938381,
+              0.14856263364673647,
+              0.5535126658123327
+            ],
+            "steady_mean_velocity": [
+              0.0760719687367479,
+              0.12784782933071256,
+              0.11224022555475434
+            ],
+            "steady_directional_gain": null,
+            "passed": false
+          },
+          "forward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.1932809837433709,
+              0.17372338280147862,
+              0.5625156134762703
+            ],
+            "steady_mean_velocity": [
+              0.11536444930359721,
+              0.1556559971968333,
+              0.11257185357312362
+            ],
+            "steady_directional_gain": 0.576822246517986,
+            "passed": false
+          },
+          "backward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.24393955276561785,
+              0.15731745804154748,
+              0.5015495374050738
+            ],
+            "steady_mean_velocity": [
+              0.07602013399203618,
+              0.1269103324910005,
+              0.17793782924612364
+            ],
+            "steady_directional_gain": -0.7602013399203618,
+            "passed": false
+          },
+          "lateral": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.18901853680825978,
+              0.09713568684366947,
+              0.492490897294575
+            ],
+            "steady_mean_velocity": [
+              0.09687512740492821,
+              0.145939129019777,
+              0.0934211169804136
+            ],
+            "steady_directional_gain": 1.4593912901977697,
+            "passed": false
+          },
+          "yaw": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.19549146892433886,
+              0.16004775724180062,
+              0.5813074689807664
+            ],
+            "steady_mean_velocity": [
+              0.08915492108712594,
+              0.13806827592353027,
+              0.5022937838050227
+            ],
+            "steady_directional_gain": 1.0045875676100453,
+            "passed": false
+          }
+        },
+        "standing_planar_drift_m": 0.5221278116649583,
+        "standing_yaw_drift_rad": 0.5729789422105882,
+        "standing_drift_scope": "first to last available pre-step sample before 4s",
+        "requested_target_rate_rms_rad_s": null
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 8.344650268554688e-07,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "gpu_telemetry": {
+        "scope": "One-second nvidia-smi device-memory samples during training; sampled maximum may miss brief allocator peaks.",
+        "samples": 2187,
+        "sampled_peak_memory_mib": 3270.0,
+        "sample_interval_s": 1,
+        "csv_sha256": "5f1a6be312c317bbea5b3cebce6613dc71dd98b81e9a807b57bdffee0ce84564"
+      },
+      "steady_state_timing": {
+        "scope": "Sum of runner collection and learning time over collection iterations 5000..9999; excludes logging/bootstrap/evaluation.",
+        "physical_transitions": 20480000,
+        "collection_seconds": 99.0763897895813,
+        "learning_seconds": 1006.6155560016632,
+        "transitions_per_second": 18522.338050807
+      },
+      "events_sha256": "7f2ea3971f68d692e4a0504073af6887bbf0dd290143a69fef06be1fdaa8fc83",
+      "midpoint": {
+        "checkpoint_iteration": 5000,
+        "physical_transitions": 20484096,
+        "checkpoint_sha256": "238719f8932c9cdcc460c19ecc9b3b76e7aeb6f009a6dd7b59c23f73ff8deadc",
+        "metrics": {
+          "fell": true,
+          "alive_time_s": 18.3,
+          "coverage": 0.915,
+          "tracking_rmse": [
+            0.11765508408905864,
+            0.0617055927864925,
+            0.2437336514200599
+          ],
+          "tracking_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ],
+          "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+        },
+        "qualification": {
+          "criteria": {
+            "id": "flat-response-v1",
+            "horizon_s": 20.0,
+            "segment_s": 4.0,
+            "settling_s": 1.0,
+            "steady_gain_range": [
+              0.5,
+              1.5
+            ],
+            "standing_max_planar_drift_m": 0.03,
+            "standing_max_abs_yaw_drift_rad": 0.15,
+            "rmse_limits": {
+              "stand": [
+                0.04,
+                0.04,
+                0.15
+              ],
+              "forward": [
+                0.1,
+                0.07,
+                0.3
+              ],
+              "backward": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "lateral": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "yaw": [
+                0.07,
+                0.07,
+                0.3
+              ]
+            },
+            "rmse_units": [
+              "m/s",
+              "m/s",
+              "rad/s"
+            ]
+          },
+          "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+          "passed": false,
+          "reasons": [
+            "stand: incomplete coverage or response outside declared limits",
+            "forward: incomplete coverage or response outside declared limits",
+            "backward: incomplete coverage or response outside declared limits",
+            "lateral: incomplete coverage or response outside declared limits",
+            "yaw: incomplete coverage or response outside declared limits",
+            "trial fell before completing the protocol",
+            "full 20-second protocol not completed"
+          ],
+          "coverage": 0.915,
+          "segments": {
+            "stand": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.03073377417666666,
+                0.029753051419917482,
+                0.1841921088619693
+              ],
+              "steady_mean_velocity": [
+                -3.671985624047617e-05,
+                -0.0019067473521378513,
+                0.01305068631656468
+              ],
+              "steady_directional_gain": null,
+              "passed": false
+            },
+            "forward": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.20197885148175207,
+                0.025667300265081933,
+                0.1899270385721995
+              ],
+              "steady_mean_velocity": [
+                0.0012529908312717453,
+                -0.0036185430343418073,
+                0.04142747059619675
+              ],
+              "steady_directional_gain": 0.006264954156358726,
+              "passed": false
+            },
+            "backward": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.10713841352704383,
+                0.024087805707993307,
+                0.19731224447902576
+              ],
+              "steady_mean_velocity": [
+                0.00027287090352425973,
+                -0.002658418923383579,
+                0.024348246188213428
+              ],
+              "steady_directional_gain": -0.002728709035242597,
+              "passed": false
+            },
+            "lateral": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.03922786881551497,
+                0.1038978503526541,
+                0.19052629233277654
+              ],
+              "steady_mean_velocity": [
+                -0.0001338479023737212,
+                -0.0016951703187078238,
+                0.015263363150879741
+              ],
+              "steady_directional_gain": -0.016951703187078237,
+              "passed": false
+            },
+            "yaw": {
+              "coverage": 0.5750000000000001,
+              "tracking_rmse": [
+                0.12210438797788975,
+                0.0884714571044709,
+                0.46913699098560246
+              ],
+              "steady_mean_velocity": [
+                0.09134005618711503,
+                -0.05281189549714327,
+                0.21122023491905287
+              ],
+              "steady_directional_gain": 0.42244046983810574,
+              "passed": false
+            }
+          },
+          "standing_planar_drift_m": 0.009687398717383274,
+          "standing_yaw_drift_rad": 0.035240735305817505,
+          "standing_drift_scope": "first to last available pre-step sample before 4s",
+          "requested_target_rate_rms_rad_s": null
+        },
+        "onnx_parity": {
+          "checked": true,
+          "samples": 915,
+          "max_abs_error": 6.556510925292969e-07,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "provider": "CPUExecutionProvider"
+        }
+      },
+      "workflow_spec_sha256": "ed4331a8e0a2b1503dbe7b2598153d1382f4985eff84a6c5d2059a302090931e",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
+    },
+    {
+      "label": "air50",
+      "workflow": "microduck-supermimic-air50-s42-1",
+      "training_seed": 42,
+      "num_envs": 4096,
+      "collection_iterations": 10000,
+      "physical_transitions": 40960000,
+      "horizon": 32,
+      "world_model_window": 8,
+      "air_time_gradient_width": 0.05,
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "checkpoint_sha256": "3924ca9ee8add9e8732c626ae0ee18a00cb5b76f34ad7faa058a6c0276439da4",
+      "source_revision": "0da6663842aa648b3663b4dda46941c7bc31186e",
+      "training_seconds": 2224.78,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "nonfinite_logged_losses": {},
+      "metrics": {
+        "fell": true,
+        "alive_time_s": 19.240000000000002,
+        "coverage": 0.9620000000000001,
+        "tracking_rmse": [
+          0.10991147157903747,
+          0.04746949615233055,
+          0.547874853128802
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "qualification": {
+        "criteria": {
+          "id": "flat-response-v1",
+          "horizon_s": 20.0,
+          "segment_s": 4.0,
+          "settling_s": 1.0,
+          "steady_gain_range": [
+            0.5,
+            1.5
+          ],
+          "standing_max_planar_drift_m": 0.03,
+          "standing_max_abs_yaw_drift_rad": 0.15,
+          "rmse_limits": {
+            "stand": [
+              0.04,
+              0.04,
+              0.15
+            ],
+            "forward": [
+              0.1,
+              0.07,
+              0.3
+            ],
+            "backward": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "lateral": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "yaw": [
+              0.07,
+              0.07,
+              0.3
+            ]
+          },
+          "rmse_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ]
+        },
+        "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+        "passed": false,
+        "reasons": [
+          "forward: incomplete coverage or response outside declared limits",
+          "backward: incomplete coverage or response outside declared limits",
+          "lateral: incomplete coverage or response outside declared limits",
+          "yaw: incomplete coverage or response outside declared limits",
+          "standing drift outside declared limits",
+          "trial fell before completing the protocol",
+          "full 20-second protocol not completed"
+        ],
+        "coverage": 0.9620000000000001,
+        "segments": {
+          "stand": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.01688192005806423,
+              0.007945204148882187,
+              0.1448755789287253
+            ],
+            "steady_mean_velocity": [
+              0.0016186806119973577,
+              0.00022141438572058784,
+              -0.022636521269159857
+            ],
+            "steady_directional_gain": null,
+            "passed": true
+          },
+          "forward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.2002466917992454,
+              0.0003677370748916494,
+              0.0069624903151487005
+            ],
+            "steady_mean_velocity": [
+              -0.00034852134000781614,
+              -4.286372962875854e-05,
+              -0.0021718216921726707
+            ],
+            "steady_directional_gain": -0.0017426067000390806,
+            "passed": false
+          },
+          "backward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.09991800174995853,
+              0.00043351869155063043,
+              0.01041439416464335
+            ],
+            "steady_mean_velocity": [
+              -6.273081353659412e-05,
+              2.3917494635649444e-05,
+              -0.0008790768160542939
+            ],
+            "steady_directional_gain": 0.0006273081353659411,
+            "passed": false
+          },
+          "lateral": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.0010306932959225994,
+              0.09994510899455507,
+              0.012434938029031816
+            ],
+            "steady_mean_velocity": [
+              -5.0098473426866503e-05,
+              6.197480018045098e-05,
+              -0.0012238969025202095
+            ],
+            "steady_directional_gain": 0.0006197480018045097,
+            "passed": false
+          },
+          "yaw": {
+            "coverage": 0.81,
+            "tracking_rmse": [
+              0.09774589580280277,
+              0.03115381974332923,
+              1.3252076818987193
+            ],
+            "steady_mean_velocity": [
+              -0.057279598776533804,
+              0.015026390989208136,
+              -0.07043749100661703
+            ],
+            "steady_directional_gain": -0.14087498201323406,
+            "passed": false
+          }
+        },
+        "standing_planar_drift_m": 0.013761754346161578,
+        "standing_yaw_drift_rad": -0.1784805698903047,
+        "standing_drift_scope": "first to last available pre-step sample before 4s",
+        "requested_target_rate_rms_rad_s": null
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 962,
+        "max_abs_error": 2.384185791015625e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "gpu_telemetry": {
+        "scope": "One-second nvidia-smi device-memory samples during training; sampled maximum may miss brief allocator peaks.",
+        "samples": 2300,
+        "sampled_peak_memory_mib": 3270.0,
+        "sample_interval_s": 1,
+        "csv_sha256": "f7ab1eb4b955abfcc9c1c89bc66469b0f8c25de903fca7b4a7ef2fdf990d3463"
+      },
+      "steady_state_timing": {
+        "scope": "Sum of runner collection and learning time over collection iterations 5000..9999; excludes logging/bootstrap/evaluation.",
+        "physical_transitions": 20480000,
+        "collection_seconds": 104.2102198600769,
+        "learning_seconds": 1063.0664315223694,
+        "transitions_per_second": 17545.112356822032
+      },
+      "events_sha256": "8613845f2df4bdb0a176a7c7307ab991d04450868143f44fd1cfc5f2b2563296",
+      "midpoint": {
+        "checkpoint_iteration": 5000,
+        "physical_transitions": 20484096,
+        "checkpoint_sha256": "5dd55e82455b73741bd8e32ff45155551f58c1c03ccf43b3502ba511dd025f29",
+        "metrics": {
+          "fell": true,
+          "alive_time_s": 3.08,
+          "coverage": 0.154,
+          "tracking_rmse": [
+            0.10832669873308187,
+            0.029590032734249268,
+            0.18702644307271618
+          ],
+          "tracking_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ],
+          "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+        },
+        "qualification": {
+          "criteria": {
+            "id": "flat-response-v1",
+            "horizon_s": 20.0,
+            "segment_s": 4.0,
+            "settling_s": 1.0,
+            "steady_gain_range": [
+              0.5,
+              1.5
+            ],
+            "standing_max_planar_drift_m": 0.03,
+            "standing_max_abs_yaw_drift_rad": 0.15,
+            "rmse_limits": {
+              "stand": [
+                0.04,
+                0.04,
+                0.15
+              ],
+              "forward": [
+                0.1,
+                0.07,
+                0.3
+              ],
+              "backward": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "lateral": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "yaw": [
+                0.07,
+                0.07,
+                0.3
+              ]
+            },
+            "rmse_units": [
+              "m/s",
+              "m/s",
+              "rad/s"
+            ]
+          },
+          "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+          "passed": false,
+          "reasons": [
+            "stand: incomplete coverage or response outside declared limits",
+            "forward: incomplete coverage or response outside declared limits",
+            "backward: incomplete coverage or response outside declared limits",
+            "lateral: incomplete coverage or response outside declared limits",
+            "yaw: incomplete coverage or response outside declared limits",
+            "standing drift outside declared limits",
+            "trial fell before completing the protocol",
+            "full 20-second protocol not completed"
+          ],
+          "coverage": 0.154,
+          "segments": {
+            "stand": {
+              "coverage": 0.77,
+              "tracking_rmse": [
+                0.10832669873308187,
+                0.029590032734249268,
+                0.18702644307271618
+              ],
+              "steady_mean_velocity": [
+                -0.0594773296175285,
+                0.011863838521524993,
+                0.05054122745954933
+              ],
+              "steady_directional_gain": null,
+              "passed": false
+            },
+            "forward": {
+              "coverage": 0.0,
+              "tracking_rmse": null,
+              "steady_mean_velocity": null,
+              "steady_directional_gain": null,
+              "passed": false
+            },
+            "backward": {
+              "coverage": 0.0,
+              "tracking_rmse": null,
+              "steady_mean_velocity": null,
+              "steady_directional_gain": null,
+              "passed": false
+            },
+            "lateral": {
+              "coverage": 0.0,
+              "tracking_rmse": null,
+              "steady_mean_velocity": null,
+              "steady_directional_gain": null,
+              "passed": false
+            },
+            "yaw": {
+              "coverage": 0.0,
+              "tracking_rmse": null,
+              "steady_mean_velocity": null,
+              "steady_directional_gain": null,
+              "passed": false
+            }
+          },
+          "standing_planar_drift_m": 0.13556561440765919,
+          "standing_yaw_drift_rad": 0.4420340996630565,
+          "standing_drift_scope": "first to last available pre-step sample before 4s",
+          "requested_target_rate_rms_rad_s": null
+        },
+        "onnx_parity": {
+          "checked": true,
+          "samples": 154,
+          "max_abs_error": 8.344650268554688e-07,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "provider": "CPUExecutionProvider"
+        }
+      },
+      "workflow_spec_sha256": "b0e435e044b47ac5919026c31d0abcecfd06b614192d2473e18cd6bca4f4851e",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
+    },
+    {
+      "label": "window16",
+      "workflow": "microduck-supermimic-window16-s42-1",
+      "training_seed": 42,
+      "num_envs": 4096,
+      "collection_iterations": 10000,
+      "physical_transitions": 40960000,
+      "horizon": 32,
+      "world_model_window": 16,
+      "air_time_gradient_width": 0,
+      "initial_learning_rate": 0.0002,
+      "lr_decay_iterations": 4000,
+      "checkpoint_sha256": "44c4dbab1a41f13dd805bfd8e9d1a2c03a3218f366eb47c5b677c094accc7003",
+      "source_revision": "0da6663842aa648b3663b4dda46941c7bc31186e",
+      "training_seconds": 2663.25,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "nonfinite_logged_losses": {},
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.10007996970271467,
+          0.04479270277686953,
+          0.21146929393208677
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "qualification": {
+        "criteria": {
+          "id": "flat-response-v1",
+          "horizon_s": 20.0,
+          "segment_s": 4.0,
+          "settling_s": 1.0,
+          "steady_gain_range": [
+            0.5,
+            1.5
+          ],
+          "standing_max_planar_drift_m": 0.03,
+          "standing_max_abs_yaw_drift_rad": 0.15,
+          "rmse_limits": {
+            "stand": [
+              0.04,
+              0.04,
+              0.15
+            ],
+            "forward": [
+              0.1,
+              0.07,
+              0.3
+            ],
+            "backward": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "lateral": [
+              0.07,
+              0.07,
+              0.3
+            ],
+            "yaw": [
+              0.07,
+              0.07,
+              0.3
+            ]
+          },
+          "rmse_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ]
+        },
+        "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+        "passed": false,
+        "reasons": [
+          "forward: incomplete coverage or response outside declared limits",
+          "backward: incomplete coverage or response outside declared limits",
+          "lateral: incomplete coverage or response outside declared limits",
+          "yaw: incomplete coverage or response outside declared limits",
+          "standing drift outside declared limits"
+        ],
+        "coverage": 1.0,
+        "segments": {
+          "stand": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.003813339088961221,
+              0.004635441128640125,
+              0.10610263150119084
+            ],
+            "steady_mean_velocity": [
+              0.0006804218935849348,
+              -0.0012220002021422261,
+              0.06707069278384248
+            ],
+            "steady_directional_gain": null,
+            "passed": true
+          },
+          "forward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.20010751820333766,
+              0.0008692420380045167,
+              0.03763890386542444
+            ],
+            "steady_mean_velocity": [
+              0.00023992044004747488,
+              -0.00015796338343837608,
+              0.02202134425616047
+            ],
+            "steady_directional_gain": 0.0011996022002373743,
+            "passed": false
+          },
+          "backward": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.1000905622993072,
+              0.0003748319543987771,
+              0.01869483165327139
+            ],
+            "steady_mean_velocity": [
+              7.512633311004417e-05,
+              -0.00013792314036133272,
+              0.006901057714179236
+            ],
+            "steady_directional_gain": -0.0007512633311004417,
+            "passed": false
+          },
+          "lateral": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.0005083512843471532,
+              0.10001600617714512,
+              0.002480051590883984
+            ],
+            "steady_mean_velocity": [
+              5.295718439507861e-06,
+              -3.117878202829161e-05,
+              0.0012215059983524648
+            ],
+            "steady_directional_gain": -0.0003117878202829161,
+            "passed": false
+          },
+          "yaw": {
+            "coverage": 1.0,
+            "tracking_rmse": [
+              0.0020154899045047576,
+              0.0025191711903708707,
+              0.45887493775381855
+            ],
+            "steady_mean_velocity": [
+              -7.186679824371822e-05,
+              -0.0010844536882723332,
+              0.05132339142262936
+            ],
+            "steady_directional_gain": 0.10264678284525872,
+            "passed": false
+          }
+        },
+        "standing_planar_drift_m": 0.008194964668829735,
+        "standing_yaw_drift_rad": 0.29625069942771987,
+        "standing_drift_scope": "first to last available pre-step sample before 4s",
+        "requested_target_rate_rms_rad_s": null
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 8.493661880493164e-07,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "gpu_telemetry": {
+        "scope": "One-second nvidia-smi device-memory samples during training; sampled maximum may miss brief allocator peaks.",
+        "samples": 2737,
+        "sampled_peak_memory_mib": 3268.0,
+        "sample_interval_s": 1,
+        "csv_sha256": "5e12dfdce0afc53ab96a5ec574151d47ba381e71d11c6bc6f5cdbb3aae6c2600"
+      },
+      "steady_state_timing": {
+        "scope": "Sum of runner collection and learning time over collection iterations 5000..9999; excludes logging/bootstrap/evaluation.",
+        "physical_transitions": 20480000,
+        "collection_seconds": 102.74483227729797,
+        "learning_seconds": 1279.9739916324615,
+        "transitions_per_second": 14811.398851207501
+      },
+      "events_sha256": "0058c028a825ccb449020aa0d6d2205755d11fd12f6c1dba6f80741767c7be43",
+      "midpoint": {
+        "checkpoint_iteration": 5000,
+        "physical_transitions": 20484096,
+        "checkpoint_sha256": "826ad10ce3ac8aeec5ca9fbf700c5ec97710b428ecefddd9bfcedd7da3fc627f",
+        "metrics": {
+          "fell": false,
+          "alive_time_s": 20.0,
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.10006747357800216,
+            0.044799199231308706,
+            0.2255172721024239
+          ],
+          "tracking_units": [
+            "m/s",
+            "m/s",
+            "rad/s"
+          ],
+          "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+        },
+        "qualification": {
+          "criteria": {
+            "id": "flat-response-v1",
+            "horizon_s": 20.0,
+            "segment_s": 4.0,
+            "settling_s": 1.0,
+            "steady_gain_range": [
+              0.5,
+              1.5
+            ],
+            "standing_max_planar_drift_m": 0.03,
+            "standing_max_abs_yaw_drift_rad": 0.15,
+            "rmse_limits": {
+              "stand": [
+                0.04,
+                0.04,
+                0.15
+              ],
+              "forward": [
+                0.1,
+                0.07,
+                0.3
+              ],
+              "backward": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "lateral": [
+                0.07,
+                0.07,
+                0.3
+              ],
+              "yaw": [
+                0.07,
+                0.07,
+                0.3
+              ]
+            },
+            "rmse_units": [
+              "m/s",
+              "m/s",
+              "rad/s"
+            ]
+          },
+          "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+          "passed": false,
+          "reasons": [
+            "forward: incomplete coverage or response outside declared limits",
+            "backward: incomplete coverage or response outside declared limits",
+            "lateral: incomplete coverage or response outside declared limits",
+            "yaw: incomplete coverage or response outside declared limits",
+            "standing drift outside declared limits"
+          ],
+          "coverage": 1.0,
+          "segments": {
+            "stand": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.0042299657595139825,
+                0.0035694536421032644,
+                0.06757776270987144
+              ],
+              "steady_mean_velocity": [
+                -0.00032307370301471865,
+                -0.00027387507579987866,
+                -0.030996542054732953
+              ],
+              "steady_directional_gain": null,
+              "passed": true
+            },
+            "forward": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.20004097725489944,
+                0.0007993487141909674,
+                0.01209624438166864
+              ],
+              "steady_mean_velocity": [
+                6.577314184141869e-05,
+                -0.00017845520058472176,
+                -0.001319709660059137
+              ],
+              "steady_directional_gain": 0.00032886570920709346,
+              "passed": false
+            },
+            "backward": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.10015916899778875,
+                0.00045269626669402,
+                0.014653970782804135
+              ],
+              "steady_mean_velocity": [
+                0.00013512409328541252,
+                -0.0003527580826388051,
+                -0.007840247116206834
+              ],
+              "steady_directional_gain": -0.0013512409328541252,
+              "passed": false
+            },
+            "lateral": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.00029122209078697386,
+                0.10010584110095268,
+                0.009436609938080667
+              ],
+              "steady_mean_velocity": [
+                1.891599893572978e-05,
+                -7.033782951718118e-05,
+                -0.0008204459848275291
+              ],
+              "steady_directional_gain": -0.0007033782951718117,
+              "passed": false
+            },
+            "yaw": {
+              "coverage": 1.0,
+              "tracking_rmse": [
+                0.0011257021653773716,
+                0.000277389119070988,
+                0.49927280966897647
+              ],
+              "steady_mean_velocity": [
+                -8.827505210016777e-05,
+                -1.0507848376922386e-05,
+                0.0006381302454974503
+              ],
+              "steady_directional_gain": 0.0012762604909949005,
+              "passed": false
+            }
+          },
+          "standing_planar_drift_m": 0.004224879123704502,
+          "standing_yaw_drift_rad": -0.1665399681575579,
+          "standing_drift_scope": "first to last available pre-step sample before 4s",
+          "requested_target_rate_rms_rad_s": null
+        },
+        "onnx_parity": {
+          "checked": true,
+          "samples": 1000,
+          "max_abs_error": 9.015202522277832e-07,
+          "atol": 1e-05,
+          "rtol": 0.0001,
+          "provider": "CPUExecutionProvider"
+        }
+      },
+      "workflow_spec_sha256": "667d33892d58d24b067e5cdfcb6deb983403747dc51d8743bdeda06915a6caa4",
+      "container_image_digest": "sha256:7afb9e71b0d1d20d0a813e80b61899ae0a85c515e64cb9aed358c05ebf250b9a"
+    }
+  ]
+}
