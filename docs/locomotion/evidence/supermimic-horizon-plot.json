@@ -1,0 +1,8 @@
+{
+  "scope": "Measured simulator results; no hardware validation or algorithm-superiority claim.",
+  "image_sha256": "3e8dc9825b281501389ed31754a6532075bc9f36675538e873fe294dac9daf36",
+  "screen_evidence_sha256": "d3a4bd459082d19860b7e78a7fcad2793c07ca8c491480b8c8ba8db6b835c1b7",
+  "reference_evidence_sha256": "f87164821838f89a1c7d022dfb6030feb3d7b182ac136002cb9cf336d0571975",
+  "renderer_sha256": "d37ed1ed93a5a52f1b7edbf540e0309f86c196fa9697712660d3001615387e6b",
+  "matplotlib_version": "3.11.2"
+}

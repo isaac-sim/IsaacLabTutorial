@@ -1,0 +1,5710 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "scope": "Three independent SAC teacher/student seed pairs. Real BAM, original physical rewards, native SuperMimic fine-tuning with retained teacher replay. Teacher cost included; this measures preservation, not improvement or learning from scratch. Small declared simulation start box; no hardware qualification.",
+  "actor_normalization_mode": "fixed",
+  "summary": {
+    "attempts": 30,
+    "invalid_attempts": 0,
+    "training_seeds": 3,
+    "evaluation_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "unique_physical_starts": 10,
+    "per_training_seed": {
+      "0": {
+        "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+        "attempts": 10,
+        "invalid_attempts": 0,
+        "full_protocol_trials": 10,
+        "survival_rate": 1.0,
+        "qualified_rate": 1.0,
+        "full_trial_tracking_rmse_mean": [
+          0.026363261949183155,
+          0.025737757757471346,
+          0.13035736696028452
+        ],
+        "tracking_error_scope": "mean of per-trial RMSE over complete valid trials only; inspect failures and counts together"
+      },
+      "1": {
+        "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+        "attempts": 10,
+        "invalid_attempts": 0,
+        "full_protocol_trials": 10,
+        "survival_rate": 1.0,
+        "qualified_rate": 1.0,
+        "full_trial_tracking_rmse_mean": [
+          0.02818453401224506,
+          0.028241897148831335,
+          0.14765750137611638
+        ],
+        "tracking_error_scope": "mean of per-trial RMSE over complete valid trials only; inspect failures and counts together"
+      },
+      "42": {
+        "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+        "attempts": 10,
+        "invalid_attempts": 0,
+        "full_protocol_trials": 10,
+        "survival_rate": 1.0,
+        "qualified_rate": 1.0,
+        "full_trial_tracking_rmse_mean": [
+          0.024212525434852604,
+          0.02798889584139172,
+          0.08887781955115542
+        ],
+        "tracking_error_scope": "mean of per-trial RMSE over complete valid trials only; inspect failures and counts together"
+      }
+    },
+    "qualified_rate_across_training_seeds": {
+      "mean": 1.0,
+      "sample_std": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "unit": "one rate per training seed"
+    },
+    "survival_rate_across_training_seeds": {
+      "mean": 1.0,
+      "sample_std": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "unit": "one rate per training seed"
+    },
+    "shared_evaluation_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "paired_initial_states_checked": true
+  },
+  "provenance": {
+    "evaluation_source_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+    "evaluation_source_sha256": "b88d18a1b7830cb489f0606124b40634ac096bba55f10dc6b5c0548823c67253",
+    "aggregation_upstream_revision": "79191436cde57efb1006603606fd24d6ecf6c27e",
+    "aggregation_source_sha256": "45ee4bd92f43cd40f3af63cc5edf26f99cd426f74f5525e87d0632d70c1840c6",
+    "response_criteria": {
+      "id": "flat-response-v1",
+      "horizon_s": 20.0,
+      "segment_s": 4.0,
+      "settling_s": 1.0,
+      "steady_gain_range": [
+        0.5,
+        1.5
+      ],
+      "standing_max_planar_drift_m": 0.03,
+      "standing_max_abs_yaw_drift_rad": 0.15,
+      "rmse_limits": {
+        "stand": [
+          0.04,
+          0.04,
+          0.15
+        ],
+        "forward": [
+          0.1,
+          0.07,
+          0.3
+        ],
+        "backward": [
+          0.07,
+          0.07,
+          0.3
+        ],
+        "lateral": [
+          0.07,
+          0.07,
+          0.3
+        ],
+        "yaw": [
+          0.07,
+          0.07,
+          0.3
+        ]
+      },
+      "rmse_units": [
+        "m/s",
+        "m/s",
+        "rad/s"
+      ]
+    },
+    "response_criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868"
+  },
+  "models": [
+    {
+      "training_seed": 42,
+      "teacher_training_seed": 42,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "teacher_checkpoint_sha256": "834cc751528dbcdd4fefde3e57cf12df85a850695ff77efaa455d361a5838557",
+      "producer_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+      "producer_sha256": {
+        "scripts/locomotion/warmstart.py": "f2ffa03297b694fade72d3e12fe2037172e277ec05660cac1d9e7b7005db5758",
+        "src/isaaclab_tutorial/locomotion/warmstart.py": "444141d5794713ce05aa759e694685b664c8601372f70e5632896842dd4421ec",
+        "src/isaaclab_tutorial/locomotion/supermimic.py": "316481d72695c5a44025e7dbe480da6b8d7e94b4c0bf9614c28fda03c2279ab1",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/supermimic_env_cfg.py": "34f2e09956e4d4a0ca19b790781b45956573cc27ea05881e6d9e7ce704a29a0e",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py": "27cb1954d0ce24ae9321d8294f953b1e26cb366e07d701052d0617d10d3a6686",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py": "3fc80e9858c8489afb161b0f081dccfec4bfa9cc437a48130440e40b8cd3c47c"
+      },
+      "workflow_lock_sha256": "fd75ab3cb00b91587eff439540a726cc73fd9207625ee9cfb308c971208d93b8",
+      "warmstart_metadata_sha256": "75b2442183b7f3e9a6298634db05247d6beec3365e903e181be1ab533de3bd8a",
+      "phase_costs": {
+        "teacher_actual_physical_transitions": 49152000,
+        "imitation_physical_transitions": 524288,
+        "imitation_optimizer_steps": 8192,
+        "model_only_warmup_physical_transitions": 0,
+        "model_only_warmup_optimizer_steps": [
+          2000
+        ],
+        "native_rl_physical_transitions": 640000,
+        "final_native_optimizer_steps_including_model_warmup": {
+          "world_model": [
+            6000
+          ],
+          "actor": [
+            1000
+          ],
+          "critic": [
+            20000
+          ]
+        },
+        "total_physical_transitions_including_teacher": 50316288
+      },
+      "imitation": {
+        "optimizer": "Adam",
+        "learning_rate": 0.0003,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08,
+        "max_gradient_norm": 1.0,
+        "cache_samples": 131072,
+        "batch_size": 1024,
+        "updates_per_collection_step": 4,
+        "planned_physical_transitions": 524288,
+        "completed_physical_transitions": 524288,
+        "optimizer_steps": 8192,
+        "final_training_mse": 0.0006094815977917278,
+        "teacher_falls": 0,
+        "teacher_timeouts": 512
+      },
+      "model_warmup": {
+        "learner_iterations": 500,
+        "initial_learning_rate": 0.0002,
+        "planned_optimizer_steps": 2000,
+        "optimizer_step_counters": [
+          2000
+        ]
+      },
+      "native_rl": {
+        "collection_iterations": 2500,
+        "physical_transitions": 640000,
+        "initial_learning_rate": 1e-07,
+        "teacher_replay": "retained initially, then ordinary cyclic eviction as fresh transitions arrive",
+        "actor_normalization": "fixed_after_imitation",
+        "fixed_normalization_samples": {
+          "observations": 524288,
+          "goals": 524288
+        },
+        "further_training": "Reapply freeze_actor_normalization(runner.alg.actor) after loading, before runner.learn; the native normalizer's until setting is not serialized in checkpoint state.",
+        "final_learner_iterations": 1500
+      },
+      "normalization": {
+        "mode": "fixed",
+        "observation_count_before": 524288,
+        "observation_count_after": 524288,
+        "goal_count_before": 524288,
+        "goal_count_after": 524288,
+        "max_abs_observation_mean_change": 0.0,
+        "max_abs_observation_std_change": 0.0
+      },
+      "max_abs_actor_network_parameter_change_during_native_rl": 0.0001042485237121582,
+      "nonfinite_logged_losses": {},
+      "local_device": "NVIDIA GeForce RTX 5090",
+      "device_uuid": "c641346f-f5cc-f5ca-beb8-6a5d4957872f",
+      "elapsed_seconds": 329.13418932107743,
+      "timing_scope": "Local end-to-end initialization and training. Some runs overlapped on the same RTX5090 and with evaluation; this is not an isolated hardware benchmark.",
+      "gpu_telemetry": {
+        "scope": "Device-wide samples selected by UUID, including concurrent processes; not an isolated per-process or exact allocator peak.",
+        "sampled_device_peak_memory_mib": 6163.0,
+        "selected_samples": 329,
+        "csv_sha256": "795b6c1898168512ff2ae0c8d04e17def73774a1b0cd7d68a40e9dc0f18b3c4f"
+      }
+    },
+    {
+      "training_seed": 0,
+      "teacher_training_seed": 0,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "teacher_checkpoint_sha256": "a253f97c35ffbf2c6526132e854426c23669ae79bd12eee91c19c9a3c33ad632",
+      "producer_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+      "producer_sha256": {
+        "scripts/locomotion/warmstart.py": "f2ffa03297b694fade72d3e12fe2037172e277ec05660cac1d9e7b7005db5758",
+        "src/isaaclab_tutorial/locomotion/warmstart.py": "444141d5794713ce05aa759e694685b664c8601372f70e5632896842dd4421ec",
+        "src/isaaclab_tutorial/locomotion/supermimic.py": "316481d72695c5a44025e7dbe480da6b8d7e94b4c0bf9614c28fda03c2279ab1",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/supermimic_env_cfg.py": "34f2e09956e4d4a0ca19b790781b45956573cc27ea05881e6d9e7ce704a29a0e",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py": "27cb1954d0ce24ae9321d8294f953b1e26cb366e07d701052d0617d10d3a6686",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py": "3fc80e9858c8489afb161b0f081dccfec4bfa9cc437a48130440e40b8cd3c47c"
+      },
+      "workflow_lock_sha256": "fd75ab3cb00b91587eff439540a726cc73fd9207625ee9cfb308c971208d93b8",
+      "warmstart_metadata_sha256": "45343d630782c80b96cc34c18872933aa2e505724890b4e66e118d52d279ace2",
+      "phase_costs": {
+        "teacher_actual_physical_transitions": 49152000,
+        "imitation_physical_transitions": 524288,
+        "imitation_optimizer_steps": 8192,
+        "model_only_warmup_physical_transitions": 0,
+        "model_only_warmup_optimizer_steps": [
+          2000
+        ],
+        "native_rl_physical_transitions": 640000,
+        "final_native_optimizer_steps_including_model_warmup": {
+          "world_model": [
+            6000
+          ],
+          "actor": [
+            1000
+          ],
+          "critic": [
+            20000
+          ]
+        },
+        "total_physical_transitions_including_teacher": 50316288
+      },
+      "imitation": {
+        "optimizer": "Adam",
+        "learning_rate": 0.0003,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08,
+        "max_gradient_norm": 1.0,
+        "cache_samples": 131072,
+        "batch_size": 1024,
+        "updates_per_collection_step": 4,
+        "planned_physical_transitions": 524288,
+        "completed_physical_transitions": 524288,
+        "optimizer_steps": 8192,
+        "final_training_mse": 0.0006460123531724093,
+        "teacher_falls": 0,
+        "teacher_timeouts": 512
+      },
+      "model_warmup": {
+        "learner_iterations": 500,
+        "initial_learning_rate": 0.0002,
+        "planned_optimizer_steps": 2000,
+        "optimizer_step_counters": [
+          2000
+        ]
+      },
+      "native_rl": {
+        "collection_iterations": 2500,
+        "physical_transitions": 640000,
+        "initial_learning_rate": 1e-07,
+        "teacher_replay": "retained initially, then ordinary cyclic eviction as fresh transitions arrive",
+        "actor_normalization": "fixed_after_imitation",
+        "fixed_normalization_samples": {
+          "observations": 524288,
+          "goals": 524288
+        },
+        "further_training": "Reapply freeze_actor_normalization(runner.alg.actor) after loading, before runner.learn; the native normalizer's until setting is not serialized in checkpoint state.",
+        "final_learner_iterations": 1500
+      },
+      "normalization": {
+        "mode": "fixed",
+        "observation_count_before": 524288,
+        "observation_count_after": 524288,
+        "goal_count_before": 524288,
+        "goal_count_after": 524288,
+        "max_abs_observation_mean_change": 0.0,
+        "max_abs_observation_std_change": 0.0
+      },
+      "max_abs_actor_network_parameter_change_during_native_rl": 0.0001042783260345459,
+      "nonfinite_logged_losses": {},
+      "local_device": "NVIDIA GeForce RTX 5090",
+      "device_uuid": "c641346f-f5cc-f5ca-beb8-6a5d4957872f",
+      "elapsed_seconds": 333.0973148040939,
+      "timing_scope": "Local end-to-end initialization and training. Some runs overlapped on the same RTX5090 and with evaluation; this is not an isolated hardware benchmark.",
+      "gpu_telemetry": {
+        "scope": "Device-wide samples selected by UUID, including concurrent processes; not an isolated per-process or exact allocator peak.",
+        "sampled_device_peak_memory_mib": 6163.0,
+        "selected_samples": 333,
+        "csv_sha256": "f6f667fab22f4fc9aa78737b97e4639054ac707c6c0ec257949b8a6a55318733"
+      }
+    },
+    {
+      "training_seed": 1,
+      "teacher_training_seed": 1,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "teacher_checkpoint_sha256": "375770ea26797d7aef1ace5fa4ff1bbfa1f6546873a0e8484a09fd330e0384de",
+      "producer_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+      "producer_sha256": {
+        "scripts/locomotion/warmstart.py": "f2ffa03297b694fade72d3e12fe2037172e277ec05660cac1d9e7b7005db5758",
+        "src/isaaclab_tutorial/locomotion/warmstart.py": "444141d5794713ce05aa759e694685b664c8601372f70e5632896842dd4421ec",
+        "src/isaaclab_tutorial/locomotion/supermimic.py": "316481d72695c5a44025e7dbe480da6b8d7e94b4c0bf9614c28fda03c2279ab1",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/supermimic_env_cfg.py": "34f2e09956e4d4a0ca19b790781b45956573cc27ea05881e6d9e7ce704a29a0e",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py": "27cb1954d0ce24ae9321d8294f953b1e26cb366e07d701052d0617d10d3a6686",
+        "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py": "3fc80e9858c8489afb161b0f081dccfec4bfa9cc437a48130440e40b8cd3c47c"
+      },
+      "workflow_lock_sha256": "fd75ab3cb00b91587eff439540a726cc73fd9207625ee9cfb308c971208d93b8",
+      "warmstart_metadata_sha256": "2a697e2bc11237834d425cada27596c5109eb32329728c3401018e6c6b5f9935",
+      "phase_costs": {
+        "teacher_actual_physical_transitions": 49152000,
+        "imitation_physical_transitions": 524288,
+        "imitation_optimizer_steps": 8192,
+        "model_only_warmup_physical_transitions": 0,
+        "model_only_warmup_optimizer_steps": [
+          2000
+        ],
+        "native_rl_physical_transitions": 640000,
+        "final_native_optimizer_steps_including_model_warmup": {
+          "world_model": [
+            6000
+          ],
+          "actor": [
+            1000
+          ],
+          "critic": [
+            20000
+          ]
+        },
+        "total_physical_transitions_including_teacher": 50316288
+      },
+      "imitation": {
+        "optimizer": "Adam",
+        "learning_rate": 0.0003,
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "eps": 1e-08,
+        "max_gradient_norm": 1.0,
+        "cache_samples": 131072,
+        "batch_size": 1024,
+        "updates_per_collection_step": 4,
+        "planned_physical_transitions": 524288,
+        "completed_physical_transitions": 524288,
+        "optimizer_steps": 8192,
+        "final_training_mse": 0.000632035743706183,
+        "teacher_falls": 0,
+        "teacher_timeouts": 512
+      },
+      "model_warmup": {
+        "learner_iterations": 500,
+        "initial_learning_rate": 0.0002,
+        "planned_optimizer_steps": 2000,
+        "optimizer_step_counters": [
+          2000
+        ]
+      },
+      "native_rl": {
+        "collection_iterations": 2500,
+        "physical_transitions": 640000,
+        "initial_learning_rate": 1e-07,
+        "teacher_replay": "retained initially, then ordinary cyclic eviction as fresh transitions arrive",
+        "actor_normalization": "fixed_after_imitation",
+        "fixed_normalization_samples": {
+          "observations": 524288,
+          "goals": 524288
+        },
+        "further_training": "Reapply freeze_actor_normalization(runner.alg.actor) after loading, before runner.learn; the native normalizer's until setting is not serialized in checkpoint state.",
+        "final_learner_iterations": 1500
+      },
+      "normalization": {
+        "mode": "fixed",
+        "observation_count_before": 524288,
+        "observation_count_after": 524288,
+        "goal_count_before": 524288,
+        "goal_count_after": 524288,
+        "max_abs_observation_mean_change": 0.0,
+        "max_abs_observation_std_change": 0.0
+      },
+      "max_abs_actor_network_parameter_change_during_native_rl": 0.00010399520397186279,
+      "nonfinite_logged_losses": {},
+      "local_device": "NVIDIA GeForce RTX 5090",
+      "device_uuid": "c641346f-f5cc-f5ca-beb8-6a5d4957872f",
+      "elapsed_seconds": 220.08331342297606,
+      "timing_scope": "Local end-to-end initialization and training. Some runs overlapped on the same RTX5090 and with evaluation; this is not an isolated hardware benchmark.",
+      "gpu_telemetry": {
+        "scope": "Device-wide samples selected by UUID, including concurrent processes; not an isolated per-process or exact allocator peak.",
+        "sampled_device_peak_memory_mib": 3169.0,
+        "selected_samples": 220,
+        "csv_sha256": "2196b9f5f1749ac1187bcf240c64fe51218228f1789d66795ebbb533301f6fb4"
+      }
+    }
+  ],
+  "physical_starts": {
+    "0": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 0,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.024173618223573546,
+            0.015663511960013622,
+            2.5934197786078093
+          ],
+          "linear_velocity_heading_m_s": [
+            0.008530862061374392,
+            0.018359724878719876,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.13052172713633045,
+            0.09475606623645963,
+            -0.14917844994895557
+          ]
+        },
+        "sample_sha256": "db2d69b90b4c62f2949d71c8d46532a24784779f5edb626397644e4eeb4380f0"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.010810106992721558,
+          -0.009515374898910522,
+          0.9625986814498901,
+          0.27054837346076965
+        ],
+        "root_linear_velocity_w": [
+          -0.01684868335723877,
+          -0.011223947629332542,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.15684610605239868,
+          -0.010996833443641663,
+          -0.15345099568367004
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "1": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 1,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            0.022432472356862194,
+            -0.009408427399475727,
+            -0.4817541292647971
+          ],
+          "linear_velocity_heading_m_s": [
+            0.026216207505635337,
+            -0.007264069090467097,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.14173226602707947,
+            0.07605393260244198,
+            0.011442993965783466
+          ]
+        },
+        "sample_sha256": "a3c77bfd1f5af8bd6ff9ad3e6f059716d27ce423b8a274eef5b17050c13d0f2a"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.009769916534423828,
+          -0.007243692874908447,
+          -0.23848557472229004,
+          0.9710698127746582
+        ],
+        "root_linear_velocity_w": [
+          0.01986667886376381,
+          -0.01858416758477688,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.09059423208236694,
+          0.1328771412372589,
+          0.011812007054686546
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "2": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 2,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.020404202893245155,
+            0.0050050262982827,
+            1.4360881438650939
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.024967914130671724,
+            -0.03558826981335454,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.047229904462677774,
+            0.0186796988341284,
+            -0.10498132100839916
+          ]
+        },
+        "sample_sha256": "603e8bd401c2853c459b9df8678ab40613209af1c6b0ccbcfd70512ba520d925"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.00932931900024414,
+          -0.004827439785003662,
+          0.6578958630561829,
+          0.7530356645584106
+        ],
+        "root_linear_velocity_w": [
+          0.03191264718770981,
+          -0.029521260410547256,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.010111968964338303,
+          0.048499517142772675,
+          -0.10557565093040466
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "3": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 3,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            0.0041081018032183905,
+            -0.020293567887980042,
+            -0.4201758265523301
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.0016758961487332788,
+            -0.027220886829033716,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.11589839402357897,
+            -0.03263154285130139,
+            0.0050220547864091025
+          ]
+        },
+        "sample_sha256": "982624ecbdd3325297bd66aeb40f1170d4b2e3a099e6ec5625bc6322da9cb9a6"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.00010722875595092773,
+          -0.010351836681365967,
+          -0.20851431787014008,
+          0.9779645204544067
+        ],
+        "root_linear_velocity_w": [
+          -0.0126340938732028,
+          -0.024169504642486572,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.11920540034770966,
+          0.017496366053819656,
+          0.00253512104973197
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "4": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 4,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.02095819880521989,
+            0.005367791599751481,
+            -0.7760576782802868
+          ],
+          "linear_velocity_heading_m_s": [
+            0.024152096558864584,
+            -0.026037774708477724,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.013182420229049446,
+            0.12066452391479651,
+            -0.00685394284823812
+          ]
+        },
+        "sample_sha256": "5c80bc9386ac50aed8445bb59a188403de6ef209c03fa97b9d0c59a8b1b345be"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.008684396743774414,
+          0.0064490437507629395,
+          -0.37831634283065796,
+          0.9256131649017334
+        ],
+        "root_linear_velocity_w": [
+          -0.001001832541078329,
+          -0.035500504076480865,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          0.09377482533454895,
+          0.07679601013660431,
+          -0.009451786056160927
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "5": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 5,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.01070993099559292,
+            -0.02230346488091718,
+            -0.7328149346083426
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.0073221435664001105,
+            -0.03637798448780439,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.1497528345195214,
+            0.045710733476396315,
+            -0.07964693949905281
+          ]
+        },
+        "sample_sha256": "6134537a4594f1a1267efa67d7e3d64ab061e03215c1a58bc6d4f04826cae1ea"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.00899428129196167,
+          -0.008492767810821533,
+          -0.35829201340675354,
+          0.9335275888442993
+        ],
+        "root_linear_velocity_w": [
+          -0.029778089374303818,
+          -0.022141294553875923,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          0.14261755347251892,
+          -0.06800936162471771,
+          -0.07677225768566132
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "6": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 6,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.006275161720605882,
+            0.024372249509323332,
+            0.8341322614811477
+          ],
+          "linear_velocity_heading_m_s": [
+            0.013945914440359489,
+            -0.013602923569163334,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.11310828753384299,
+            -0.13448123040486742,
+            0.10505740404263611
+          ]
+        },
+        "sample_sha256": "bc169fc5733bad00295261a24760bf97d114a1f5eafb9d3c7047c53c86c0c6ff"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.0078046321868896484,
+          0.009870350360870361,
+          0.40508270263671875,
+          0.9141933917999268
+        ],
+        "root_linear_velocity_w": [
+          0.0194450281560421,
+          0.001191205345094204,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          0.024889715015888214,
+          -0.17174699902534485,
+          0.10862420499324799
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "7": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 7,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.013739640500470407,
+            -0.009991685754438729,
+            2.3471055195601043
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.039578775634754024,
+            0.025698273470621306,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.009619514146883779,
+            -0.059090271954205936,
+            -0.066472316369768
+          ]
+        },
+        "sample_sha256": "3c272ed24dd61be16b5f6720ef9751006018898f5b058d87d6e8ad43143c8214"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.0019489526748657227,
+          -0.008267462253570557,
+          0.9220843315124512,
+          0.3868957459926605
+        ],
+        "root_linear_velocity_w": [
+          0.009395062923431396,
+          -0.04624514654278755,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          0.04908878356218338,
+          0.03564245253801346,
+          -0.06574702262878418
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "8": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 8,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            0.014427446791001448,
+            0.018494825584810803,
+            -0.6843343432815585
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.004969450150176094,
+            -0.010180087752851757,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.006310363751184905,
+            -0.07759435647459531,
+            -0.07285642543466107
+          ]
+        },
+        "sample_sha256": "cc75abe670ec9c3c1853b5c0097418ab6ff76ef2f09c968a111a003bbe27acef"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.009897828102111816,
+          0.0062906742095947266,
+          -0.3355691730976105,
+          0.9419425129890442
+        ],
+        "root_linear_velocity_w": [
+          -0.010285946540534496,
+          -0.004746465943753719,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.05433090776205063,
+          -0.054449308663606644,
+          -0.07383894175291061
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "9": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 9,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            0.013876704146008938,
+            0.010803731480178262,
+            2.6099102699604435
+          ],
+          "linear_velocity_heading_m_s": [
+            0.02883149193463077,
+            0.033459010323900994,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.018825599961147382,
+            -0.0045167019068135805,
+            -0.13045374078896774
+          ]
+        },
+        "sample_sha256": "bd1d80aa63449c132e54fca8d30e1837b67c74854ba0aaae358b220514145934"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.0033891499042510986,
+          0.008113622665405273,
+          0.9648246765136719,
+          0.26274701952934265
+        ],
+        "root_linear_velocity_w": [
+          -0.0418146476149559,
+          -0.01422305777668953,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          0.018813077360391617,
+          -0.007926026359200478,
+          -0.1302928626537323
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "trials": [
+    {
+      "training_seed": 0,
+      "seed": 0,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "a2ab29916818456f9ebc14262df06241dc450a75a7ab8f45a43cb56777b779d7",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-0/receipt.json",
+      "start_sample_sha256": "db2d69b90b4c62f2949d71c8d46532a24784779f5edb626397644e4eeb4380f0",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026491213911471117,
+          0.02690988511258013,
+          0.12523802205035497
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 7.68899917602539e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      }
+    },
+    {
+      "training_seed": 0,
+      "seed": 1,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "52032409f07f007ea8daaf486c043c853198aced65cd4b05496f31efcc718f02",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-1/receipt.json",
+      "start_sample_sha256": "a3c77bfd1f5af8bd6ff9ad3e6f059716d27ce423b8a274eef5b17050c13d0f2a",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026938666584963245,
+          0.025626822312323775,
+          0.13359271367705206
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 2,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "b8301917a5493aa3f2ff37cf4edee0ae04d263ddb437d30bc2f9d93f4aefa737",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-2/receipt.json",
+      "start_sample_sha256": "603e8bd401c2853c459b9df8678ab40613209af1c6b0ccbcfd70512ba520d925",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025808548819452326,
+          0.026017633291465597,
+          0.1309672270080575
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 3,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "460ac253ba1ec98134608e9c6e9b73c27cebdd65a14b02d387b7753731449913",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-3/receipt.json",
+      "start_sample_sha256": "982624ecbdd3325297bd66aeb40f1170d4b2e3a099e6ec5625bc6322da9cb9a6",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025744110329957614,
+          0.02507915242334801,
+          0.13335025627272382
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 4,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "ac4368c6c95c9dc3a36ca58d2bfebf5f5a397026b9a293c00240c1a193f85ad6",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-4/receipt.json",
+      "start_sample_sha256": "5c80bc9386ac50aed8445bb59a188403de6ef209c03fa97b9d0c59a8b1b345be",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026213207363939565,
+          0.024724082374811093,
+          0.12440510538239782
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 5,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "9dbb3c8adbb36b3c52d5fa99210d8a3b1233005788ad4361f011d4ae4bd1f4bd",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-5/receipt.json",
+      "start_sample_sha256": "6134537a4594f1a1267efa67d7e3d64ab061e03215c1a58bc6d4f04826cae1ea",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026436714428012386,
+          0.025386678031688734,
+          0.1262697431756952
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 6,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "6bcbb12340cd14531d42ccd7d1d714fd4648af588079763f900a8064c31b13f6",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-6/receipt.json",
+      "start_sample_sha256": "bc169fc5733bad00295261a24760bf97d114a1f5eafb9d3c7047c53c86c0c6ff",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02616173090916758,
+          0.024579504633272065,
+          0.12895507883777574
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 7,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "319b538ac503d7f04667b5c2598fd63d7cbf8514c50d4bc3f99347d64fcec1c0",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-7/receipt.json",
+      "start_sample_sha256": "3c272ed24dd61be16b5f6720ef9751006018898f5b058d87d6e8ad43143c8214",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02761251669906153,
+          0.027796061545386507,
+          0.1370020140815961
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 8,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "b933b05d9bb510ac393ed8fd4a8ef2269bb6a6553bf6cfdd1d4b6c6dd42432e1",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-8/receipt.json",
+      "start_sample_sha256": "cc75abe670ec9c3c1853b5c0097418ab6ff76ef2f09c968a111a003bbe27acef",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026363438919541952,
+          0.026337683121162754,
+          0.12777305768777572
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 0,
+      "seed": 9,
+      "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+      "receipt_sha256": "26251c59e9fbd6bd5e07a48cc9571685da076bd64a9cf778cfcbdd3428735f7d",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-0/eval-seed-9/receipt.json",
+      "start_sample_sha256": "bd1d80aa63449c132e54fca8d30e1837b67c74854ba0aaae358b220514145934",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025862471526264218,
+          0.024920074728674805,
+          0.13602045142941635
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 0,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "fbca086bcbcf34caeb518e6e0901e179a8094b3e6be07b913ce4a8fb9d821896",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-0/receipt.json",
+      "start_sample_sha256": "db2d69b90b4c62f2949d71c8d46532a24784779f5edb626397644e4eeb4380f0",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.03389825375695518,
+          0.02852893380847379,
+          0.15098441037250507
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 7.092952728271484e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      }
+    },
+    {
+      "training_seed": 1,
+      "seed": 1,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "9047bab2c744b9c2dcd8db0928e1fe2f0e661da416875b15fd04b0ee96722553",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-1/receipt.json",
+      "start_sample_sha256": "a3c77bfd1f5af8bd6ff9ad3e6f059716d27ce423b8a274eef5b17050c13d0f2a",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.028848066917479945,
+          0.029260600159043772,
+          0.15731253432171516
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 2,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "50c0c75137c13166e7364b1d3a912ae1e659ff91c176809b212d8eab94ca6631",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-2/receipt.json",
+      "start_sample_sha256": "603e8bd401c2853c459b9df8678ab40613209af1c6b0ccbcfd70512ba520d925",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02678912059371268,
+          0.027799319124996537,
+          0.14664787026880594
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 3,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "7414a3615a0dc58a0848fb9e7f4474493b3aa32be386f7a45e6334cebbde1c01",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-3/receipt.json",
+      "start_sample_sha256": "982624ecbdd3325297bd66aeb40f1170d4b2e3a099e6ec5625bc6322da9cb9a6",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02694054796872702,
+          0.027780608616932403,
+          0.1501275738086476
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 4,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "9b377ca5782d020170032943e370d147acaf3bbcde9d8bed972adba7b249e6cd",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-4/receipt.json",
+      "start_sample_sha256": "5c80bc9386ac50aed8445bb59a188403de6ef209c03fa97b9d0c59a8b1b345be",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025090495999485624,
+          0.027893771555824814,
+          0.14338120726427173
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 5,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "aaf8e0c7d5391ec56cbd25afeefc93e924d6b9c761394d3a5d3c6aab4e2c312b",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-5/receipt.json",
+      "start_sample_sha256": "6134537a4594f1a1267efa67d7e3d64ab061e03215c1a58bc6d4f04826cae1ea",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.026637750130930612,
+          0.027642726624172276,
+          0.13541151428264975
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 6,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "da7240a33a38275f4ffe15c4fb4ce71f2b4684fdfbe5b50c4e19b59e9359ca34",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-6/receipt.json",
+      "start_sample_sha256": "bc169fc5733bad00295261a24760bf97d114a1f5eafb9d3c7047c53c86c0c6ff",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.028565648203201024,
+          0.028855496498855764,
+          0.14732230711552743
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 7,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "c7131c47afaccb1cd8a9ebe81ccd58724741d0161698ca3745c1012f13a52169",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-7/receipt.json",
+      "start_sample_sha256": "3c272ed24dd61be16b5f6720ef9751006018898f5b058d87d6e8ad43143c8214",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.030627188366066357,
+          0.028860898811871635,
+          0.1560771009465139
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 8,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "1c51e97e134f9ddae7a73640718edcd6975d60dfe4e5bd579cb2bb873e5a5516",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-8/receipt.json",
+      "start_sample_sha256": "cc75abe670ec9c3c1853b5c0097418ab6ff76ef2f09c968a111a003bbe27acef",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02901795441032221,
+          0.028255989039051983,
+          0.13981401996942092
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 1,
+      "seed": 9,
+      "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+      "receipt_sha256": "237b1c344049cc1f14db8cdb854524fe9d0680d04d63cee511ddca74f174c88f",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-1/eval-seed-9/receipt.json",
+      "start_sample_sha256": "bd1d80aa63449c132e54fca8d30e1837b67c74854ba0aaae358b220514145934",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025430313775569903,
+          0.02754062724909039,
+          0.1494964754111063
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 0,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "5402ebe21f058aafed423bc93e882ef42a5044c682deea8a2d2f36eb609b553a",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-0/receipt.json",
+      "start_sample_sha256": "db2d69b90b4c62f2949d71c8d46532a24784779f5edb626397644e4eeb4380f0",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.024282972620264624,
+          0.02719369684559881,
+          0.09030890458291448
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 7.286667823791504e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      }
+    },
+    {
+      "training_seed": 42,
+      "seed": 1,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "0632b03d4f80d265fc56bc9e8da47459586a805049fc97056bd79a4e5d053eac",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-1/receipt.json",
+      "start_sample_sha256": "a3c77bfd1f5af8bd6ff9ad3e6f059716d27ce423b8a274eef5b17050c13d0f2a",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02470429011938404,
+          0.028222658985094583,
+          0.08650678063301231
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 2,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "120848d6db1f4f6d242867410043427b8fa538003d37b9f99b76352978c2b648",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-2/receipt.json",
+      "start_sample_sha256": "603e8bd401c2853c459b9df8678ab40613209af1c6b0ccbcfd70512ba520d925",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.023823983076361042,
+          0.028351254366475488,
+          0.08578482340114574
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 3,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "f46c236049457256b4cb228f8ff692faf4cd73243ecdd87da128c97d6f3d4890",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-3/receipt.json",
+      "start_sample_sha256": "982624ecbdd3325297bd66aeb40f1170d4b2e3a099e6ec5625bc6322da9cb9a6",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.024214505726089044,
+          0.027959221562154617,
+          0.09082285296591625
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 4,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "7fdfe14f9503819daaf2688481860e08fa91cf8c0fc99631b417c8c450022bc8",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-4/receipt.json",
+      "start_sample_sha256": "5c80bc9386ac50aed8445bb59a188403de6ef209c03fa97b9d0c59a8b1b345be",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02359819700644554,
+          0.028009952951985325,
+          0.08860292466571949
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 5,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "d8ed7cd7557d7a9913326437672f88ef945b8e8b82174bb7255cbff5b97d975a",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-5/receipt.json",
+      "start_sample_sha256": "6134537a4594f1a1267efa67d7e3d64ab061e03215c1a58bc6d4f04826cae1ea",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.023939374100667012,
+          0.028233221447726387,
+          0.08919262686752553
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 6,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "b5c7dce71b3745c46329b23adada508e56a81b1a7711a3bd92b6dffd9de05c23",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-6/receipt.json",
+      "start_sample_sha256": "bc169fc5733bad00295261a24760bf97d114a1f5eafb9d3c7047c53c86c0c6ff",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.024387564171656755,
+          0.02779003585683997,
+          0.08519265681731751
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 7,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "c0775e6405579ccc79a924cd85ec10234db7d76ca0765f3fbace2699b716d319",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-7/receipt.json",
+      "start_sample_sha256": "3c272ed24dd61be16b5f6720ef9751006018898f5b058d87d6e8ad43143c8214",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025125711796728085,
+          0.028618992697587598,
+          0.08974642492649132
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 8,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "70df11afbdb4cbee49490a32e7ce39972e28c8fc2c889bcf2789024c2fc79ed5",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-8/receipt.json",
+      "start_sample_sha256": "cc75abe670ec9c3c1853b5c0097418ab6ff76ef2f09c968a111a003bbe27acef",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02453330138271566,
+          0.0282688753609638,
+          0.09870963997657148
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 42,
+      "seed": 9,
+      "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+      "receipt_sha256": "a545dcb4176a0d11a2d89ed006e5e9570871fd699c2c16be27c284451df72b57",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-starts/trials/train-seed-42/eval-seed-9/receipt.json",
+      "start_sample_sha256": "bd1d80aa63449c132e54fca8d30e1837b67c74854ba0aaae358b220514145934",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02351535434821422,
+          0.02724104833949059,
+          0.08391056067494021
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    }
+  ],
+  "illustrative_trial": {
+    "training_seed": 1,
+    "evaluation_seed": 0,
+    "start_sample_sha256": "db2d69b90b4c62f2949d71c8d46532a24784779f5edb626397644e4eeb4380f0",
+    "scope": "Every fifth actual pre-step sample plus final sample. Samples after a fall remain missing.",
+    "raw_samples": 1000,
+    "control_dt_s": 0.02,
+    "sampling_stride": 5,
+    "fall_time_s": null,
+    "trajectory": [
+      {
+        "t_sim_s": 0.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.008530862629413605,
+          0.018359726294875145,
+          -0.15345099568367004
+        ]
+      },
+      {
+        "t_sim_s": 0.1,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.019922811537981033,
+          -0.015297294594347477,
+          -0.027301955968141556
+        ]
+      },
+      {
+        "t_sim_s": 0.2,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.008587799035012722,
+          -0.0017840485088527203,
+          -0.0832454264163971
+        ]
+      },
+      {
+        "t_sim_s": 0.3,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.007047952618449926,
+          -0.0032264001201838255,
+          -0.06010795012116432
+        ]
+      },
+      {
+        "t_sim_s": 0.4,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0014533551875501871,
+          0.0017463874537497759,
+          -0.11250893771648407
+        ]
+      },
+      {
+        "t_sim_s": 0.5,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.00027070619398728013,
+          -0.0011117690009996295,
+          -0.049082085490226746
+        ]
+      },
+      {
+        "t_sim_s": 0.6,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0011366910766810179,
+          -0.0012420593993738294,
+          -0.05945592746138573
+        ]
+      },
+      {
+        "t_sim_s": 0.7000000000000001,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.00030180567409843206,
+          -0.0012767619919031858,
+          -0.04285310208797455
+        ]
+      },
+      {
+        "t_sim_s": 0.8,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0002623526961542666,
+          -0.00021246299729682505,
+          -0.02352067455649376
+        ]
+      },
+      {
+        "t_sim_s": 0.9,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.0008463544072583318,
+          9.98075120151043e-05,
+          -0.02322092093527317
+        ]
+      },
+      {
+        "t_sim_s": 1.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.000867019291035831,
+          -0.0005954219377599657,
+          -0.002147652907297015
+        ]
+      },
+      {
+        "t_sim_s": 1.1,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.00118773034773767,
+          -0.0002682713093236089,
+          -0.027410946786403656
+        ]
+      },
+      {
+        "t_sim_s": 1.2,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.000135612121084705,
+          -0.00032733072293922305,
+          -0.008677776902914047
+        ]
+      },
+      {
+        "t_sim_s": 1.3,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.00020378478802740574,
+          -0.0009259537328034639,
+          -0.026096884161233902
+        ]
+      },
+      {
+        "t_sim_s": 1.4000000000000001,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.0007968451827764511,
+          0.0005238514859229326,
+          0.002479040529578924
+        ]
+      },
+      {
+        "t_sim_s": 1.5,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0002741667558439076,
+          -0.0010438170284032822,
+          -0.018368925899267197
+        ]
+      },
+      {
+        "t_sim_s": 1.6,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0006238722708076239,
+          -0.0014487941516563296,
+          -0.018921956419944763
+        ]
+      },
+      {
+        "t_sim_s": 1.7,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0004515525361057371,
+          -0.0010786450002342463,
+          -0.015970926731824875
+        ]
+      },
+      {
+        "t_sim_s": 1.8,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0006411682697944343,
+          -0.0011607733322307467,
+          -0.016085218638181686
+        ]
+      },
+      {
+        "t_sim_s": 1.9000000000000001,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.001268962281756103,
+          -0.001402928028255701,
+          -0.016973668709397316
+        ]
+      },
+      {
+        "t_sim_s": 2.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.001438958221115172,
+          -0.0009333454072475433,
+          -0.018509777262806892
+        ]
+      },
+      {
+        "t_sim_s": 2.1,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.00017146006575785577,
+          2.434058114886284e-05,
+          -0.023858249187469482
+        ]
+      },
+      {
+        "t_sim_s": 2.2,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.001471361261792481,
+          -9.483529720455408e-05,
+          -0.004430959466844797
+        ]
+      },
+      {
+        "t_sim_s": 2.3000000000000003,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.0005289781838655472,
+          -0.00023668305948376656,
+          -0.0009787332965061069
+        ]
+      },
+      {
+        "t_sim_s": 2.4,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          2.0243147446308285e-05,
+          5.090914783068001e-06,
+          -0.002213595900684595
+        ]
+      },
+      {
+        "t_sim_s": 2.5,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.00027236028108745813,
+          -8.759667980484664e-05,
+          -0.0018436230020597577
+        ]
+      },
+      {
+        "t_sim_s": 2.6,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.00029547419399023056,
+          -9.476859122514725e-05,
+          -0.0017488744342699647
+        ]
+      },
+      {
+        "t_sim_s": 2.7,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.00014936765364836901,
+          -5.5499862355645746e-05,
+          -0.001570439781062305
+        ]
+      },
+      {
+        "t_sim_s": 2.8000000000000003,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -1.436405727872625e-05,
+          -2.365204636589624e-05,
+          -0.0013333738315850496
+        ]
+      },
+      {
+        "t_sim_s": 2.9,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          2.2179705410962924e-05,
+          -1.4088256648392417e-05,
+          -0.0011115506058558822
+        ]
+      },
+      {
+        "t_sim_s": 3.0,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -1.4635257684858516e-05,
+          -2.4481916625518352e-05,
+          -0.0009722351096570492
+        ]
+      },
+      {
+        "t_sim_s": 3.1,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -5.997630796628073e-05,
+          -3.619801645982079e-05,
+          -0.0009068693034350872
+        ]
+      },
+      {
+        "t_sim_s": 3.2,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -7.452691352227703e-05,
+          -3.986721276305616e-05,
+          -0.000877737591508776
+        ]
+      },
+      {
+        "t_sim_s": 3.3000000000000003,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -6.178167677717283e-05,
+          -3.6633187846746296e-05,
+          -0.0008710521506145597
+        ]
+      },
+      {
+        "t_sim_s": 3.4,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -4.2901629058178514e-05,
+          -3.0121911549940705e-05,
+          -0.0008705492946319282
+        ]
+      },
+      {
+        "t_sim_s": 3.5,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -3.504786945995875e-05,
+          -2.938344914582558e-05,
+          -0.0008715556468814611
+        ]
+      },
+      {
+        "t_sim_s": 3.6,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -3.900267984136008e-05,
+          -3.0935996619518846e-05,
+          -0.0008724288200028241
+        ]
+      },
+      {
+        "t_sim_s": 3.7,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -4.662461287807673e-05,
+          -3.283403202658519e-05,
+          -0.0008717835880815983
+        ]
+      },
+      {
+        "t_sim_s": 3.8000000000000003,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -5.111653445055708e-05,
+          -3.203283267794177e-05,
+          -0.0008695006836205721
+        ]
+      },
+      {
+        "t_sim_s": 3.9,
+        "command": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -5.051034895586781e-05,
+          -3.0481403882731684e-05,
+          -0.0008669579401612282
+        ]
+      },
+      {
+        "t_sim_s": 4.0,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -4.677542528952472e-05,
+          -3.233557072235271e-05,
+          -0.0008627389324828982
+        ]
+      },
+      {
+        "t_sim_s": 4.1,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1918380856513977,
+          0.010878503322601318,
+          -0.037111714482307434
+        ]
+      },
+      {
+        "t_sim_s": 4.2,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.2168739289045334,
+          0.05031931400299072,
+          -0.0019398871809244156
+        ]
+      },
+      {
+        "t_sim_s": 4.3,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.181261345744133,
+          0.04680141061544418,
+          0.5028243064880371
+        ]
+      },
+      {
+        "t_sim_s": 4.4,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1898236870765686,
+          0.02227538824081421,
+          0.20858868956565857
+        ]
+      },
+      {
+        "t_sim_s": 4.5,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23194943368434906,
+          -0.03080877661705017,
+          0.17233508825302124
+        ]
+      },
+      {
+        "t_sim_s": 4.6000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.2413150668144226,
+          -0.0019237250089645386,
+          0.04976232722401619
+        ]
+      },
+      {
+        "t_sim_s": 4.7,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23153239488601685,
+          -0.0021533221006393433,
+          0.0007239039987325668
+        ]
+      },
+      {
+        "t_sim_s": 4.8,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23988786339759827,
+          0.035844653844833374,
+          -0.13789547979831696
+        ]
+      },
+      {
+        "t_sim_s": 4.9,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19521936774253845,
+          0.009141400456428528,
+          0.17323854565620422
+        ]
+      },
+      {
+        "t_sim_s": 5.0,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1979372501373291,
+          -0.025079235434532166,
+          0.08805172890424728
+        ]
+      },
+      {
+        "t_sim_s": 5.1000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.24530532956123352,
+          -0.009739845991134644,
+          0.0071038054302334785
+        ]
+      },
+      {
+        "t_sim_s": 5.2,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23052597045898438,
+          -0.02290762960910797,
+          0.013340158388018608
+        ]
+      },
+      {
+        "t_sim_s": 5.3,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.20384471118450165,
+          0.031531885266304016,
+          -0.1891462206840515
+        ]
+      },
+      {
+        "t_sim_s": 5.4,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1900922805070877,
+          0.023537322878837585,
+          0.26328814029693604
+        ]
+      },
+      {
+        "t_sim_s": 5.5,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.18400532007217407,
+          -0.011946693062782288,
+          0.1428314596414566
+        ]
+      },
+      {
+        "t_sim_s": 5.6000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23963291943073273,
+          -0.014406844973564148,
+          0.08150331676006317
+        ]
+      },
+      {
+        "t_sim_s": 5.7,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1920883059501648,
+          -0.012105211615562439,
+          0.11243554204702377
+        ]
+      },
+      {
+        "t_sim_s": 5.8,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.2001352608203888,
+          0.008904799818992615,
+          0.08931194990873337
+        ]
+      },
+      {
+        "t_sim_s": 5.9,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19583424925804138,
+          -0.014079183340072632,
+          0.42909157276153564
+        ]
+      },
+      {
+        "t_sim_s": 6.0,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.21257945895195007,
+          -0.02853970229625702,
+          0.2621546685695648
+        ]
+      },
+      {
+        "t_sim_s": 6.1000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23988410830497742,
+          -0.04782281816005707,
+          0.18708692491054535
+        ]
+      },
+      {
+        "t_sim_s": 6.2,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.24597077071666718,
+          -0.021633490920066833,
+          0.13677766919136047
+        ]
+      },
+      {
+        "t_sim_s": 6.3,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.2020980417728424,
+          0.011901810765266418,
+          0.09280548989772797
+        ]
+      },
+      {
+        "t_sim_s": 6.4,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19752374291419983,
+          0.043090976774692535,
+          0.0910063236951828
+        ]
+      },
+      {
+        "t_sim_s": 6.5,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.18384040892124176,
+          0.03297942876815796,
+          0.1600814163684845
+        ]
+      },
+      {
+        "t_sim_s": 6.6000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1946139633655548,
+          -0.015741974115371704,
+          0.08950094878673553
+        ]
+      },
+      {
+        "t_sim_s": 6.7,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23762597143650055,
+          -0.0041230469942092896,
+          0.13280142843723297
+        ]
+      },
+      {
+        "t_sim_s": 6.8,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.21285288035869598,
+          -0.0031973570585250854,
+          0.03136040270328522
+        ]
+      },
+      {
+        "t_sim_s": 6.9,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19527290761470795,
+          0.02533472329378128,
+          0.015326084569096565
+        ]
+      },
+      {
+        "t_sim_s": 7.0,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19226855039596558,
+          0.013203546404838562,
+          0.27068907022476196
+        ]
+      },
+      {
+        "t_sim_s": 7.1000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1999942660331726,
+          -0.021833091974258423,
+          0.2233569324016571
+        ]
+      },
+      {
+        "t_sim_s": 7.2,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.23185952007770538,
+          -0.031373411417007446,
+          0.1187753826379776
+        ]
+      },
+      {
+        "t_sim_s": 7.3,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.20305661857128143,
+          0.005298778414726257,
+          -0.5053336024284363
+        ]
+      },
+      {
+        "t_sim_s": 7.4,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.2157498598098755,
+          0.03179822117090225,
+          -0.03132438659667969
+        ]
+      },
+      {
+        "t_sim_s": 7.5,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19786615669727325,
+          0.050566695630550385,
+          0.11648809164762497
+        ]
+      },
+      {
+        "t_sim_s": 7.6000000000000005,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1801721453666687,
+          0.0017646253108978271,
+          0.07829546183347702
+        ]
+      },
+      {
+        "t_sim_s": 7.7,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.24527519941329956,
+          -0.021533578634262085,
+          0.032142337411642075
+        ]
+      },
+      {
+        "t_sim_s": 7.8,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19890934228897095,
+          0.0013932585716247559,
+          -0.012565014883875847
+        ]
+      },
+      {
+        "t_sim_s": 7.9,
+        "command": [
+          0.2,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.19144092500209808,
+          0.013253405690193176,
+          0.0369107723236084
+        ]
+      },
+      {
+        "t_sim_s": 8.0,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.18089334666728973,
+          0.011716708540916443,
+          0.7943609356880188
+        ]
+      },
+      {
+        "t_sim_s": 8.1,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1320754885673523,
+          0.003251403570175171,
+          0.1614939570426941
+        ]
+      },
+      {
+        "t_sim_s": 8.2,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          0.1500091254711151,
+          0.003198876976966858,
+          0.07725565135478973
+        ]
+      },
+      {
+        "t_sim_s": 8.3,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.005598660558462143,
+          0.04051407799124718,
+          0.18165552616119385
+        ]
+      },
+      {
+        "t_sim_s": 8.4,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.10695808380842209,
+          0.1116933822631836,
+          -0.09480302780866623
+        ]
+      },
+      {
+        "t_sim_s": 8.5,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.05911833792924881,
+          -0.034302063286304474,
+          0.06373719871044159
+        ]
+      },
+      {
+        "t_sim_s": 8.6,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.058458246290683746,
+          -0.03509795665740967,
+          0.08689866214990616
+        ]
+      },
+      {
+        "t_sim_s": 8.700000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08304934948682785,
+          -0.01560986042022705,
+          -0.19465371966362
+        ]
+      },
+      {
+        "t_sim_s": 8.8,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.051267996430397034,
+          0.024204343557357788,
+          0.15201497077941895
+        ]
+      },
+      {
+        "t_sim_s": 8.9,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.10645938664674759,
+          0.017938122153282166,
+          0.5265597105026245
+        ]
+      },
+      {
+        "t_sim_s": 9.0,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.10675212740898132,
+          -0.016900870949029922,
+          0.16103631258010864
+        ]
+      },
+      {
+        "t_sim_s": 9.1,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08521229773759842,
+          -0.008094549179077148,
+          0.10799984633922577
+        ]
+      },
+      {
+        "t_sim_s": 9.200000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09190402925014496,
+          0.0033861063420772552,
+          0.06957384198904037
+        ]
+      },
+      {
+        "t_sim_s": 9.3,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08743560314178467,
+          0.037062868475914,
+          -0.031807661056518555
+        ]
+      },
+      {
+        "t_sim_s": 9.4,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09689805656671524,
+          -0.011415336281061172,
+          0.23521177470684052
+        ]
+      },
+      {
+        "t_sim_s": 9.5,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09227823466062546,
+          -0.04338003322482109,
+          -0.1851171851158142
+        ]
+      },
+      {
+        "t_sim_s": 9.6,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.07808509469032288,
+          -0.014483926817774773,
+          0.07405087351799011
+        ]
+      },
+      {
+        "t_sim_s": 9.700000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08350557088851929,
+          0.02959902584552765,
+          -0.02307296171784401
+        ]
+      },
+      {
+        "t_sim_s": 9.8,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.0888562723994255,
+          0.015522778034210205,
+          -0.04168296977877617
+        ]
+      },
+      {
+        "t_sim_s": 9.9,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09763636440038681,
+          -0.008294787257909775,
+          0.119359590113163
+        ]
+      },
+      {
+        "t_sim_s": 10.0,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.07809117436408997,
+          -0.022854384034872055,
+          -0.13098561763763428
+        ]
+      },
+      {
+        "t_sim_s": 10.1,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08812572062015533,
+          -0.015778008848428726,
+          0.16305537521839142
+        ]
+      },
+      {
+        "t_sim_s": 10.200000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.07187558710575104,
+          0.021959338337183,
+          0.057702213525772095
+        ]
+      },
+      {
+        "t_sim_s": 10.3,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.11792224645614624,
+          0.01505320519208908,
+          0.48448559641838074
+        ]
+      },
+      {
+        "t_sim_s": 10.4,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09096705168485641,
+          -0.027064308524131775,
+          0.07117465138435364
+        ]
+      },
+      {
+        "t_sim_s": 10.5,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.11894470453262329,
+          -0.016984451562166214,
+          0.007913815788924694
+        ]
+      },
+      {
+        "t_sim_s": 10.6,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08897590637207031,
+          0.01070309802889824,
+          -0.09914970397949219
+        ]
+      },
+      {
+        "t_sim_s": 10.700000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09230605512857437,
+          0.04881206899881363,
+          -0.0800524577498436
+        ]
+      },
+      {
+        "t_sim_s": 10.8,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08203219622373581,
+          -0.021420948207378387,
+          0.10862348228693008
+        ]
+      },
+      {
+        "t_sim_s": 10.9,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08372459560632706,
+          -0.03660370036959648,
+          0.15132424235343933
+        ]
+      },
+      {
+        "t_sim_s": 11.0,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08658244460821152,
+          -0.005911882966756821,
+          0.1332121193408966
+        ]
+      },
+      {
+        "t_sim_s": 11.1,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.07904902845621109,
+          0.036011144518852234,
+          0.03303908556699753
+        ]
+      },
+      {
+        "t_sim_s": 11.200000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.10363371670246124,
+          0.01080237701535225,
+          0.41893845796585083
+        ]
+      },
+      {
+        "t_sim_s": 11.3,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.10347379744052887,
+          -0.022690361365675926,
+          0.1595483273267746
+        ]
+      },
+      {
+        "t_sim_s": 11.4,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.1065036877989769,
+          -0.015672028064727783,
+          -0.04504925385117531
+        ]
+      },
+      {
+        "t_sim_s": 11.5,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08865285664796829,
+          0.0027987025678157806,
+          -0.0477316789329052
+        ]
+      },
+      {
+        "t_sim_s": 11.6,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.08598347753286362,
+          0.038316547870635986,
+          -0.07924409955739975
+        ]
+      },
+      {
+        "t_sim_s": 11.700000000000001,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.09628481417894363,
+          0.009331170469522476,
+          0.051294341683387756
+        ]
+      },
+      {
+        "t_sim_s": 11.8,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.1020221933722496,
+          -0.020272737368941307,
+          0.26778027415275574
+        ]
+      },
+      {
+        "t_sim_s": 11.9,
+        "command": [
+          -0.1,
+          0.0,
+          0.0
+        ],
+        "measured": [
+          -0.17550607025623322,
+          -0.04205649718642235,
+          -0.15124067664146423
+        ]
+      },
+      {
+        "t_sim_s": 12.0,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.08919165283441544,
+          0.011498354375362396,
+          -0.07119058072566986
+        ]
+      },
+      {
+        "t_sim_s": 12.1,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.018770277500152588,
+          0.12205381691455841,
+          0.03799900412559509
+        ]
+      },
+      {
+        "t_sim_s": 12.200000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.016097206622362137,
+          0.14530126750469208,
+          0.08358216285705566
+        ]
+      },
+      {
+        "t_sim_s": 12.3,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.006008841097354889,
+          0.09704351425170898,
+          -0.05286256596446037
+        ]
+      },
+      {
+        "t_sim_s": 12.4,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.018511155620217323,
+          0.03822626173496246,
+          0.1996152549982071
+        ]
+      },
+      {
+        "t_sim_s": 12.5,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.011280514299869537,
+          0.13155555725097656,
+          -0.16493912041187286
+        ]
+      },
+      {
+        "t_sim_s": 12.6,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.01142091304063797,
+          0.13585859537124634,
+          0.09230829775333405
+        ]
+      },
+      {
+        "t_sim_s": 12.700000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.01030169427394867,
+          0.07629359513521194,
+          -0.24684451520442963
+        ]
+      },
+      {
+        "t_sim_s": 12.8,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.010006722062826157,
+          0.15028069913387299,
+          -0.5210511088371277
+        ]
+      },
+      {
+        "t_sim_s": 12.9,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.030474424362182617,
+          0.1641177088022232,
+          0.018304377794265747
+        ]
+      },
+      {
+        "t_sim_s": 13.0,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.002375289797782898,
+          0.12493931502103806,
+          0.02167103812098503
+        ]
+      },
+      {
+        "t_sim_s": 13.1,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.011070895940065384,
+          0.036227788776159286,
+          0.052646465599536896
+        ]
+      },
+      {
+        "t_sim_s": 13.200000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.00604255311191082,
+          0.05477001145482063,
+          -0.13223214447498322
+        ]
+      },
+      {
+        "t_sim_s": 13.3,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.014964338392019272,
+          0.09774947166442871,
+          -0.02184993214905262
+        ]
+      },
+      {
+        "t_sim_s": 13.4,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.008662380278110504,
+          0.1413620263338089,
+          -0.16644427180290222
+        ]
+      },
+      {
+        "t_sim_s": 13.5,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.006837088614702225,
+          0.09831202775239944,
+          0.047280650585889816
+        ]
+      },
+      {
+        "t_sim_s": 13.6,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.016894321888685226,
+          0.052929941564798355,
+          0.07983427494764328
+        ]
+      },
+      {
+        "t_sim_s": 13.700000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -4.575960338115692e-05,
+          0.06285427510738373,
+          -0.068747378885746
+        ]
+      },
+      {
+        "t_sim_s": 13.8,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.021595004945993423,
+          0.08591259270906448,
+          -0.07891491055488586
+        ]
+      },
+      {
+        "t_sim_s": 13.9,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.03692375123500824,
+          0.12846435606479645,
+          -0.07023917138576508
+        ]
+      },
+      {
+        "t_sim_s": 14.0,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.0016971603035926819,
+          0.10857831686735153,
+          0.028811337426304817
+        ]
+      },
+      {
+        "t_sim_s": 14.1,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.02274341695010662,
+          0.06984962522983551,
+          0.07341261208057404
+        ]
+      },
+      {
+        "t_sim_s": 14.200000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.02806122973561287,
+          0.01513555645942688,
+          -0.046284016221761703
+        ]
+      },
+      {
+        "t_sim_s": 14.3,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.009934201836585999,
+          0.086221843957901,
+          -0.1396685093641281
+        ]
+      },
+      {
+        "t_sim_s": 14.4,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.03648451715707779,
+          0.12147923558950424,
+          -0.040276870131492615
+        ]
+      },
+      {
+        "t_sim_s": 14.5,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.004116125404834747,
+          0.12366549670696259,
+          0.05131984129548073
+        ]
+      },
+      {
+        "t_sim_s": 14.6,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.015503639355301857,
+          0.07858986407518387,
+          0.01981668546795845
+        ]
+      },
+      {
+        "t_sim_s": 14.700000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.008564119227230549,
+          0.025595610961318016,
+          0.08301198482513428
+        ]
+      },
+      {
+        "t_sim_s": 14.8,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.009933263063430786,
+          0.0786125585436821,
+          -0.1814538687467575
+        ]
+      },
+      {
+        "t_sim_s": 14.9,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.03523736447095871,
+          0.10930077731609344,
+          -0.10063587129116058
+        ]
+      },
+      {
+        "t_sim_s": 15.0,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.007923606783151627,
+          0.13072523474693298,
+          0.06410671025514603
+        ]
+      },
+      {
+        "t_sim_s": 15.1,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.0005707591772079468,
+          0.08309043198823929,
+          0.01159451063722372
+        ]
+      },
+      {
+        "t_sim_s": 15.200000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          -0.003689924953505397,
+          0.021601904183626175,
+          0.15825597941875458
+        ]
+      },
+      {
+        "t_sim_s": 15.3,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.0073164962232112885,
+          0.07059045135974884,
+          -0.07160422205924988
+        ]
+      },
+      {
+        "t_sim_s": 15.4,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.03615367412567139,
+          0.09944340586662292,
+          -0.10234685242176056
+        ]
+      },
+      {
+        "t_sim_s": 15.5,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.007944375276565552,
+          0.11916332691907883,
+          0.5138434171676636
+        ]
+      },
+      {
+        "t_sim_s": 15.6,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.017108481377363205,
+          0.08144164830446243,
+          0.02852238342165947
+        ]
+      },
+      {
+        "t_sim_s": 15.700000000000001,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.00338115356862545,
+          0.02333027496933937,
+          0.04089422896504402
+        ]
+      },
+      {
+        "t_sim_s": 15.8,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.018940813839435577,
+          0.07488630712032318,
+          0.11221912503242493
+        ]
+      },
+      {
+        "t_sim_s": 15.9,
+        "command": [
+          0.0,
+          0.1,
+          0.0
+        ],
+        "measured": [
+          0.03049304336309433,
+          0.09750381857156754,
+          -0.17888478934764862
+        ]
+      },
+      {
+        "t_sim_s": 16.0,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.02681037038564682,
+          0.16212821006774902,
+          0.10598700493574142
+        ]
+      },
+      {
+        "t_sim_s": 16.1,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.012084636837244034,
+          0.0526217557489872,
+          0.5511506199836731
+        ]
+      },
+      {
+        "t_sim_s": 16.2,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.01370951347053051,
+          -0.007390160113573074,
+          0.6512417197227478
+        ]
+      },
+      {
+        "t_sim_s": 16.3,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.009234041906893253,
+          0.00102202408015728,
+          0.7882655262947083
+        ]
+      },
+      {
+        "t_sim_s": 16.4,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.010076360777020454,
+          -0.0340452566742897,
+          0.3468298017978668
+        ]
+      },
+      {
+        "t_sim_s": 16.5,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.02134893275797367,
+          -0.012267833575606346,
+          0.5445148944854736
+        ]
+      },
+      {
+        "t_sim_s": 16.6,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.012126289308071136,
+          -0.0007072975276969373,
+          0.5399616360664368
+        ]
+      },
+      {
+        "t_sim_s": 16.7,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.0016162001993507147,
+          -0.010874978266656399,
+          0.4736884832382202
+        ]
+      },
+      {
+        "t_sim_s": 16.8,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.0033807456493377686,
+          -0.04725022241473198,
+          0.6417554020881653
+        ]
+      },
+      {
+        "t_sim_s": 16.9,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.02399364858865738,
+          -0.012638045474886894,
+          0.4074068069458008
+        ]
+      },
+      {
+        "t_sim_s": 17.0,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.025597209110856056,
+          0.021264459937810898,
+          0.468511700630188
+        ]
+      },
+      {
+        "t_sim_s": 17.1,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.013228789903223515,
+          0.03750292584300041,
+          0.506702721118927
+        ]
+      },
+      {
+        "t_sim_s": 17.2,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.007512439042329788,
+          0.008274203166365623,
+          0.5874111652374268
+        ]
+      },
+      {
+        "t_sim_s": 17.3,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.01941511407494545,
+          -0.02927928790450096,
+          0.49903205037117004
+        ]
+      },
+      {
+        "t_sim_s": 17.400000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.031170237809419632,
+          -0.016822904348373413,
+          0.2660396993160248
+        ]
+      },
+      {
+        "t_sim_s": 17.5,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.002840006723999977,
+          -0.010725714266300201,
+          0.37422627210617065
+        ]
+      },
+      {
+        "t_sim_s": 17.6,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.009143028408288956,
+          0.016598191112279892,
+          0.4721202254295349
+        ]
+      },
+      {
+        "t_sim_s": 17.7,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.010493908077478409,
+          0.0021179094910621643,
+          0.7758784890174866
+        ]
+      },
+      {
+        "t_sim_s": 17.8,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.0005597304552793503,
+          -0.02535998262465,
+          0.6136878728866577
+        ]
+      },
+      {
+        "t_sim_s": 17.900000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.00012375786900520325,
+          -0.03186948224902153,
+          0.5743877291679382
+        ]
+      },
+      {
+        "t_sim_s": 18.0,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.015379134565591812,
+          -0.017871923744678497,
+          0.5334054827690125
+        ]
+      },
+      {
+        "t_sim_s": 18.1,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.023403307422995567,
+          0.006478194147348404,
+          0.5281288623809814
+        ]
+      },
+      {
+        "t_sim_s": 18.2,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.012676486745476723,
+          0.011438200250267982,
+          0.5236121416091919
+        ]
+      },
+      {
+        "t_sim_s": 18.3,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.009241417050361633,
+          -0.006249384023249149,
+          0.5426018238067627
+        ]
+      },
+      {
+        "t_sim_s": 18.400000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.014655783772468567,
+          -0.0493754968047142,
+          0.6515754461288452
+        ]
+      },
+      {
+        "t_sim_s": 18.5,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.026062026619911194,
+          -0.04105377197265625,
+          0.4959031939506531
+        ]
+      },
+      {
+        "t_sim_s": 18.6,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.01340083871036768,
+          0.001848733052611351,
+          0.3891182243824005
+        ]
+      },
+      {
+        "t_sim_s": 18.7,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.00791758019477129,
+          0.012109862640500069,
+          0.5649499297142029
+        ]
+      },
+      {
+        "t_sim_s": 18.8,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.004194529727101326,
+          0.024852555245161057,
+          0.707737386226654
+        ]
+      },
+      {
+        "t_sim_s": 18.900000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.00868510827422142,
+          -0.03517287224531174,
+          0.6208120584487915
+        ]
+      },
+      {
+        "t_sim_s": 19.0,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.006304631009697914,
+          -0.026054007932543755,
+          0.7094618082046509
+        ]
+      },
+      {
+        "t_sim_s": 19.1,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.004206164740025997,
+          -0.008720561861991882,
+          0.4294256269931793
+        ]
+      },
+      {
+        "t_sim_s": 19.2,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.023597514256834984,
+          0.016120055690407753,
+          0.5575159788131714
+        ]
+      },
+      {
+        "t_sim_s": 19.3,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.02582445554435253,
+          0.02253371849656105,
+          0.7467115521430969
+        ]
+      },
+      {
+        "t_sim_s": 19.400000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.005385127849876881,
+          -0.009436821565032005,
+          0.5888510346412659
+        ]
+      },
+      {
+        "t_sim_s": 19.5,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.016981393098831177,
+          -0.036888398230075836,
+          0.550696849822998
+        ]
+      },
+      {
+        "t_sim_s": 19.6,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.01034378632903099,
+          -0.019940771162509918,
+          0.6115835309028625
+        ]
+      },
+      {
+        "t_sim_s": 19.7,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.0008166336920112371,
+          -0.000136542075779289,
+          0.48507001996040344
+        ]
+      },
+      {
+        "t_sim_s": 19.8,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          0.0037213079631328583,
+          0.01072782278060913,
+          0.44676950573921204
+        ]
+      },
+      {
+        "t_sim_s": 19.900000000000002,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.002514945575967431,
+          0.005418466404080391,
+          0.5390427112579346
+        ]
+      },
+      {
+        "t_sim_s": 19.98,
+        "command": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "measured": [
+          -0.008316367864608765,
+          -0.037475354969501495,
+          0.6322776675224304
+        ]
+      }
+    ]
+  },
+  "runtime_rehearsal": {
+    "scope": "Actual maintained Duck Rust offline CPU runtime. No robot board, sensors, motor bus or hardware qualification. Repeated available pre-fall traces verify API2 history resets; simulation response qualification is separate and failures remain included.",
+    "runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+    "binary_sha256": "3bd74c3d958c6274c488edf874183ee8d74183612cf2e89c8647e893748d147f",
+    "platform": "x86_64",
+    "onnxruntime_shared_library": "1.31.1",
+    "model_api": 2,
+    "history_kind": "5x48 sensor history cache plus current13command values; not LSTM",
+    "runs": [
+      {
+        "training_seed": 42,
+        "steps": 2000,
+        "episode_reset_indices": [
+          0,
+          1000
+        ],
+        "simulation_qualified": true,
+        "native_trajectory_samples": 1000,
+        "checkpoint_sha256": "e90961f04a52be5cf813b1abe13669973f87c1791469d152dd67fa6516b812c5",
+        "onnx_sha256": "9fff560db04a5008727777d425ae4fb14de470b4bf99f96c3f533f7248f08a86",
+        "trace_sha256": "9aaa52941a1240a3aea6b2031d3bf60ef8a83bbe10fcb1158327123365739cec",
+        "native_actions_sha256": "b8ab180f350a11a6e0882a452afd0bd7bc0493c5e25b512a2f6441411e9554f4",
+        "rust_output_sha256": "77896da8bd1260322d1f0bd85a8ea29e58d1073baceb6fe71113ebf2606e7b4f",
+        "maximum_action_error": 7.286667823791504e-06,
+        "latency_ms": {
+          "max": 0.207816,
+          "p50": 0.024972,
+          "p95": 0.025293,
+          "p99": 0.054598999999999995
+        },
+        "over_20_ms": 0,
+        "tolerance": {
+          "atol": 1e-05,
+          "rtol": 0.0001
+        }
+      },
+      {
+        "training_seed": 0,
+        "steps": 2000,
+        "episode_reset_indices": [
+          0,
+          1000
+        ],
+        "simulation_qualified": true,
+        "native_trajectory_samples": 1000,
+        "checkpoint_sha256": "4d61cfca121b248b62c307a05aeba48d9c3ac4e264bf7a95f29edd89b3ef0226",
+        "onnx_sha256": "2ebd611510b2ed6f64a09a02ea0ae7e20dacc24c6a3c54dc7501c617eb54039a",
+        "trace_sha256": "8877b562192e8a821fd997c8132652488213191623a349a0ecc0c592d9f1a382",
+        "native_actions_sha256": "92addf9d063ed95e36dedc560d9a455738aef53c35c58d4519a746bf45644bbd",
+        "rust_output_sha256": "5a36d486dc75968e76174cad71d3c30ec04154fa7b770d739528e36d3ef8a5f7",
+        "maximum_action_error": 7.68899917602539e-06,
+        "latency_ms": {
+          "max": 0.145713,
+          "p50": 0.025014,
+          "p95": 0.025553,
+          "p99": 0.027236
+        },
+        "over_20_ms": 0,
+        "tolerance": {
+          "atol": 1e-05,
+          "rtol": 0.0001
+        }
+      },
+      {
+        "training_seed": 1,
+        "steps": 2000,
+        "episode_reset_indices": [
+          0,
+          1000
+        ],
+        "simulation_qualified": true,
+        "native_trajectory_samples": 1000,
+        "checkpoint_sha256": "d68b148920e207f8c3082a05d1899e216daae04605520732f0a48dff76992b46",
+        "onnx_sha256": "260693ef602b38b87f37a111779c727ab98abbd4a23cea8607da0db013d87036",
+        "trace_sha256": "ec5df239bdc97fbb3fb0bbc7e87b6f072659282c1d59fb7b881dfb43d2459104",
+        "native_actions_sha256": "dcae17e8220ce63885ab4a2e69dd80eaabbe0a7fc8ee7bba73832053dba11a66",
+        "rust_output_sha256": "619b8abe0f903a1c091bab0f5344006f0720885fa0e063a5dc1bbf07d4387ee4",
+        "maximum_action_error": 7.092952728271484e-06,
+        "latency_ms": {
+          "max": 0.04907,
+          "p50": 0.024576999999999998,
+          "p95": 0.026247000000000003,
+          "p99": 0.027474000000000002
+        },
+        "over_20_ms": 0,
+        "tolerance": {
+          "atol": 1e-05,
+          "rtol": 0.0001
+        }
+      }
+    ]
+  }
+}

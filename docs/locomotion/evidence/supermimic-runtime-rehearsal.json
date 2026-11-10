@@ -1,0 +1,20 @@
+{
+  "runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+  "onnx_sha256": "e17cbb6af47df19431830dc2147d46b328a818caa511ca4e52fc845cdf8336bc",
+  "scope": "Standard Duck Rust runtime executed on workstation CPU; no board, sensors or motor bus. Two concatenated episodes test explicit API2 reset.",
+  "samples": 84,
+  "episode_reset_indices": [
+    0,
+    42
+  ],
+  "max_abs_action_error": 1.341104507446289e-07,
+  "latency_ms": {
+    "max": 0.029867,
+    "p50": 0.024791,
+    "p95": 0.026758999999999998,
+    "p99": 0.029867
+  },
+  "over_20_ms": 0,
+  "checkpoint_sha256": "8328decd32482b7328c34b17d3dac93539b8d179975c7840a34bd0a441a08c1a",
+  "tutorial_source_revision": "cb49a5bec3e7a5486c5c994381910769975bd46e"
+}

@@ -1,0 +1,2351 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "scope": "A single previously unused independently trained SAC teacher/student seed2, selected after the fixed-normalization recipe was frozen. Start seeds10..19 were also unused in development. Separate holdout, not silently pooled with three development seeds. Simulation only; no hardware or teacher-improvement/from-scratch claim.",
+  "selection": {
+    "recipe_frozen_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+    "development_training_seeds": [
+      42,
+      0,
+      1
+    ],
+    "heldout_training_seed": 2,
+    "development_evaluation_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "heldout_evaluation_seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "all_actual_physical_starts_distinct_from_development": true
+  },
+  "summary": {
+    "attempts": 10,
+    "invalid_attempts": 0,
+    "training_seeds": 1,
+    "evaluation_seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "unique_physical_starts": 10,
+    "per_training_seed": {
+      "2": {
+        "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+        "attempts": 10,
+        "invalid_attempts": 0,
+        "full_protocol_trials": 10,
+        "survival_rate": 1.0,
+        "qualified_rate": 1.0,
+        "full_trial_tracking_rmse_mean": [
+          0.02914471144962761,
+          0.02513753817442526,
+          0.1740662767533226
+        ],
+        "tracking_error_scope": "mean of per-trial RMSE over complete valid trials only; inspect failures and counts together"
+      }
+    },
+    "qualified_rate_across_training_seeds": {
+      "mean": 1.0,
+      "sample_std": null,
+      "min": 1.0,
+      "max": 1.0,
+      "unit": "one rate per training seed"
+    },
+    "survival_rate_across_training_seeds": {
+      "mean": 1.0,
+      "sample_std": null,
+      "min": 1.0,
+      "max": 1.0,
+      "unit": "one rate per training seed"
+    },
+    "shared_evaluation_seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "paired_initial_states_checked": false
+  },
+  "teacher": {
+    "checkpoint_sha256": "7b39379e3c6f9d9ccff43c6701338f47e5b9c48a5d9e1b3e44f88253a302841b",
+    "training_seed": 2,
+    "physical_transitions": 49152000,
+    "optimizer_steps": {
+      "actor": [
+        24000
+      ],
+      "critic": [
+        48000
+      ],
+      "alpha": [
+        24000
+      ]
+    },
+    "nominal_qualification": {
+      "criteria": {
+        "id": "flat-response-v1",
+        "horizon_s": 20.0,
+        "segment_s": 4.0,
+        "settling_s": 1.0,
+        "steady_gain_range": [
+          0.5,
+          1.5
+        ],
+        "standing_max_planar_drift_m": 0.03,
+        "standing_max_abs_yaw_drift_rad": 0.15,
+        "rmse_limits": {
+          "stand": [
+            0.04,
+            0.04,
+            0.15
+          ],
+          "forward": [
+            0.1,
+            0.07,
+            0.3
+          ],
+          "backward": [
+            0.07,
+            0.07,
+            0.3
+          ],
+          "lateral": [
+            0.07,
+            0.07,
+            0.3
+          ],
+          "yaw": [
+            0.07,
+            0.07,
+            0.3
+          ]
+        },
+        "rmse_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ]
+      },
+      "criteria_sha256": "4f597d112f32ed10501abcc57f054ef1cd52cbbfd3687e749323bd81d20a6868",
+      "passed": true,
+      "reasons": [],
+      "coverage": 1.0,
+      "segments": {
+        "stand": {
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.0014825779845042703,
+            0.0028109736168782633,
+            0.028962721196599952
+          ],
+          "steady_mean_velocity": [
+            -3.3279115814366378e-06,
+            0.0001560795480569747,
+            -0.004230004274068051
+          ],
+          "steady_directional_gain": null,
+          "passed": true
+        },
+        "forward": {
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.026464065035237492,
+            0.026746981472120807,
+            0.11692380392381282
+          ],
+          "steady_mean_velocity": [
+            0.18618025342623393,
+            0.005495493305837347,
+            0.014181759939529002
+          ],
+          "steady_directional_gain": 0.9309012671311696,
+          "passed": true
+        },
+        "backward": {
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.03669789288195268,
+            0.02214605604436175,
+            0.15952716254103055
+          ],
+          "steady_mean_velocity": [
+            -0.10602290853857994,
+            0.0065453205187805,
+            0.07454272806333999
+          ],
+          "steady_directional_gain": 1.0602290853857994,
+          "passed": true
+        },
+        "lateral": {
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.012941391080985066,
+            0.02727573517859938,
+            0.08450256730986866
+          ],
+          "steady_mean_velocity": [
+            -0.002486546717506523,
+            0.09368956593175728,
+            0.03222650985543927
+          ],
+          "steady_directional_gain": 0.9368956593175728,
+          "passed": true
+        },
+        "yaw": {
+          "coverage": 1.0,
+          "tracking_rmse": [
+            0.019690746404022567,
+            0.022176219268864112,
+            0.09262698864912203
+          ],
+          "steady_mean_velocity": [
+            -0.007803261949835966,
+            0.004366456534092625,
+            0.4825732584794362
+          ],
+          "steady_directional_gain": 0.9651465169588724,
+          "passed": true
+        }
+      },
+      "standing_planar_drift_m": 0.0018744708044862203,
+      "standing_yaw_drift_rad": -0.0357438015584699,
+      "standing_drift_scope": "first to last available pre-step sample before 4s",
+      "requested_target_rate_rms_rad_s": 5.638495879880399
+    },
+    "metrics": {
+      "fell": false,
+      "alive_time_s": 20.0,
+      "coverage": 1.0,
+      "tracking_rmse": [
+        0.02282316899426205,
+        0.022133688438480337,
+        0.10552665411134933
+      ],
+      "tracking_units": [
+        "m/s",
+        "m/s",
+        "rad/s"
+      ],
+      "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+    },
+    "source_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+    "source_archive_sha256": "66f5074f9fc0d367c7d56c609097d89753fa472d827c57c18e185c13327a35cb"
+  },
+  "student": {
+    "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+    "warmstart_metadata_sha256": "54775660c7bf884dea2d190ce47fbce433a8d37422f71b356a36e2b27b9be10e",
+    "producer_revision": "fe0f64e3ca491632ec21b2364953c896ed368034",
+    "producer_sha256": {
+      "scripts/locomotion/warmstart.py": "f2ffa03297b694fade72d3e12fe2037172e277ec05660cac1d9e7b7005db5758",
+      "src/isaaclab_tutorial/locomotion/warmstart.py": "444141d5794713ce05aa759e694685b664c8601372f70e5632896842dd4421ec",
+      "src/isaaclab_tutorial/locomotion/supermimic.py": "316481d72695c5a44025e7dbe480da6b8d7e94b4c0bf9614c28fda03c2279ab1",
+      "src/isaaclab_tutorial/tasks/locomotion/config/microduck/supermimic_env_cfg.py": "34f2e09956e4d4a0ca19b790781b45956573cc27ea05881e6d9e7ce704a29a0e",
+      "src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py": "27cb1954d0ce24ae9321d8294f953b1e26cb366e07d701052d0617d10d3a6686",
+      "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py": "3fc80e9858c8489afb161b0f081dccfec4bfa9cc437a48130440e40b8cd3c47c"
+    },
+    "workflow_lock_sha256": "fd75ab3cb00b91587eff439540a726cc73fd9207625ee9cfb308c971208d93b8",
+    "imitation": {
+      "optimizer": "Adam",
+      "learning_rate": 0.0003,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "max_gradient_norm": 1.0,
+      "cache_samples": 131072,
+      "batch_size": 1024,
+      "updates_per_collection_step": 4,
+      "planned_physical_transitions": 524288,
+      "completed_physical_transitions": 524288,
+      "optimizer_steps": 8192,
+      "final_training_mse": 0.000668465551598274,
+      "teacher_falls": 0,
+      "teacher_timeouts": 512
+    },
+    "model_warmup": {
+      "learner_iterations": 500,
+      "initial_learning_rate": 0.0002,
+      "planned_optimizer_steps": 2000,
+      "optimizer_step_counters": [
+        2000
+      ]
+    },
+    "native_rl": {
+      "collection_iterations": 2500,
+      "physical_transitions": 640000,
+      "initial_learning_rate": 1e-07,
+      "teacher_replay": "retained initially, then ordinary cyclic eviction as fresh transitions arrive",
+      "actor_normalization": "fixed_after_imitation",
+      "fixed_normalization_samples": {
+        "observations": 524288,
+        "goals": 524288
+      },
+      "further_training": "Reapply freeze_actor_normalization(runner.alg.actor) after loading, before runner.learn; the native normalizer's until setting is not serialized in checkpoint state.",
+      "final_learner_iterations": 1500
+    },
+    "native_optimizer_steps_including_model_warmup": {
+      "world_model": [
+        6000
+      ],
+      "actor": [
+        1000
+      ],
+      "critic": [
+        20000
+      ]
+    },
+    "normalizer_observation_samples_before_and_after": 524288,
+    "normalizer_goal_samples_before_and_after": 524288,
+    "max_abs_actor_network_parameter_change_during_native_rl": 0.00010398030281066895,
+    "nonfinite_logged_losses": {},
+    "physical_transitions_including_teacher": 50316288,
+    "local_device": "NVIDIA GeForce RTX 5090",
+    "device_uuid": "c641346f-f5cc-f5ca-beb8-6a5d4957872f",
+    "elapsed_seconds": 219.10406410193536,
+    "gpu_telemetry": {
+      "scope": "Device-wide one-second samples selected by UUID; concurrent workloads included and brief spikes may be missed.",
+      "sampled_peak_memory_mib": 2382.0,
+      "csv_sha256": "1051359b3daf1979870fbf36c473c4e8d4f8d1a3d18b7119a5d8b636d571798a"
+    }
+  },
+  "runtime_rehearsal": {
+    "scope": "Maintained Duck Rust workstation CPU only; no robot board/sensors/motor bus.",
+    "steps": 2000,
+    "episode_reset_indices": [
+      0,
+      1000
+    ],
+    "maximum_action_error": 7.808208465576172e-06,
+    "rust_output_sha256": "0a3b5b2c09373beea5db5b92f2ae6b33776c0bc4c08d372ba708d7a5b1e0f6aa",
+    "onnx_sha256": "fe43d06d26eea6324b90dcccf0e3f0c4fb3383fc8277d2b19cab1bb894aec483",
+    "trace_sha256": "3d09920eb9900db3ba89fc264e05c9b4547ed3124c65ad60a9c47de74ed85598",
+    "simulation_qualified": true,
+    "runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+    "binary_sha256": "3bd74c3d958c6274c488edf874183ee8d74183612cf2e89c8647e893748d147f",
+    "onnxruntime_shared_library": "1.31.1",
+    "tolerance": {
+      "atol": 1e-05,
+      "rtol": 0.0001
+    }
+  },
+  "physical_starts": {
+    "10": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 10,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.017535893845898987,
+            0.0006402308218282429,
+            -2.2875845946504785
+          ],
+          "linear_velocity_heading_m_s": [
+            0.01512291838249049,
+            0.027339817944982324,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.13707780103600983,
+            0.09759987191543948,
+            -0.0485354062585272
+          ]
+        },
+        "sample_sha256": "4e3744ac0591f63a0d47bd9d2e5b5ba22448aa1cded0c3329123a9f0682bab42"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.003339797258377075,
+          0.00811314582824707,
+          -0.9101743698120117,
+          0.41413235664367676
+        ],
+        "root_linear_velocity_w": [
+          0.010676775127649307,
+          -0.029362816363573074,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.0171048641204834,
+          -0.16687224805355072,
+          -0.0503271110355854
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "11": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 11,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.023565549581402775,
+            -0.017603695771127206,
+            2.690529207836934
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.03436635390766425,
+            -0.029618084048056163,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.036565077838914856,
+            -0.03930206288106271,
+            0.0034170065409787898
+          ]
+        },
+        "sample_sha256": "a55c77fe66c511b18de469c5c6d20c1896409723eb49d9338db0c8ef7dbc4295"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.005943477153778076,
+          -0.013451814651489258,
+          0.9745467901229858,
+          0.2237015813589096
+        ],
+        "root_linear_velocity_w": [
+          0.04384037107229233,
+          0.011674724519252777,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.015741292387247086,
+          0.051192715764045715,
+          0.004985120613127947
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "12": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 12,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.016035429479094622,
+            -0.007505537970202127,
+            -1.6930592803172302
+          ],
+          "linear_velocity_heading_m_s": [
+            0.013635659421822773,
+            -0.0307936494301242,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.10743914672517266,
+            -0.14915189034401397,
+            0.012439848515638285
+          ]
+        },
+        "sample_sha256": "5a0f5e38069cef3fc3f17b702dbf898451cf02ef6b3dbf492a42561e653cfc90"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.00812298059463501,
+          0.0035185813903808594,
+          -0.7489761114120483,
+          0.6625379323959351
+        ],
+        "root_linear_velocity_w": [
+          -0.032226771116256714,
+          -0.009778320789337158,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.1609106808900833,
+          -0.08835996687412262,
+          0.015635814517736435
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "13": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 13,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.01192768192917617,
+            -0.021140027114078933,
+            2.805227231857172
+          ],
+          "linear_velocity_heading_m_s": [
+            0.009103335283768145,
+            -0.03978953970989602,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.14544104257126664,
+            -0.06411101875014887,
+            0.09409833691169386
+          ]
+        },
+        "sample_sha256": "8454dbb0c9df7434f623c4eb62b68eeaabac8260383d18f63a0d70de2073e127"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.009422272443771362,
+          -0.007648587226867676,
+          0.985807478427887,
+          0.16744078695774078
+        ],
+        "root_linear_velocity_w": [
+          0.0045396797358989716,
+          0.040564391762018204,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.11457875370979309,
+          0.10678602755069733,
+          0.09790952503681183
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "14": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 14,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            0.01800593933262972,
+            0.007065874039408233,
+            0.3038750030238724
+          ],
+          "linear_velocity_heading_m_s": [
+            0.020985073802495466,
+            0.017305150611203232,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.0217376814547941,
+            0.07389670802739351,
+            -0.13093082425824093
+          ]
+        },
+        "sample_sha256": "a8d6aa6f71fc343856ffa2b23321d94fe10daca093b90c8e0f906b8983e58a88"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.008364379405975342,
+          0.004854679107666016,
+          0.15131507813930511,
+          0.9884382486343384
+        ],
+        "root_linear_velocity_w": [
+          0.014845580793917179,
+          0.022791452705860138,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.0029455595649778843,
+          0.07897926867008209,
+          -0.12972944974899292
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "15": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 15,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.02275809121547906,
+            0.0035798628516865508,
+            -2.2227055371578763
+          ],
+          "linear_velocity_heading_m_s": [
+            0.017501710150037694,
+            -0.01237147967393282,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.1427813662170526,
+            0.08443980833160919,
+            0.10313701357919278
+          ]
+        },
+        "sample_sha256": "378b2e84bec0becd7400b664daf4e2c5b1e1122e0f1d53d94cc63e077709c27d"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.0034416913986206055,
+          0.010992497205734253,
+          -0.896230936050415,
+          0.44343826174736023
+        ],
+        "root_linear_velocity_w": [
+          -0.02045280486345291,
+          -0.006406731903553009,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.017873629927635193,
+          -0.16642872989177704,
+          0.100676991045475
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "16": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 16,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.007596022478200227,
+            0.0060754519190339695,
+            -3.005530255765259
+          ],
+          "linear_velocity_heading_m_s": [
+            0.029970590235643017,
+            0.028323962522155376,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.09072628885977124,
+            -0.09456145155394541,
+            0.05868717446957822
+          ]
+        },
+        "sample_sha256": "d2a258022c436ad77462da30fe95c5b96492da5f70f42970f8571972bf33db6f"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          0.002772487699985504,
+          0.0039956942200660706,
+          -0.9976742267608643,
+          0.06798938661813736
+        ],
+        "root_linear_velocity_w": [
+          -0.02585165575146675,
+          -0.032127488404512405,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.10300944000482559,
+          0.0808880403637886,
+          0.058851465582847595
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "17": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 17,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.0065960029167864385,
+            -0.014252901821911579,
+            -0.7173887294526367
+          ],
+          "linear_velocity_heading_m_s": [
+            -0.005746840072511326,
+            0.008907448679918446,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.14541310302098653,
+            -0.07378772586220822,
+            0.031243756369179032
+          ]
+        },
+        "sample_sha256": "9548c78d2cd4af44c3125a8e1eb838ea710158f8b8af4af70a1d129b0eadd38e"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.005589723587036133,
+          -0.005515038967132568,
+          -0.35106322169303894,
+          0.9363188743591309
+        ],
+        "root_linear_velocity_w": [
+          0.0015255416510626674,
+          0.010490069165825844,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.15827497839927673,
+          0.04044058918952942,
+          0.02965407259762287
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "18": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 18,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.020863754100094185,
+            0.023488565964642986,
+            0.4016635872317269
+          ],
+          "linear_velocity_heading_m_s": [
+            0.011545676972099718,
+            0.0061497170802087275,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            -0.1132794030456429,
+            -0.055921163633034565,
+            0.0708625748054976
+          ]
+        },
+        "sample_sha256": "723c166b17fe08b6f0f9a7c9f654859a7921e6d9d7232bca0074de5494ddbeb4"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.012563943862915039,
+          0.009426534175872803,
+          0.1995798945426941,
+          0.9797556400299072
+        ],
+        "root_linear_velocity_w": [
+          0.008222546428442001,
+          0.010174055583775043,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.08139855414628983,
+          -0.0937117487192154,
+          0.0746544599533081
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "19": {
+      "condition": {
+        "name": "balance-starts-v1",
+        "sampling_seed": 19,
+        "definition": {
+          "name": "balance-starts-v1",
+          "rng": "numpy.PCG64",
+          "distribution": "independent uniform components",
+          "sampling_cadence": "once per attempted trial, during reset before initial observations",
+          "draw_order": [
+            "position_offset_world_m",
+            "rpy_offset_rad",
+            "linear_velocity_heading_m_s",
+            "angular_velocity_body_rad_s"
+          ],
+          "ranges": {
+            "position_offset_world_m": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.01,
+                0.01
+              ]
+            ],
+            "rpy_offset_rad": [
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -0.025,
+                0.025
+              ],
+              [
+                -3.141592653589793,
+                3.141592653589793
+              ]
+            ],
+            "linear_velocity_heading_m_s": [
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                -0.04,
+                0.04
+              ],
+              [
+                0.0,
+                0.0
+              ]
+            ],
+            "angular_velocity_body_rad_s": [
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ],
+              [
+                -0.15,
+                0.15
+              ]
+            ]
+          }
+        },
+        "definition_sha256": "29742514c9ef25a28f46e6c201e2875d7fe2112a68dcd537b84ecbf463e7ccb7",
+        "sample": {
+          "position_offset_world_m": [
+            0.0,
+            0.0,
+            0.01
+          ],
+          "rpy_offset_rad": [
+            -0.02199756979387367,
+            -0.009472827084344404,
+            1.370898406505023
+          ],
+          "linear_velocity_heading_m_s": [
+            0.02247724654145465,
+            0.003095986886367433,
+            0.0
+          ],
+          "angular_velocity_body_rad_s": [
+            0.1249049188167449,
+            0.12842265345589723,
+            -0.019043707288151746
+          ]
+        },
+        "sample_sha256": "01c25bc6075e0de3747f34135f0155f5ad21a9ed46c0218445738e5876c5f455"
+      },
+      "actual_initial_state": {
+        "root_pos_w": [
+          0.0,
+          0.0,
+          0.13500000536441803
+        ],
+        "root_quat_xyzw": [
+          -0.005516231060028076,
+          -0.01062864065170288,
+          0.6329350471496582,
+          0.7741122245788574
+        ],
+        "root_linear_velocity_w": [
+          0.0014289580285549164,
+          0.022644421085715294,
+          0.0
+        ],
+        "root_angular_velocity_w": [
+          -0.10058204084634781,
+          0.14802661538124084,
+          -0.020679695531725883
+        ],
+        "joint_names": [
+          "right_hip_yaw",
+          "right_hip_roll",
+          "right_hip_pitch",
+          "right_knee",
+          "right_ankle",
+          "neck_pitch",
+          "head_pitch",
+          "head_yaw",
+          "head_roll",
+          "left_hip_yaw",
+          "left_hip_roll",
+          "left_hip_pitch",
+          "left_knee",
+          "left_ankle"
+        ],
+        "joint_pos_rad": [
+          0.0,
+          0.08730000257492065,
+          0.4578999876976013,
+          0.004900000058114529,
+          -0.453000009059906,
+          0.3490999937057495,
+          0.3490999937057495,
+          0.0,
+          0.0,
+          0.0,
+          -0.08730000257492065,
+          -0.4578999876976013,
+          -0.004900000058114529,
+          0.453000009059906
+        ],
+        "joint_vel_rad_s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "trials": [
+    {
+      "training_seed": 2,
+      "seed": 10,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-10/receipt.json",
+      "receipt_sha256": "59da14573687585222948c38b950cbf9574e1ed6fc499a87810e4ce6971ff5ca",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.029123484713379402,
+          0.02520158025413315,
+          0.17749667577480793
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 7.808208465576172e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "jit_parity": {
+        "checked": true,
+        "max_abs_error": 7.62939453125e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "normalization": "embedded in exported actor"
+      }
+    },
+    {
+      "training_seed": 2,
+      "seed": 11,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-11/receipt.json",
+      "receipt_sha256": "b9f23aa6fb45e13857bace9817fcd82fcbfdcb548fa708c0170ccab900eed69a",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.027604214571833277,
+          0.025318523495056547,
+          0.178616408716537
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 12,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-12/receipt.json",
+      "receipt_sha256": "0b12fc7de7ce57ee8fdefb847761cc9084ca6d39788617979165dc76a0539fb2",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.030495176665847352,
+          0.02555005978911938,
+          0.18032611700825135
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 13,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-13/receipt.json",
+      "receipt_sha256": "e868d077cd622318c749d32484a351e43a6a0ef61e37ee374202762f9e1edf27",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02920285281396598,
+          0.025373302993882685,
+          0.16971668645992047
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 14,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-14/receipt.json",
+      "receipt_sha256": "9352748d1da300adf55ca67d7d25484741b9b4f3aea598fe3102c45dc24e7057",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02786207222902867,
+          0.024800219380970615,
+          0.17135875770396927
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 15,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-15/receipt.json",
+      "receipt_sha256": "c34f33bc5395f1300e913dfde161a8acd5898f09ac3371e5dd1f83c1f03cc1b4",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.029936264561613624,
+          0.02518664232556336,
+          0.17277300579550164
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 16,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-16/receipt.json",
+      "receipt_sha256": "9248358a2ea077d611b9ac63d7afe3c74378260908e04aeb97553c4fcdc466f8",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.029793991391159815,
+          0.024738104923507222,
+          0.17597914065196218
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 17,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-17/receipt.json",
+      "receipt_sha256": "ef149c2d88caf1520acf2fdbd833317fc0aac969a100035454eb8f4627c7d4ef",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.029776707471071782,
+          0.02491166650981064,
+          0.1690667682090524
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 18,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-18/receipt.json",
+      "receipt_sha256": "d1f31f6983e21abb21bbbf3bcfe0e14ada10e7dca5590f1f7294aa835025107f",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02848766379169716,
+          0.025347220801735352,
+          0.17026623300730948
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    },
+    {
+      "training_seed": 2,
+      "seed": 19,
+      "checkpoint_sha256": "fda3c8316d6c645cd487fe12805dbd6bf8809a097fb30ff53dab71a0a9175746",
+      "receipt_path": "outputs/supermimic-warmstart-fixed-holdout-starts/trials/train-seed-2/eval-seed-19/receipt.json",
+      "receipt_sha256": "eb19ef3c84954d010659863b5ccb4f3eeed38ab74f8435eaea82aa371ee07985",
+      "valid": true,
+      "qualified": true,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.029164686286679,
+          0.02494806127047367,
+          0.1750629742059141
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": null
+    }
+  ]
+}
