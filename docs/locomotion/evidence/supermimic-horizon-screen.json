@@ -1,0 +1,734 @@
+{
+  "scope": "Exploratory nominal deterministic reset; one training seed per imagined horizon. All three policies survived the schedule but linear tracking remained inadequate.",
+  "protocol_id": "flat-velocity-v1",
+  "device": "NVIDIA L40",
+  "num_envs": 4096,
+  "collection_iterations": 10000,
+  "physical_transitions_per_run": 40960000,
+  "model_diagnostic_comparison": "Each model is diagnosed on its own policy trajectories; errors are not a common-dataset ranking.",
+  "runs": [
+    {
+      "workflow": "microduck-supermimic-h8-s42-1",
+      "horizon": 8,
+      "world_model_window": 8,
+      "air_time_gradient_width": 0,
+      "training_seed": 42,
+      "evaluation_seed": 0,
+      "checkpoint_sha256": "646ab3c8880177f4fea6e8264b761509ab1f8dbcaff14825d7e8c4216f32993f",
+      "source_revision": "cb49a5bec3e7a5486c5c994381910769975bd46e",
+      "source_archive_sha256": "4d436eb803082415cb593180034d2418cf5bcb8f7f136b3b5bb3ed5e0d004174",
+      "training_seconds": 1159.57,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.10051183949111593,
+          0.046425877803071273,
+          0.26746807476862244
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0006405488646062925,
+            0.0010302486126056464,
+            -0.02029032578439607
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            1.5593682868105437e-05,
+            4.887698917173111e-05,
+            0.00026194548918283543
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -3.894865028996719e-05,
+            1.9686648908342856e-05,
+            -0.00017992093150193494
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0,
+            0.1,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            1.3092624722332857e-06,
+            1.8974224088500097e-05,
+            3.826438134334846e-05
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0,
+            0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            4.8503656774604076e-05,
+            3.4650087109184824e-05,
+            0.00024897773131669963
+          ]
+        }
+      ],
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 1.5497207641601562e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "model_diagnostic": {
+        "protocol_id": "duck-heldout-open-loop-dynamics-v1",
+        "scope": "Model diagnostics with noisy physical policy actions; not walking evaluation or hardware.",
+        "policy_weights": "live",
+        "seed": 123,
+        "num_envs": 64,
+        "steps": 1024,
+        "action_noise_std": 0.05,
+        "control_dt_s": 0.02,
+        "window_steps": 32,
+        "command_schedule": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0.2,
+            0,
+            0
+          ],
+          [
+            -0.1,
+            0,
+            0
+          ],
+          [
+            0,
+            0.1,
+            0
+          ],
+          [
+            0,
+            0,
+            0.5
+          ]
+        ],
+        "command_segment_s": 4,
+        "reset_handling": "Predict pre-reset successor; exclude later window steps after any reset.",
+        "prediction_inputs": "Measured window start, actual controls and recent controls, fixed mass context.",
+        "normalization": "Training increment standard deviation, floored by the learner error floor.",
+        "falls": 73,
+        "numerical_terminations": 0,
+        "valid": true,
+        "horizons": {
+          "1": {
+            "samples": 2048,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 0,
+            "normalized_increment_mse": 0.01193787554075243,
+            "event_brier_score": 0.002727541656403154,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.008136825636029243,
+              "body_angular_velocity_rad_s": 0.13809816539287567,
+              "orientation_tangent_rad": 0.002350772265344858,
+              "root_height_m": 0.00027249191771261394,
+              "servo_position_rad": 0.0020812673028558493,
+              "servo_velocity_rad_s": 0.1326833963394165,
+              "foot_velocity_m_s": 0.012058841064572334,
+              "angular_momentum_kg_m2_s": 0.0003479542792774737,
+              "foot_height_m": 0.0004195642832200974
+            }
+          },
+          "8": {
+            "samples": 2022,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 26,
+            "normalized_increment_mse": 0.03690858387216026,
+            "event_brier_score": 0.00491159509685683,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.007406772114336491,
+              "body_angular_velocity_rad_s": 0.13559117913246155,
+              "orientation_tangent_rad": 0.00762512581422925,
+              "root_height_m": 0.0007734520477242768,
+              "servo_position_rad": 0.008583024144172668,
+              "servo_velocity_rad_s": 0.13704583048820496,
+              "foot_velocity_m_s": 0.009572794660925865,
+              "angular_momentum_kg_m2_s": 0.0008124944288283587,
+              "foot_height_m": 0.0006953600677661598
+            }
+          },
+          "16": {
+            "samples": 2005,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 43,
+            "normalized_increment_mse": 0.08315796828329415,
+            "event_brier_score": 0.004197168369938467,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.011368263512849808,
+              "body_angular_velocity_rad_s": 0.18035154044628143,
+              "orientation_tangent_rad": 0.017360147088766098,
+              "root_height_m": 0.001242271508090198,
+              "servo_position_rad": 0.012425687164068222,
+              "servo_velocity_rad_s": 0.1261538714170456,
+              "foot_velocity_m_s": 0.009226297959685326,
+              "angular_momentum_kg_m2_s": 0.0013990862062200904,
+              "foot_height_m": 0.0010678928811103106
+            }
+          },
+          "32": {
+            "samples": 1973,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 75,
+            "normalized_increment_mse": 0.40295608310728465,
+            "event_brier_score": 0.002559039212687623,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.02740144357085228,
+              "body_angular_velocity_rad_s": 0.4708184003829956,
+              "orientation_tangent_rad": 0.058998215943574905,
+              "root_height_m": 0.0025643673725426197,
+              "servo_position_rad": 0.019678113982081413,
+              "servo_velocity_rad_s": 0.1685793101787567,
+              "foot_velocity_m_s": 0.019082503393292427,
+              "angular_momentum_kg_m2_s": 0.0022053371649235487,
+              "foot_height_m": 0.001860524294897914
+            }
+          }
+        }
+      },
+      "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
+      "nonfinite_logged_losses": {},
+      "events_sha256": "e998c7319920decbd9bfdfac9f829a07f330aec48a980a0c4d46aafca452e6d2"
+    },
+    {
+      "workflow": "microduck-supermimic-h16-s42-1",
+      "horizon": 16,
+      "world_model_window": 8,
+      "air_time_gradient_width": 0,
+      "training_seed": 42,
+      "evaluation_seed": 0,
+      "checkpoint_sha256": "65026ddcbc0cd5b7caffe63901e8d8fd312acbffe189b99fcf7b0288e633b476",
+      "source_revision": "cb49a5bec3e7a5486c5c994381910769975bd46e",
+      "source_archive_sha256": "4d436eb803082415cb593180034d2418cf5bcb8f7f136b3b5bb3ed5e0d004174",
+      "training_seconds": 1466.13,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.10015677506626067,
+          0.044952775488169214,
+          0.13540903853159397
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.002138984411091466,
+            0.002962347147101051,
+            -0.06662879358511418
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            4.417308940598256e-05,
+            -0.00039064366384991447,
+            -0.003476361261564307
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.00030702567094219074,
+            -0.00018622892976660903,
+            0.0019975457959420357
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0,
+            0.1,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.00012862121477761926,
+            -4.987017374029771e-05,
+            0.00048248867751681245
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0,
+            0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.0018189153610728682,
+            -0.002277999154757708,
+            0.2161750010152658
+          ]
+        }
+      ],
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 1.6838312149047852e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "model_diagnostic": {
+        "protocol_id": "duck-heldout-open-loop-dynamics-v1",
+        "scope": "Model diagnostics with noisy physical policy actions; not walking evaluation or hardware.",
+        "policy_weights": "live",
+        "seed": 123,
+        "num_envs": 64,
+        "steps": 1024,
+        "action_noise_std": 0.05,
+        "control_dt_s": 0.02,
+        "window_steps": 32,
+        "command_schedule": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0.2,
+            0,
+            0
+          ],
+          [
+            -0.1,
+            0,
+            0
+          ],
+          [
+            0,
+            0.1,
+            0
+          ],
+          [
+            0,
+            0,
+            0.5
+          ]
+        ],
+        "command_segment_s": 4,
+        "reset_handling": "Predict pre-reset successor; exclude later window steps after any reset.",
+        "prediction_inputs": "Measured window start, actual controls and recent controls, fixed mass context.",
+        "normalization": "Training increment standard deviation, floored by the learner error floor.",
+        "falls": 0,
+        "numerical_terminations": 0,
+        "valid": true,
+        "horizons": {
+          "1": {
+            "samples": 2048,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 0,
+            "normalized_increment_mse": 0.008312972247949801,
+            "event_brier_score": 1.4416447527754173e-05,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.004104139748960733,
+              "body_angular_velocity_rad_s": 0.054000481963157654,
+              "orientation_tangent_rad": 0.0009663642849773169,
+              "root_height_m": 7.551933958893642e-05,
+              "servo_position_rad": 0.0010978801874443889,
+              "servo_velocity_rad_s": 0.07178758084774017,
+              "foot_velocity_m_s": 0.00433345977216959,
+              "angular_momentum_kg_m2_s": 0.00020383454102557153,
+              "foot_height_m": 6.394476076820865e-05
+            }
+          },
+          "8": {
+            "samples": 2048,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 0,
+            "normalized_increment_mse": 0.03641900065122172,
+            "event_brier_score": 1.269959646776897e-06,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.004911438096314669,
+              "body_angular_velocity_rad_s": 0.0745166763663292,
+              "orientation_tangent_rad": 0.005853191018104553,
+              "root_height_m": 0.0003463135508354753,
+              "servo_position_rad": 0.005114379804581404,
+              "servo_velocity_rad_s": 0.07488587498664856,
+              "foot_velocity_m_s": 0.0036237509921193123,
+              "angular_momentum_kg_m2_s": 0.0003021367883775383,
+              "foot_height_m": 0.0004059822531417012
+            }
+          },
+          "16": {
+            "samples": 1984,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 64,
+            "normalized_increment_mse": 0.06599621126247991,
+            "event_brier_score": 6.858613512540321e-07,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.005805987399071455,
+              "body_angular_velocity_rad_s": 0.08248671889305115,
+              "orientation_tangent_rad": 0.010308573953807354,
+              "root_height_m": 0.0005386073607951403,
+              "servo_position_rad": 0.007145684212446213,
+              "servo_velocity_rad_s": 0.07449609041213989,
+              "foot_velocity_m_s": 0.003610289888456464,
+              "angular_momentum_kg_m2_s": 0.00035592945641838014,
+              "foot_height_m": 0.0005474034114740789
+            }
+          },
+          "32": {
+            "samples": 1984,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 64,
+            "normalized_increment_mse": 0.15487488575520053,
+            "event_brier_score": 5.191939891346919e-07,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.007997939363121986,
+              "body_angular_velocity_rad_s": 0.10833694785833359,
+              "orientation_tangent_rad": 0.023703230544924736,
+              "root_height_m": 0.000931085494812578,
+              "servo_position_rad": 0.010160788893699646,
+              "servo_velocity_rad_s": 0.07873327285051346,
+              "foot_velocity_m_s": 0.003934864420443773,
+              "angular_momentum_kg_m2_s": 0.0004944151733070612,
+              "foot_height_m": 0.0008549289195798337
+            }
+          }
+        }
+      },
+      "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
+      "nonfinite_logged_losses": {},
+      "events_sha256": "1e822b05b227e90dc03fb71b9b22bd75fed1ebc6f7795c62975655037252dc9f"
+    },
+    {
+      "workflow": "microduck-supermimic-h32-s42-1",
+      "horizon": 32,
+      "world_model_window": 8,
+      "air_time_gradient_width": 0,
+      "training_seed": 42,
+      "evaluation_seed": 0,
+      "checkpoint_sha256": "5255e5309102cd643235fe02420fc31bbe6e9ca997623bae271cbbb1c0d372d0",
+      "source_revision": "cb49a5bec3e7a5486c5c994381910769975bd46e",
+      "source_archive_sha256": "4d436eb803082415cb593180034d2418cf5bcb8f7f136b3b5bb3ed5e0d004174",
+      "training_seconds": 2042.96,
+      "learner_iterations": 3974,
+      "optimizer_steps": {
+        "world_model": 15896,
+        "actor": 3474,
+        "critic": 69480
+      },
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.10074058379024425,
+          0.04886647957748743,
+          0.35840462489345526
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0010572433550987625,
+            -0.0019157459951626757,
+            0.006341316656519969
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0011048032409356286,
+            -0.0011379278883881245,
+            0.002893545045517385
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0006316736442386172,
+            -0.0016037923087909196,
+            0.007327188545217116
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0,
+            0.1,
+            0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0006553596121617981,
+            -0.0010725784389069304,
+            0.008144508823752403
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0,
+            0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.0023090058161566655,
+            0.0004886850598268211,
+            0.19415130402892827
+          ]
+        }
+      ],
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 1.1324882507324219e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "model_diagnostic": {
+        "protocol_id": "duck-heldout-open-loop-dynamics-v1",
+        "scope": "Model diagnostics with noisy physical policy actions; not walking evaluation or hardware.",
+        "policy_weights": "live",
+        "seed": 123,
+        "num_envs": 64,
+        "steps": 1024,
+        "action_noise_std": 0.05,
+        "control_dt_s": 0.02,
+        "window_steps": 32,
+        "command_schedule": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0.2,
+            0,
+            0
+          ],
+          [
+            -0.1,
+            0,
+            0
+          ],
+          [
+            0,
+            0.1,
+            0
+          ],
+          [
+            0,
+            0,
+            0.5
+          ]
+        ],
+        "command_segment_s": 4,
+        "reset_handling": "Predict pre-reset successor; exclude later window steps after any reset.",
+        "prediction_inputs": "Measured window start, actual controls and recent controls, fixed mass context.",
+        "normalization": "Training increment standard deviation, floored by the learner error floor.",
+        "falls": 7,
+        "numerical_terminations": 0,
+        "valid": true,
+        "horizons": {
+          "1": {
+            "samples": 2048,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 0,
+            "normalized_increment_mse": 0.013558744874899276,
+            "event_brier_score": 0.0007597099822155284,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.004124722443521023,
+              "body_angular_velocity_rad_s": 0.07598306983709335,
+              "orientation_tangent_rad": 0.001292726374231279,
+              "root_height_m": 0.00014744731015525758,
+              "servo_position_rad": 0.001288826810196042,
+              "servo_velocity_rad_s": 0.0837644413113594,
+              "foot_velocity_m_s": 0.0056965225376188755,
+              "angular_momentum_kg_m2_s": 0.00039830937748774886,
+              "foot_height_m": 0.00014199897123035043
+            }
+          },
+          "8": {
+            "samples": 2047,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 1,
+            "normalized_increment_mse": 0.06580934585101673,
+            "event_brier_score": 0.00017329353048066459,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.005589136853814125,
+              "body_angular_velocity_rad_s": 0.0868038758635521,
+              "orientation_tangent_rad": 0.006138313096016645,
+              "root_height_m": 0.000546085590030998,
+              "servo_position_rad": 0.004758504685014486,
+              "servo_velocity_rad_s": 0.09611036628484726,
+              "foot_velocity_m_s": 0.005898121278733015,
+              "angular_momentum_kg_m2_s": 0.0005824525724165142,
+              "foot_height_m": 0.0004705948813352734
+            }
+          },
+          "16": {
+            "samples": 1987,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 61,
+            "normalized_increment_mse": 0.11092334766752707,
+            "event_brier_score": 0.00017493159687485615,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.006512182764708996,
+              "body_angular_velocity_rad_s": 0.09611260145902634,
+              "orientation_tangent_rad": 0.01074047852307558,
+              "root_height_m": 0.0008818292408250272,
+              "servo_position_rad": 0.0058434270322322845,
+              "servo_velocity_rad_s": 0.09433114528656006,
+              "foot_velocity_m_s": 0.006073789671063423,
+              "angular_momentum_kg_m2_s": 0.0006316189537756145,
+              "foot_height_m": 0.0006289176526479423
+            }
+          },
+          "32": {
+            "samples": 1985,
+            "nonfinite_predictions": 0,
+            "excluded_after_reset": 63,
+            "normalized_increment_mse": 0.35231449177643515,
+            "event_brier_score": 8.578685882300491e-05,
+            "physical_rmse": {
+              "body_linear_velocity_m_s": 0.011686502024531364,
+              "body_angular_velocity_rad_s": 0.1595989614725113,
+              "orientation_tangent_rad": 0.028832975775003433,
+              "root_height_m": 0.0015819128602743149,
+              "servo_position_rad": 0.00881081074476242,
+              "servo_velocity_rad_s": 0.10190816223621368,
+              "foot_velocity_m_s": 0.0068362499587237835,
+              "angular_momentum_kg_m2_s": 0.00104563869535923,
+              "foot_height_m": 0.0009753408376127481
+            }
+          }
+        }
+      },
+      "interpretation": "Standing/turning; inadequate linear command response for a walking recipe.",
+      "nonfinite_logged_losses": {},
+      "events_sha256": "4f87bf42176379f32cde30e1dabddc0b56c8246b612cf657739c7ae4ffe7deb2"
+    }
+  ]
+}

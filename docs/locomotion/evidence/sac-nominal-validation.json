@@ -60,7 +60,84 @@
         "transitions_per_second": 129834.1130131726,
         "events_sha256": "f7a85a7de23f01be97b549b14c15a2e6f3ee41eaf8f2ca26071da7100333babc"
       },
-      "peak_gpu_memory_mib": null
+      "peak_gpu_memory_mib": null,
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -2.731111421477787e-05,
+            -4.953217412548838e-06,
+            0.0005629501111494999
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.1969855970144272,
+            -0.0024124315121055893,
+            0.004704791748275359
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.09376799141367277,
+            0.006052079575213914,
+            0.022162983007729054
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0.0,
+            0.1,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.003407018919533584,
+            0.08439410944779714,
+            -0.004539369964040816
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0003197934858811398,
+            0.00396189387422055,
+            0.4962759240468343
+          ]
+        }
+      ]
     },
     {
       "workflow": "microduck-sac-u32-s0-1",
@@ -113,7 +190,84 @@
         "transitions_per_second": 130892.50427138379,
         "events_sha256": "5c3691dbe14c048b98c6e82295013691e8be44c0d6be2fecb0cd932bb941fb09"
       },
-      "peak_gpu_memory_mib": null
+      "peak_gpu_memory_mib": null,
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -2.4135180886635984e-05,
+            -2.367579665720617e-05,
+            0.00013421891286270694
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.1970386956135432,
+            0.0014900130310464496,
+            0.05745437391102314
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.08226284680267175,
+            0.0004940495197661221,
+            0.05475770569096009
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0.0,
+            0.1,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.01704493853263557,
+            0.08878945795198281,
+            0.01088449047257503
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.011480027256378283,
+            -0.0106197889878725,
+            0.5163086334864299
+          ]
+        }
+      ]
     },
     {
       "workflow": "microduck-sac-u32-s1-1",
@@ -166,7 +320,84 @@
         "transitions_per_second": 132050.69313344077,
         "events_sha256": "965a957cb2237decfe5888efbcfd03adb9515449cc4cb3f24a590fd03366d927"
       },
-      "peak_gpu_memory_mib": null
+      "peak_gpu_memory_mib": null,
+      "segments": [
+        {
+          "segment": 0,
+          "command": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.00021502561311763203,
+            4.74879396885323e-05,
+            -0.001138258190039778
+          ]
+        },
+        {
+          "segment": 1,
+          "command": [
+            0.2,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            0.19288513948520025,
+            0.0007999064972924922,
+            0.042713209905972084
+          ]
+        },
+        {
+          "segment": 2,
+          "command": [
+            -0.1,
+            0.0,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.10261644303798675,
+            0.013822464641768117,
+            -0.0073155814106576145
+          ]
+        },
+        {
+          "segment": 3,
+          "command": [
+            0.0,
+            0.1,
+            0.0
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.008203029697421396,
+            0.09335996066530546,
+            -0.02218106810003519
+          ]
+        },
+        {
+          "segment": 4,
+          "command": [
+            0.0,
+            0.0,
+            0.5
+          ],
+          "settling_seconds_excluded": 1,
+          "samples": 150,
+          "measured_velocity_mean": [
+            -0.0020605868524095666,
+            0.0035142095220120004,
+            0.4686790512005488
+          ]
+        }
+      ]
     }
   ],
   "rust_runtime_rehearsal": {

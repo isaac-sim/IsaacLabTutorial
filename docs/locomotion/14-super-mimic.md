@@ -61,6 +61,22 @@ uv run --project environments/workflows --locked python scripts/locomotion/model
 
 This diagnostic adds Gaussian noise with a raw-action standard deviation of 0.05 to the policy's actual physical controls. Every 32 steps it initializes the world model from a measured state, then advances it using those same controls. It reports prediction error at steps 1/8/16/32 in physical units and relative to training increment scales, plus event Brier score and sample counts. Successors at a fall remain valid targets; later predictions in that window are excluded after the physical reset and counted explicitly. Longer horizons can therefore have fewer samples. Different policies visit different states: use these curves to inspect within-model drift, alongside the fixed-command evaluation, rather than treating their model errors as a common-dataset ranking.
 
+### Measured initial horizon screen
+
+Three seed-42 OSMO runs each collected 40,960,000 physical transitions. Their checkpoints contain 3974 learner iterations, 15,896 world-model optimizer steps, 3474 actor steps and 69,480 critic steps. All logged losses were finite. Each final policy survived the complete 20-second nominal command schedule and passed 1000-sample native/ONNX parity, with maximum action error below 1.69×10⁻⁶.
+
+| Imagined horizon | Training time on one L40 | Forward tracking RMSE (m/s) | Yaw tracking RMSE (rad/s) |
+| --- | --- | --- | --- |
+| 8 | 1159.57 s | 0.10051 | 0.26747 |
+| 16 | 1466.13 s | 0.10016 | 0.13541 |
+| 32 | 2042.96 s | 0.10074 | 0.35840 |
+
+Linear velocity remained near zero under the commanded translations. These policies established a working model-learning and deployment workflow, but did not qualify as walking recipes. The [measured screen evidence](evidence/supermimic-horizon-screen.json) retains checkpoint/source hashes, counters, individual command responses, numerical checks, and held-out model diagnostics. Further optimization experiments follow below.
+
+![Measured command response and model drift](media/supermimic-screen.jpg)
+
+The left panel uses the last three seconds of each four-second command segment: response near zero reveals standing even when survival is perfect. SAC's error bars describe three training seeds; each SuperMimic horizon has one. The right panel shows accumulating model error on separate policy trajectories. [Plot provenance](evidence/supermimic-horizon-plot.json) records input, renderer and image hashes. Reproduce the figure with `uv run --project environments/workflows --locked python scripts/locomotion/plot_advanced.py`.
+
 The adapter currently requires nominal, undelayed sensor features and flat terrain. It rejects reward-function replacements, changed foot ordering, enabled persistent head-bias rewards, corruption and unsupported sensor transforms because these require an extended state or matching actor model. Preserve these guards when adding robustness experiments.
 
 ### Investigate the hard air-time window
