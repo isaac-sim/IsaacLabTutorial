@@ -31,7 +31,13 @@ from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from isaaclab_tasks.utils import resolve_task_config
 
 import isaaclab_tutorial.tasks  # noqa: F401
-from isaaclab_tutorial.locomotion.deployment import build_manifest, check_duck_contract, rehearsal_trace, staged_bundle
+from isaaclab_tutorial.locomotion.deployment import (
+    build_manifest,
+    check_duck_contract,
+    inline_onnx_weights,
+    rehearsal_trace,
+    staged_bundle,
+)
 from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
 from isaaclab_tutorial.locomotion.recording import RecordedLinearTracking
 
@@ -106,6 +112,8 @@ def main() -> None:
             if args.export:
                 runner.export_policy_to_jit(path=str(bundle), filename="policy.pt")
                 runner.export_policy_to_onnx(path=str(bundle), filename="policy.onnx")
+                inline_onnx_weights(bundle / "policy.onnx")
+                (bundle / "policy.onnx.data").unlink(missing_ok=True)
                 exported = torch.jit.load(str(bundle / "policy.pt"), map_location=base.device)
                 import onnxruntime as ort
 

@@ -16,6 +16,7 @@ from isaaclab_tutorial.locomotion.deployment import (
     OBSERVATION_LAYOUT,
     build_manifest,
     check_duck_contract,
+    inline_onnx_weights,
     rehearsal_trace,
     staged_bundle,
 )
@@ -91,3 +92,28 @@ def test_failed_export_cannot_replace_a_valid_bundle_or_publish_partial_files(tm
         pytest.fail("An existing bundle must be rejected before any file is replaced")
     assert (destination / "policy.onnx").read_bytes() == b"checked"
     assert (destination / "manifest.json").read_text() == '{"checkpoint":"A"}'
+
+
+def test_policy_onnx_carries_weights_when_the_exporter_creates_an_external_sidecar(tmp_path):
+    onnx = pytest.importorskip("onnx")
+    helper = onnx.helper
+    weights = np.array([[2, 0], [0, 3]], dtype=np.float32)
+    graph = helper.make_graph(
+        [helper.make_node("MatMul", ["obs", "weight"], ["actions"])],
+        "actor",
+        [helper.make_tensor_value_info("obs", onnx.TensorProto.FLOAT, [1, 2])],
+        [helper.make_tensor_value_info("actions", onnx.TensorProto.FLOAT, [1, 2])],
+        initializer=[onnx.numpy_helper.from_array(weights, name="weight")],
+    )
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 18)], ir_version=10)
+    path = tmp_path / "policy.onnx"
+    sidecar = tmp_path / "policy.onnx.data"
+    onnx.save_model(
+        model, path, save_as_external_data=True, all_tensors_to_one_file=True, location=sidecar.name, size_threshold=0
+    )
+    assert sidecar.exists()
+    inline_onnx_weights(path)
+    sidecar.unlink()
+    restored = onnx.load(path)
+    onnx.checker.check_model(restored)
+    np.testing.assert_array_equal(onnx.numpy_helper.to_array(restored.graph.initializer[0]), weights)

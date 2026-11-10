@@ -56,6 +56,15 @@ def staged_bundle(destination: Path):
         stage.rename(destination)
 
 
+def inline_onnx_weights(path: Path) -> None:
+    """Make the policy independently loadable when the exporter writes an external weight file."""
+    import onnx
+
+    model = onnx.load_model(path, load_external_data=True)
+    onnx.external_data_helper.convert_model_from_external_data(model)
+    onnx.save_model(model, path, save_as_external_data=False)
+
+
 def check_duck_contract(contract: dict) -> None:
     """Reject policies whose physical interpretation differs from the documented Duck bundle."""
     if tuple(contract["joint_names"]) != DUCK_JOINTS:

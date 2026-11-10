@@ -16,6 +16,8 @@ Normalization is embedded in the exported actor. Supply the raw assembled 61-val
 
 The `outputs/export-check/exported/` directory contains `policy.onnx`, a [standard schema-2 manifest](https://github.com/pollen-robotics/microduck/blob/da34a2212ae12eddfd73d0dfbf924f291aaf1dc9/docs/policy-manifest.md), `trace.json` of raw actor inputs, `native-actions.json`, and a reviewable `robotd-policy.toml` settings fragment. Creating this directory never installs a policy or opens a motor bus.
 
+`policy.onnx` embeds its weights. The export check runs after external tensor data has been folded into that file, with the temporary weight sidecar removed. Copying the single ONNX file therefore preserves the graph and its weights together.
+
 The exporter checks the actual resolved home pose, joint order, action scale, control period, and ordered observation blocks before writing the bundle:
 
 | Input indices | Meaning | Units |
