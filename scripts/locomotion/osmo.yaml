@@ -102,6 +102,7 @@ workflow:
         if [[ "{{ learner }}" == supermimic ]]; then
           TASK="$TASK-SuperMimic"
           extra=(agent.algorithm.horizon={{ horizon }}
+                 agent.algorithm.action_noise={{ action_noise }}
                  agent.algorithm.task_cfg.air_time_gradient_width={{ air_time_gradient_width }}
                  agent.algorithm.world_model_window={{ world_model_window }}
                  agent.algorithm.world_model_warmup_iterations={{ world_model_warmup }}
@@ -145,6 +146,7 @@ default-values:
   updates: 16
   learner: sac
   horizon: 16
+  action_noise: 0.1
   world_model_warmup: 500
   world_model_window: 8
   air_time_gradient_width: 0.0
