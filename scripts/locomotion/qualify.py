@@ -14,49 +14,32 @@ import subprocess
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
 from pathlib import Path
 
-import torch
 import yaml
 
 from isaaclab_tutorial.locomotion.effects import EffectSettings
+from isaaclab_tutorial.locomotion.profiles import PROFILE_TASKS
 from isaaclab_tutorial.locomotion.protocols import START_PROTOCOLS, sample_start_condition
 from isaaclab_tutorial.locomotion.qualification import aggregate_trials
-from isaaclab_tutorial.locomotion.training import training_fingerprints
+from isaaclab_tutorial.locomotion.training import checkpoint_progress, training_fingerprints
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def checkpoint_progress(path: Path) -> dict:
-    """Read realized collection and optimizer counters without executing checkpoint objects."""
-    saved = torch.load(path, map_location="cpu", weights_only=True)
-    iterations = int(saved["iter"]) + 1
-    if iterations < 1:
-        raise ValueError("Selected checkpoint has no completed collection iterations.")
-    optimizers = {
-        key: sorted({int(state["step"]) for state in value["state"].values() if "step" in state})
-        for key, value in saved.items()
-        if key.endswith("optimizer_state_dict")
-    }
-    if not optimizers or any(not counters for counters in optimizers.values()):
-        raise ValueError("Selected checkpoint is missing realized optimizer progress.")
-    return {
-        "completed_iterations": iterations,
-        "optimizer_step_counters": optimizers,
-        **{key: int(saved[key]) for key in ("num_env_steps", "num_critic_updates") if key in saved},
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, action="append", required=True)
     parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo")
+    parser.add_argument("--training-profile", choices=tuple(PROFILE_TASKS), default="nominal")
     parser.add_argument("--seeds", nargs="+", type=int, default=list(range(10)))
     parser.add_argument("--start-protocol", choices=START_PROTOCOLS, default="balance-starts-v1")
     parser.add_argument("--command-delay-ms", type=int, default=0)
     parser.add_argument("--observation-delay-ms", type=int, default=0)
+    parser.add_argument("--effects", type=Path, help="Frozen EffectSettings JSON, including a known backlash variant.")
     parser.add_argument(
         "--workers", type=int, default=1, help="Independent simulator processes; allow sufficient GPU memory."
     )
@@ -65,6 +48,8 @@ def main() -> None:
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.agent != "ppo" and args.training_profile != "nominal":
+        parser.error("Controlled training-profile qualification currently supports PPO only.")
     if args.workers < 1 or len(args.seeds) != len(set(args.seeds)):
         parser.error("Use positive workers and distinct evaluation seeds.")
     if (
@@ -76,7 +61,14 @@ def main() -> None:
         parser.error("Delays must be nonnegative multiples of 5 ms (commands) and 20 ms (observations).")
     models = []
     try:
-        EffectSettings(command_delay_ms=args.command_delay_ms, observation_delay_ms=args.observation_delay_ms)
+        if args.effects:
+            if args.command_delay_ms or args.observation_delay_ms:
+                raise ValueError("Choose a frozen --effects file or separate delay flags, not both.")
+            effects = EffectSettings(**json.loads(args.effects.read_text()))
+        else:
+            effects = EffectSettings(
+                command_delay_ms=args.command_delay_ms, observation_delay_ms=args.observation_delay_ms
+            )
         for checkpoint in args.checkpoint:
             if not checkpoint.is_file():
                 raise ValueError("Choose exact saved checkpoints, not a moving latest selector.")
@@ -87,6 +79,10 @@ def main() -> None:
                 raise ValueError("The agent selection does not match the saved training algorithm.")
             if agent.get("resume", "false").lower() != "false":
                 raise ValueError("Use fresh independent training runs for this qualification matrix.")
+            if args.training_profile != "nominal":
+                task = json.loads((checkpoint.parent / "run.json").read_text())["task"]
+                if task != PROFILE_TASKS[args.training_profile]:
+                    raise ValueError("The selected training profile does not match the recorded task.")
             progress = checkpoint_progress(checkpoint)
             models.append(
                 {
@@ -115,7 +111,7 @@ def main() -> None:
         ):
             raise ValueError("Independent training replicates must share the task, learner, and experience budget.")
         samples = {str(seed): sample_start_condition(args.start_protocol, seed) for seed in args.seeds}
-    except (ValueError, OSError, KeyError) as error:
+    except (ValueError, TypeError, OSError, KeyError) as error:
         parser.error(str(error))
     evaluate = Path(__file__).with_name("evaluate.py")
     root = Path(__file__).resolve().parents[2]
@@ -123,15 +119,19 @@ def main() -> None:
         evaluate,
         root / "src/isaaclab_tutorial/locomotion/protocols.py",
         root / "src/isaaclab_tutorial/locomotion/effects.py",
+        root / "src/isaaclab_tutorial/locomotion/assets.py",
+        root / "src/isaaclab_tutorial/locomotion/profiles.py",
         root / "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py",
     ]
     configuration = {
         "agent": args.agent,
+        "training_profile": args.training_profile,
         "models": models,
         "seeds": args.seeds,
         "start_protocol": args.start_protocol,
-        "command_delay_ms": args.command_delay_ms,
-        "observation_delay_ms": args.observation_delay_ms,
+        "command_delay_ms": effects.command_delay_ms,
+        "observation_delay_ms": effects.observation_delay_ms,
+        "effects": asdict(effects) if args.effects else None,
         "producer_sha256": {str(path.relative_to(root)): sha256(path) for path in producer_paths},
     }
     config_path = args.output / "configuration.json"
@@ -148,6 +148,15 @@ def main() -> None:
             parser.error("Output already exists; use --resume for matching receipts or choose a fresh directory.")
         args.output.mkdir(parents=True)
         config_path.write_text(json.dumps(configuration, indent=2) + "\n")
+    frozen_effects = args.output / "effects.json"
+    if args.effects:
+        if args.resume:
+            if not frozen_effects.is_file() or json.loads(frozen_effects.read_text()) != asdict(effects):
+                parser.error(
+                    "The frozen physical-effect snapshot changed; preserve this study and choose a fresh output."
+                )
+        else:
+            frozen_effects.write_text(json.dumps(asdict(effects), indent=2) + "\n")
     stopped = threading.Event()
     hash_path = args.output / "receipt-hashes.json"
     saved_hashes = json.loads(hash_path.read_text()) if hash_path.is_file() else {}
@@ -192,6 +201,8 @@ def main() -> None:
                 model["checkpoint"],
                 "--agent",
                 args.agent,
+                "--training-profile",
+                args.training_profile,
                 "--seed",
                 str(seed),
                 "--seconds",
@@ -205,6 +216,10 @@ def main() -> None:
                 "--output",
                 str(directory),
             ]
+            if args.effects:
+                if json.loads(frozen_effects.read_text()) != asdict(effects):
+                    raise ValueError("The frozen physical-effect snapshot changed during evaluation.")
+                command += ["--effects", str(frozen_effects)]
             with (directory / "evaluation.log").open("w") as log:
                 returncode = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=False).returncode
             execution_path.write_text(json.dumps({"returncode": returncode}) + "\n")
@@ -219,14 +234,17 @@ def main() -> None:
             or receipt["seed"] != seed
             or receipt["start_condition"] != samples[str(seed)]
             or receipt["algorithm"] != args.agent
+            or receipt.get("training_profile", "nominal") != args.training_profile
+            or receipt.get("training_task", PROFILE_TASKS["nominal"]) != PROFILE_TASKS[args.training_profile]
         ):
             stopped.set()
             raise ValueError(f"Stale or mismatched receipt at {receipt_path}")
         expected = {
             "task": "MicroDuckTutorial-Velocity-Flat",
             "start_protocol": args.start_protocol,
-            "command_delay_ms": args.command_delay_ms,
-            "observation_delay_ms": args.observation_delay_ms,
+            "command_delay_ms": effects.command_delay_ms,
+            "observation_delay_ms": effects.observation_delay_ms,
+            **({"effects": asdict(effects)} if args.effects else {}),
         }
         if receipt["conditions"] != expected or receipt["horizon_s"] != 20 or receipt.get("interactive"):
             stopped.set()
@@ -238,6 +256,12 @@ def main() -> None:
             "valid",
             "seed",
             "algorithm",
+            "training_profile",
+            "training_task",
+            "training_conditions",
+            "asset_url",
+            "asset_provenance",
+            "contract",
             "checkpoint_sha256",
             "protocol_id",
             "control_dt_s",

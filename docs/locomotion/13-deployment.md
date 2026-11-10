@@ -6,6 +6,8 @@ First check the learned actor across the native/export boundary:
 uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint latest --export --output outputs/export-check
 ```
 
+For a controlled robustness checkpoint, add its explicit `--training-profile delay`, `backlash`, or `combined`. The export records the training task/profile separately from the fixed physical conditions actually evaluated.
+
 This exports JIT and ONNX models using RSL-RL's supported exporter and executes **both** against native actions on every actual evaluation observation. ONNX runs on the CPU provider, the deployment inference boundary. The receipt records sample counts, maximum absolute differences, and float32 tolerances (`atol=1e-5`, `rtol=1e-4`). A full-protocol example checked 1000 samples: JIT maximum difference 0, ONNX 1.11e-6. This is numerical agreement, not a hardware walking result.
 
 The evaluator first checks the checkpoint's saved training configuration. A different observation order, preprocessing, action scale/home pose, model, or actuator contract requires a matching evaluator; the task name and tensor widths alone are insufficient. Reward-only candidates remain valid comparisons. Bundle files are staged and published together after the checks pass. Use a fresh output directory for each export; an existing bundle is preserved.

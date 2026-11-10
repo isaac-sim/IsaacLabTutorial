@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "robots": [
+    {
+      "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
+      "name": "microduck_walk.usd",
+      "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
+      "bytes": 7479847,
+      "authored_mass_sum_kg": 0.7372431745752692,
+      "authored_mass_entries": 18,
+      "composed_nonanonymous_usd_layers": 1
+    },
+    {
+      "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk_backlash.usd",
+      "name": "microduck_walk_backlash.usd",
+      "sha256": "0fe30a47867d8f33761f3fc5537aa6983a45cb26cc536eff9c3d2a030066a97b",
+      "bytes": 7486953,
+      "authored_mass_sum_kg": 0.7372571745752339,
+      "authored_mass_entries": 32,
+      "composed_nonanonymous_usd_layers": 1
+    }
+  ],
+  "authored_mass_difference_kg": 1.3999999964653398e-05,
+  "scope": "Self-contained robot USD inputs; simulation configuration overrides are recorded separately.",
+  "backlash_note": "The 14 extra passive bodies add 14 mg of authored mass. This is an asset-variant intervention."
+}

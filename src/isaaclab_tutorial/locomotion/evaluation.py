@@ -57,7 +57,7 @@ def load_training_parameters(checkpoint: Path) -> tuple[dict, dict]:
 
 
 def validate_training_contract(checkpoint: Path, env_cfg: dict, agent_cfg: dict) -> None:
-    """Require saved inference semantics to match before reconstructing a nominal evaluation.
+    """Require saved inference semantics to match the selected, declared training configuration.
 
     Training reward changes are allowed: the reward workshop deliberately trains new objectives.
     Shape-compatible observation/action changes require a separate matching evaluator.

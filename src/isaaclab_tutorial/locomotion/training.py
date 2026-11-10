@@ -54,6 +54,18 @@ def training_fingerprints(env: dict, agent: dict) -> dict[str, str]:
     """
     env = yaml.load(yaml.dump(env, sort_keys=False), Loader=yaml.BaseLoader)
     agent = yaml.load(yaml.dump(agent, sort_keys=False), Loader=yaml.BaseLoader)
+    # The known byte-verification hook performs I/O only. Older tutorial checkpoints predate it;
+    # omit exactly this audit hook, while preserving all physical/reset event terms and ordering.
+    events = env.get("events")
+    if isinstance(events, dict):
+        audit = events.get("asset_lock")
+        if (
+            isinstance(audit, dict)
+            and audit.get("func") == "isaaclab_tutorial.locomotion.assets:verify_scene_robot_asset"
+            and audit.get("mode") == "prestartup"
+            and audit.get("params") == {}
+        ):
+            events.pop("asset_lock")
     for key in ("seed", "log_dir"):
         env.pop(key, None)
     env["scene"].pop("num_envs", None)
@@ -295,4 +307,26 @@ def read_training_run(directory: Path) -> dict:
         "checkpoint": checkpoint,
         "source_sha256": hashes,
         "config_fingerprints": training_fingerprints(env, agent),
+    }
+
+
+def checkpoint_progress(path: Path) -> dict:
+    """Read realized collection and optimizer counters without executing checkpoint objects."""
+    import torch
+
+    saved = torch.load(path, map_location="cpu", weights_only=True)
+    iterations = int(saved["iter"]) + 1
+    if iterations < 1:
+        raise ValueError("Selected checkpoint has no completed collection iterations.")
+    optimizers = {
+        key: sorted({int(state["step"]) for state in value["state"].values() if "step" in state})
+        for key, value in saved.items()
+        if key.endswith("optimizer_state_dict")
+    }
+    if not optimizers or any(not counters for counters in optimizers.values()):
+        raise ValueError("Selected checkpoint is missing realized optimizer progress.")
+    return {
+        "completed_iterations": iterations,
+        "optimizer_step_counters": optimizers,
+        **{key: int(saved[key]) for key in ("num_env_steps", "num_critic_updates") if key in saved},
     }

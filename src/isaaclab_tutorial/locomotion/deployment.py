@@ -118,7 +118,11 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
             "body": "six zero commands; nonzero body commands were not trained",
         },
         "training": {
-            "task_id": receipt.get("conditions", {}).get("task", "MicroDuckTutorial-Velocity-Flat"),
+            "task_id": receipt.get(
+                "training_task", receipt.get("conditions", {}).get("task", "MicroDuckTutorial-Velocity-Flat")
+            ),
+            "profile": receipt.get("training_profile", "nominal"),
+            "conditions": receipt.get("training_conditions"),
             "checkpoint": receipt["checkpoint"],
             "checkpoint_sha256": receipt["checkpoint_sha256"],
             **({"initialization": receipt["training_initialization"]} if "training_initialization" in receipt else {}),
@@ -132,6 +136,7 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
             "conditions": receipt.get("conditions"),
             "effect_settings": receipt.get("effect_settings"),
             "asset_url": receipt.get("asset_url"),
+            "asset_provenance": receipt.get("asset_provenance"),
             "onnx_parity": parity,
             "onnx_sha256": onnx_sha256,
             "hardware_validated": False,

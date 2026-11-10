@@ -31,11 +31,12 @@ from isaaclab_tasks.utils import resolve_task_config
 from isaaclab_assets.robots.microduck import MICRODUCK_JOINT_NAMES
 
 import isaaclab_tutorial.tasks  # noqa: F401
-from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, validate_training_contract
+from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint
 from isaaclab_tutorial.locomotion.playground.controls import JointControls
 from isaaclab_tutorial.locomotion.playground.inspector import ObservationInspector
 from isaaclab_tutorial.locomotion.playground.panels import draw_controls
 from isaaclab_tutorial.locomotion.playground.telemetry import PlaygroundTelemetryCfg
+from isaaclab_tutorial.locomotion.profiles import PROFILE_TASKS, validate_profile_checkpoint
 
 
 @torch.no_grad()
@@ -56,6 +57,7 @@ def main() -> None:
         "--checkpoint", type=Path, default=Path("latest"), help="PPO checkpoint for frozen-policy control."
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--training-profile", choices=tuple(PROFILE_TASKS), default="nominal")
     parser.add_argument("--output", type=Path, default=Path("outputs/playground"))
     parser.add_argument("--capture", action="store_true", help="Save the final Newton framebuffer as a PNG.")
     args = parser.parse_args()
@@ -63,6 +65,8 @@ def main() -> None:
         parser.error("--steps must be nonnegative")
     max_steps = args.steps or (120 if args.headless or args.scripted else 0)
     policy_mode = args.mode == "policy"
+    if not policy_mode and args.training_profile != "nominal":
+        parser.error("Select --mode policy to inspect a checkpoint from a controlled training profile.")
     supported = not args.free and not policy_mode
     task = (
         "MicroDuckTutorial-Velocity-Flat"
@@ -72,8 +76,13 @@ def main() -> None:
     cfg, agent = resolve_task_config(task, "rsl_rl_cfg_entry_point", overrides=())
     if policy_mode:
         try:
-            args.checkpoint = resolve_checkpoint(args.checkpoint)
-            validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
+            args.checkpoint = resolve_checkpoint(args.checkpoint, task=PROFILE_TASKS[args.training_profile])
+            training_cfg = cfg
+            if args.training_profile != "nominal":
+                training_cfg, _ = resolve_task_config(
+                    PROFILE_TASKS[args.training_profile], "rsl_rl_cfg_entry_point", overrides=()
+                )
+            validate_profile_checkpoint(args.checkpoint, args.training_profile, to_dict(training_cfg), to_dict(agent))
         except (ValueError, FileNotFoundError) as error:
             parser.error(str(error))
         cfg.commands.base_velocity.resampling_time_range = (1e9, 1e9)
@@ -304,6 +313,7 @@ def main() -> None:
                 "seed": args.seed,
                 "supported": supported,
                 "controller": "policy" if policy_mode else "manual",
+                "training_profile": args.training_profile if policy_mode else None,
                 "checkpoint": str(args.checkpoint.resolve()) if policy_mode else None,
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest() if policy_mode else None,
                 "resets": resets,
