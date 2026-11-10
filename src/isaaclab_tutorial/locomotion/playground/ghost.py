@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from isaaclab_tutorial.locomotion.assets import verify_robot_asset_file
 from isaaclab_tutorial.locomotion.comparison import RecordedComparison
 
 if TYPE_CHECKING:
@@ -27,7 +28,11 @@ def _visual_model(receipt: dict, *, ground: bool):
 
     from isaaclab.utils.assets import retrieve_file_path
 
-    stage = Usd.Stage.Open(retrieve_file_path(receipt["asset_url"]))
+    path = Path(retrieve_file_path(receipt["asset_url"]))
+    asset = {"url": receipt["asset_url"], **verify_robot_asset_file(path)}
+    if receipt.get("asset_provenance") is not None and receipt["asset_provenance"] != asset:
+        raise ValueError("Playback robot bytes differ from the recorded asset; preserve the original experiment.")
+    stage = Usd.Stage.Open(str(path))
     # Motor-controller prims are irrelevant to recorded geometry and can contain custom drive schemas.
     ignored = [
         re.escape(str(prim.GetPath())) + r"(/.*)?"

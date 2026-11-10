@@ -40,6 +40,48 @@ Target lag is an integer draw in 5 ms physics steps, redrawn every physics step.
 
 Forty milliseconds lies inside the sensor-delay training range. Success there tests interpolation under a fixed condition; it does not establish extrapolation to longer delays. Try 60 ms as a separately declared test after inspecting the in-range result.
 
+## Predict the result, then inspect it
+
+Which training row should handle sensor lag? Will a policy trained with both mechanisms necessarily walk better under both? Keep survival and command response as separate predictions.
+
+![Measured four-by-four PPO comparison: delay training improves fixed-lag response, while all combined-stress response checks fail even for policies that survive](media/ppo-robustness-matrix.jpg)
+
+We trained **12 fresh policies**: three seeds per profile, each with 98,304,000 transitions and 20,000 optimizer updates on the same L40 GPU type and driver. Every policy encountered all four fixed conditions under the same ten actual physical starts and command schedule: **480 valid attempts**, including every fall. Standard deviations are across three per-training-seed rates, in percentage points; they are not confidence intervals. [Audited data and provenance](evidence/robustness-validation.json).
+
+Delay training qualified **30/30** fixed-40-ms trials, compared with **0/30** for nominal training. It also qualified only **25/30** nominal trials and **1/30** backlash-only trials. Combined training survived **30/30** combined-stress trials, yet qualified **0/30** for locomotion. A controller can stay upright while responding poorly to commands. These results assess the declared simulated distributions, not calibrated hardware transfer.
+
+The nominal policy already qualified 30/30 trials on this specific backlash variant. The backlash-only training row therefore shows no improvement in that response metric; baseline measurement prevents assuming every modeled effect needs a successful fix.
+
+**Challenge:** explain the combined row's 30% nominal response rate and 52-percentage-point standard deviation. One training seed qualified 9/10 starts; the other two qualified none. Which single video would have given you a misleading impression?
+
+<details>
+<summary>Exact response counts and a reproducible figure</summary>
+
+Each cell contains three independent training policies × ten shared starts. These are ten reused physical starts, not 480 independent starts.
+
+| Training profile | Nominal test | 40 ms test | Backlash test | Both |
+| --- | --- | --- | --- | --- |
+| Nominal | 30/30 | 0/30 | 30/30 | 0/30 |
+| Delay | 25/30 | 30/30 | 1/30 | 0/30 |
+| Backlash | 30/30 | 0/30 | 30/30 | 0/30 |
+| Combined | 9/30 | 25/30 | 20/30 | 0/30 |
+
+The [portable report](evidence/ppo-robustness-matrix.json) retains every attempt, failure reason, conditional tracking summary and seed-level result. Its audit reads the actual checkpoints/optimizer counters, verifies resolved profiles and source/asset hashes, checks every receipt, recomputes metrics from the raw motion, and matches actual initial states across profiles and conditions. Altered budgets, mislabeled conditions and changed initial velocities are rejected.
+
+![Complete-trial forward, lateral and yaw tracking errors for each training/test cell; cells without a complete trial are marked unavailable rather than zero](media/ppo-robustness-tracking.jpg)
+
+These errors average complete-trial RMSE within each training seed, then across seeds with complete data. `n` counts complete versus attempted trials. Read this conditional view beside survival. The response test also checks individual command segments: a low full-episode mean can hide a segment that exceeds its limit. In one combined-training/combined-stress trial, forward speed gain was 1.16, yet yaw RMSE during that straight segment was 0.333 rad/s, above its 0.30 rad/s limit. Correct average forward speed alone did not qualify the response.
+
+Rebuild the figure without the large raw archives:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/summarize_robustness.py --data docs/locomotion/evidence/ppo-robustness-matrix.json --output outputs/robustness-rebuild
+```
+
+To audit a new complete experiment, pass `--trial PATH_TO_COLLECTED_TRIAL` once per replicate instead of `--data`. Partial studies remain incomplete. The four declared profiles bundle particular delay clocks and mechanics; identifying which delay channel caused an improvement requires another controlled experiment.
+
+</details>
+
 ## Repeat the controlled experiment
 
 For a meaningful comparison, use the same full transition budget and at least three independent training seeds per profile. The automated driver trains one replicate, checks actual checkpoint progress, then evaluates nominal, 40 ms lag, backlash, and backlash-plus-lag conditions under evaluation seeds 0–9:
@@ -69,6 +111,12 @@ Run each of the four profiles with training seeds 42, 0 and 1 on the same GPU ty
 ## Look at the learned difference
 
 In [the native effects workshop](11-effects.md), pass `--training-profile delay` (or `backlash`/`combined`) with that policy's exact checkpoint. The same frozen policy then encounters different evaluation conditions. To compare two separately trained policies, evaluate both with the same effect file and start, then pass their two receipts to `compare.py`. Keep both objectives and independent task metrics visible.
+
+![Actual matched-start comparison under 40 ms sensor lag: the blue nominal-policy ghost holds its fallen pose while the solid delay-trained duck completes the commands](media/robust-training-ghost.jpg)
+
+This pair uses training seed 42 and physical-start seed 0. Both policies experienced the same 40 ms sensor lag. The nominal policy fell at 1.84 s; the delay-trained policy completed 20 s and qualified. Both recorded world paths remain intact. The [comparison receipt](evidence/robustness-validation.json) records input hashes and 1,001 playback frames with zero playback physics. Use the viewer's pause/scrub controls to find where the closed-loop responses diverged.
+
+The delay-trained seed-42 candidate also passed 1,000 native/JIT/ONNX comparisons and the standard Duck Rust no-actuation rehearsal, with maximum action difference **8.35e-7**. That checks the software boundary for this evaluated condition; [its receipt](evidence/robust-delay-runtime.json) preserves the training profile, fixed test effect, runtime inputs and hardware-validation status.
 
 <details>
 <summary>Beyond this controlled ablation</summary>

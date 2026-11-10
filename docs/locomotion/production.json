@@ -88,6 +88,18 @@
     {
       "path": "docs/locomotion/evidence/observation-panel-capture.json",
       "sha256": "36289ec6e382358a64e420c241b10bd139f7ccf4092787136915355845c894bb"
+    },
+    {
+      "path": "docs/locomotion/evidence/ppo-robustness-matrix.json",
+      "sha256": "9ab4d38c6122de7c103bc0b9bf6607e6fad90f4d548a65b8256171edbf776b98"
+    },
+    {
+      "path": "docs/locomotion/evidence/robustness-validation.json",
+      "sha256": "018025018ff1ea625b03e1f77f7d7ee3aaa70f7784eb1009b77b8d4fd5cf7a84"
+    },
+    {
+      "path": "docs/locomotion/evidence/robust-delay-runtime.json",
+      "sha256": "ef5265480182afbfb90c6d93eabafb774370798e8a1faef9967c000c1d2e90d2"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -339,7 +351,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
         }
       ],
       "acceptance": "Slice widths sum to the actual actor dimension and match the exported policy contract.",
@@ -638,7 +650,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
         }
       ],
       "acceptance": "Every connection is grounded in the actual hardware API and policy contract; estimates are labeled as estimates.",
@@ -778,7 +790,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/12-robustness.md",
-          "sha256": "b03535c71bbbd6b4aa6aa170700595b6f1371e8d69479fe2bb39df4c0c3de899"
+          "sha256": "2f51269dca8c705cfa660ec1be4ed60c01aa845857ab548e52abf6ab3327eb56"
         }
       ],
       "acceptance": "Every interval is measured or explicitly justified; no visually invented hardware tolerances.",
@@ -798,8 +810,17 @@
       "id": "V32",
       "topic": "robustness-matrix",
       "kind": "measured_plot",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/ppo-robustness-matrix.jpg",
+          "sha256": "367b262cdf00812c7a623e5c68463525198aa35a8934b3edbd9e55172e90fa3d"
+        },
+        {
+          "path": "docs/locomotion/media/ppo-robustness-tracking.jpg",
+          "sha256": "e782884c8ffad93061fffc59f2889b7f5883ec8df8c3fb8c043a99699da21759"
+        }
+      ],
       "acceptance": "Matrices use matched task/reward/interface budgets and include nominal tradeoffs; outside-envelope tests are labeled.",
       "required_labels": [
         "Training variant",
@@ -811,14 +832,19 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Twelve matched-budget cloud PPO replicates are running; publish all outcomes, not just winners."
+      "remaining": null
     },
     {
       "id": "V33",
       "topic": "matched-stress-comparison",
       "kind": "comparison_video",
-      "status": "missing",
-      "outputs": [],
+      "status": "partial",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/robust-training-ghost.jpg",
+          "sha256": "0285c9501df844a88d632aafe3a598e543629a0baa2f7faa22a43e53b486e512"
+        }
+      ],
       "acceptance": "All changed factors are declared; a failing panel remains visible and is not replaced with a better seed.",
       "required_labels": [
         "Policy",
@@ -829,7 +855,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Generate independent matched-start stress replays after those policies finish."
+      "remaining": "Actual independently recorded matched-stress ghost still and runnable comparison exist; published native-time video remains."
     },
     {
       "id": "V34",
@@ -839,7 +865,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/13-deployment.md",
-          "sha256": "75eb615c8c8b16f5d7c3cb659d357f8ca346bc86d5c306e1276ca3a255ac098c"
+          "sha256": "88d96adc5802e05613eed5ba3882c07e432e9c3a58a6f4562bcdac21b07205af"
         }
       ],
       "acceptance": "Diagram matches the supported deployed runtime and calibration contract, including inference state/reset handling.",

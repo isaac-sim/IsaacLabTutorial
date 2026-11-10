@@ -1,0 +1,106 @@
+{
+  "scope": "Delay-trained PPO, fixed 40 ms sensor-lag simulation export and standard Duck no-actuation workstation rehearsal.",
+  "checkpoint_sha256": "447e10a681e4476e301fc337078aeacb058548a88ebea56fc277fea7b0c0bb20",
+  "training_profile": "delay",
+  "training_task": "MicroDuckTutorial-Velocity-Flat-Delay",
+  "training_conditions": {
+    "name": "delay",
+    "task": "MicroDuckTutorial-Velocity-Flat-Delay",
+    "backlash": false,
+    "command_delay_physics_steps": [
+      0,
+      6
+    ],
+    "imu_delay_control_samples": [
+      0,
+      2
+    ],
+    "joint_velocity_delay_control_samples": [
+      0,
+      2
+    ],
+    "command_delay_cadence": "uniform integer lag, redrawn each 5 ms physics step",
+    "imu_delay_cadence": "gyro/gravity lags: independent draws every 64 control samples with per-channel phase; reset begins at zero",
+    "joint_velocity_delay_cadence": "uniform integer lag held until episode reset",
+    "supply_voltage_v": 7.4,
+    "battery_sag": false,
+    "additive_sensor_noise": false,
+    "encoder_bias_rad": 0.0,
+    "other_physics_randomization": false,
+    "curricula": false,
+    "scope": "Delay \u00d7 backlash ablation. Full hardware randomization is a separate experiment."
+  },
+  "evaluation_conditions": {
+    "task": "MicroDuckTutorial-Velocity-Flat",
+    "start_protocol": "balance-starts-v1",
+    "command_delay_ms": 0,
+    "observation_delay_ms": 40
+  },
+  "asset_provenance": {
+    "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
+    "name": "microduck_walk.usd",
+    "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
+    "bytes": 7479847,
+    "authored_mass_sum_kg": 0.7372431745752692,
+    "authored_mass_entries": 18,
+    "composed_nonanonymous_usd_layers": 1
+  },
+  "simulation_metrics": {
+    "fell": false,
+    "alive_time_s": 20.0,
+    "coverage": 1.0,
+    "tracking_rmse": [
+      0.025649968886065206,
+      0.03308060087850597,
+      0.16731327895513215
+    ],
+    "tracking_units": [
+      "m/s",
+      "m/s",
+      "rad/s"
+    ],
+    "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+  },
+  "response_qualified": true,
+  "jit_parity": {
+    "checked": true,
+    "max_abs_error": 0.0,
+    "atol": 1e-05,
+    "rtol": 0.0001,
+    "normalization": "embedded in exported actor"
+  },
+  "onnx_parity": {
+    "checked": true,
+    "samples": 1000,
+    "max_abs_error": 8.344650268554688e-07,
+    "atol": 1e-05,
+    "rtol": 0.0001,
+    "provider": "CPUExecutionProvider"
+  },
+  "standard_runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+  "runtime_executable_sha256": "3bd74c3d958c6274c488edf874183ee8d74183612cf2e89c8647e893748d147f",
+  "runtime_max_absolute_action_difference": 8.344650268554688e-07,
+  "runtime_samples": 1000,
+  "atol": 1e-05,
+  "rtol": 0.0001,
+  "runtime_actor_only_latency_ms": {
+    "max": 0.015885,
+    "p50": 0.010938999999999999,
+    "p95": 0.011163,
+    "p99": 0.012738000000000001
+  },
+  "runtime_over_20_ms": 0,
+  "latency_scope": "actor inference only; excludes sensor and motor I/O",
+  "warmup_calls_excluded": 50,
+  "files_sha256": {
+    "manifest.json": "0e9c42d735be226f9d8b54b9f74573674a68d2d5c7ed3e2127b11349b2a82b3f",
+    "native-actions.json": "39091e27f7897969a8af46ec4d6637d02a63263ed21b5710217ad762308ed1d3",
+    "robotd-policy.toml": "7a220de36f0882f4fd998b370b81eef61b63f605bbdcf68bc406068ba2932c49",
+    "policy.onnx": "aec9424b072a4113ad62abb44990b6df1689838f80d7968b631cba94e8c21e19",
+    "policy.pt": "e594089710180a8521989e9f148be3f1a37bcb89f3696d66dbb99aeeea53b30f",
+    "trace.json": "825c8a2580f22f53edbf970b388cf072dee6751af5ff4b2933c94801f521f907",
+    "rehearsal-rust.json": "d09c4f711660774437a547e22c45ad4ba7dfad3c262cdf1637b313ae26e8eeaa"
+  },
+  "receipt_sha256": "7f7a3cb939c5081c432cd5373061f8537fb9f2cc8bea70bcdf88dbb26749b9de",
+  "hardware_validated": false
+}

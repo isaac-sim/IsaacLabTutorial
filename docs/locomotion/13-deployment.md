@@ -12,7 +12,9 @@ This exports JIT and ONNX models using RSL-RL's supported exporter and executes 
 
 The evaluator first checks the checkpoint's saved training configuration. A different observation order, preprocessing, action scale/home pose, model, or actuator contract requires a matching evaluator; the task name and tensor widths alone are insufficient. Reward-only candidates remain valid comparisons. Bundle files are staged and published together after the checks pass. Use a fresh output directory for each export; an existing bundle is preserved.
 
-When evaluation applies a held-out physical effect, the manifest retains its `conditions`, complete `effect_settings`, and simulated asset URL alongside the qualification result. A passing intervention trial must stay identifiable as that experiment.
+When evaluation applies a fixed physical effect, the manifest retains its `conditions`, complete `effect_settings`, and simulated asset URL alongside the qualification result. A passing intervention trial must stay identifiable as that experiment.
+
+The [controlled delay-trained PPO candidate](12-robustness.md#predict-the-result-then-inspect-it) was separately exported and rehearsed under fixed 40 ms observation lag. All 1,000 native/ONNX/Rust actions agreed within tolerance, with maximum difference 8.35e-7. Its manifest records the `delay` training task and sampled distribution separately from that fixed test condition. [Software rehearsal evidence](evidence/robust-delay-runtime.json); sensor/motor I/O and robot-board timing remain outside this workstation check.
 
 Normalization is embedded in the exported actor. Supply the raw assembled 61-value actor observation exactly once; do not normalize it a second time. Preserve the verified 14-action order, reference offsets, scale, bias convention, timing, and inference/reset state.
 
