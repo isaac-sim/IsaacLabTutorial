@@ -1,0 +1,376 @@
+{
+  "kind": "native-recorded-asset-reference-v1",
+  "receipt_sha256": "e74588997f27df55b394507542bc6da6fc992463a792959ba6861a51c508c35b",
+  "asset_provenance": {
+    "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
+    "name": "microduck_walk.usd",
+    "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
+    "bytes": 7479847,
+    "authored_mass_sum_kg": 0.7372431745752692,
+    "authored_mass_entries": 18,
+    "composed_nonanonymous_usd_layers": 1
+  },
+  "physics_steps": 0,
+  "head_yaw_explanatory_arc": {
+    "center_shift_along_actual_axis_m": 0.1,
+    "radius_m": 0.035,
+    "angle_range_deg": [
+      -90,
+      70
+    ],
+    "not_recorded_motion": true
+  },
+  "checks": {
+    "fk_max_position_error_m": 0.0,
+    "head_yaw_finite_difference_step_rad": 0.001,
+    "head_yaw_derivative_check_error_m_per_rad": 1.6987327988715606e-08,
+    "positive_axis_check_atol_m_per_rad": 3e-05
+  },
+  "joints_in_action_order": [
+    {
+      "action_index": 0,
+      "name": "left_hip_yaw",
+      "anchor_world_m": [
+        0.006000000052154064,
+        0.017500000074505806,
+        0.2150000035762787
+      ],
+      "positive_axis_world": [
+        -1.949052325436401e-16,
+        2.599405942873927e-16,
+        -1.0
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 1,
+      "name": "left_hip_roll",
+      "anchor_world_m": [
+        0.02250000089406967,
+        0.017500001937150955,
+        0.20250000059604645
+      ],
+      "positive_axis_world": [
+        1.0,
+        0.0,
+        -1.1920928955078125e-07
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 2,
+      "name": "left_hip_pitch",
+      "anchor_world_m": [
+        0.0040000006556510925,
+        0.04240480065345764,
+        0.2003202736377716
+      ],
+      "positive_axis_world": [
+        -5.960464477539063e-08,
+        0.9961918592453003,
+        -0.08718904852867126
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 3,
+      "name": "left_knee",
+      "anchor_world_m": [
+        -0.01836601458489895,
+        0.03532050922513008,
+        0.16525496542453766
+      ],
+      "positive_axis_world": [
+        5.960464477539063e-08,
+        -0.9961920976638794,
+        0.0871894359588623
+      ],
+      "anchor_gap_m": 4.165001232792065e-09
+    },
+    {
+      "action_index": 4,
+      "name": "left_ankle",
+      "anchor_world_m": [
+        1.5906989574432373e-05,
+        0.05792893096804619,
+        0.12536802887916565
+      ],
+      "positive_axis_world": [
+        -1.043081283569336e-07,
+        0.9961921572685242,
+        -0.08718878030776978
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 5,
+      "name": "neck_pitch",
+      "anchor_world_m": [
+        0.026000000536441803,
+        0.014499999582767487,
+        0.252421498298645
+      ],
+      "positive_axis_world": [
+        1.623875450543189e-16,
+        -1.0000001192092896,
+        1.1920928955078125e-07
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 6,
+      "name": "head_pitch",
+      "anchor_world_m": [
+        0.008897386491298676,
+        0.014499995857477188,
+        0.2994055449962616
+      ],
+      "positive_axis_world": [
+        0.0,
+        1.000000238418579,
+        1.7881393432617188e-07
+      ],
+      "anchor_gap_m": 1.862645149230957e-09
+    },
+    {
+      "action_index": 7,
+      "name": "head_yaw",
+      "anchor_world_m": [
+        0.008897386491298676,
+        -4.6566128730773926e-09,
+        0.31809863448143005
+      ],
+      "positive_axis_world": [
+        -5.264126468063068e-09,
+        6.217006877590005e-25,
+        1.0000004768371582
+      ],
+      "anchor_gap_m": 9.313225746154785e-10
+    },
+    {
+      "action_index": 8,
+      "name": "head_roll",
+      "anchor_world_m": [
+        -0.009002622216939926,
+        -5.8076041753452046e-09,
+        0.33259862661361694
+      ],
+      "positive_axis_world": [
+        -1.0000001192092896,
+        -2.6645352591003757e-15,
+        3.5762786865234375e-07
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 9,
+      "name": "right_hip_yaw",
+      "anchor_world_m": [
+        0.006000000052154064,
+        -0.017500000074505806,
+        0.2150000035762787
+      ],
+      "positive_axis_world": [
+        1.5163099424779774e-16,
+        -2.1560257525402753e-17,
+        -1.0
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 10,
+      "name": "right_hip_roll",
+      "anchor_world_m": [
+        0.02250000089406967,
+        -0.017499998211860657,
+        0.20250000059604645
+      ],
+      "positive_axis_world": [
+        1.000000238418579,
+        0.0,
+        2.384185791015625e-07
+      ],
+      "anchor_gap_m": 0.0
+    },
+    {
+      "action_index": 11,
+      "name": "right_hip_pitch",
+      "anchor_world_m": [
+        0.0040000006556510925,
+        -0.04240480065345764,
+        0.2003202587366104
+      ],
+      "positive_axis_world": [
+        -2.9802322387695312e-08,
+        -0.9961920976638794,
+        -0.08718898892402649
+      ],
+      "anchor_gap_m": 1.862645149230957e-09
+    },
+    {
+      "action_index": 12,
+      "name": "right_knee",
+      "anchor_world_m": [
+        -0.018366018310189247,
+        -0.03532049059867859,
+        0.16525493562221527
+      ],
+      "positive_axis_world": [
+        2.9802322387695312e-08,
+        0.9961921572685242,
+        0.0871896743774414
+      ],
+      "anchor_gap_m": 1.4901161193847656e-08
+    },
+    {
+      "action_index": 13,
+      "name": "right_ankle",
+      "anchor_world_m": [
+        1.5897676348686218e-05,
+        -0.057928889989852905,
+        0.12536801397800446
+      ],
+      "positive_axis_world": [
+        -4.470348358154297e-08,
+        -0.9961923360824585,
+        -0.08718875050544739
+      ],
+      "anchor_gap_m": 0.0
+    }
+  ],
+  "robot_colliders": [
+    {
+      "label": "/microduck/Geometry/trunk_base/yaw2roll/hip_l/upper_leg_left/leg/ankle_left/left_foot_collision/sole_left",
+      "flags": 6,
+      "geometry_type": 10
+    },
+    {
+      "label": "/microduck/Geometry/trunk_base/bearing_roll/hip_l_2/upper_leg_right/leg_2/ankle_right/right_foot_collision/sole_right",
+      "flags": 6,
+      "geometry_type": 10
+    }
+  ],
+  "collision_display_offsets_m": {
+    "visual": [
+      0,
+      -0.17,
+      0
+    ],
+    "overlay": [
+      0,
+      0.17,
+      0
+    ]
+  },
+  "captures": {
+    "front": {
+      "eye_m": [
+        0.6,
+        0,
+        0.27
+      ],
+      "pitch_deg": 0,
+      "yaw_deg": -180,
+      "image_sha256": "16ac9f07686ea80bf66e7c1b755819287a272da2cc9da79d44f7726d625d4da2"
+    },
+    "side": {
+      "eye_m": [
+        0,
+        0.6,
+        0.27
+      ],
+      "pitch_deg": 0,
+      "yaw_deg": -90,
+      "image_sha256": "316d950463f9cc083dfda776719f36c15b8591338b74938fc66d9da070cba95b"
+    },
+    "three-quarter": {
+      "eye_m": [
+        0.5,
+        0.5,
+        0.4
+      ],
+      "pitch_deg": -13,
+      "yaw_deg": -135,
+      "image_sha256": "7669034aa3141c2e0d609b092c883fa00182f408a439d9e4136d8d33a5aae550"
+    },
+    "joints": {
+      "eye_m": [
+        0.42,
+        0.42,
+        0.58
+      ],
+      "pitch_deg": -30,
+      "yaw_deg": -135,
+      "image_sha256": "7c0ca61ac645450ec5fc84a57ca8bb94cfe1eb9178c20ef3c3858885718263c2",
+      "projected_hinge_pixels": {
+        "left_hip_yaw": [
+          975.532748744617,
+          592.3816509293011
+        ],
+        "left_hip_roll": [
+          953.2082789950156,
+          624.6808011382626
+        ],
+        "left_hip_pitch": [
+          1012.3855733783953,
+          633.0453256015658
+        ],
+        "left_knee": [
+          1029.5690905865933,
+          664.9630586357347
+        ],
+        "left_ankle": [
+          1035.5940496360267,
+          756.3939134099431
+        ],
+        "neck_pitch": [
+          943.7749579901248,
+          542.0458826327967
+        ],
+        "head_pitch": [
+          968.065274349303,
+          446.94028835712965
+        ],
+        "head_yaw": [
+          947.1823496939469,
+          403.4462900523528
+        ],
+        "head_roll": [
+          972.8944490992602,
+          365.978739248695
+        ],
+        "right_hip_yaw": [
+          929.2255932636918,
+          567.869651375021
+        ],
+        "right_hip_roll": [
+          907.3296548685053,
+          599.0450149293946
+        ],
+        "right_hip_pitch": [
+          901.2193054714229,
+          572.691362464589
+        ],
+        "right_knee": [
+          939.2891442386966,
+          614.6537862433429
+        ],
+        "right_ankle": [
+          891.2692562448092,
+          667.927414207677
+        ]
+      }
+    },
+    "collisions": {
+      "eye_m": [
+        0.62,
+        0,
+        0.43
+      ],
+      "pitch_deg": -17,
+      "yaw_deg": -180,
+      "image_sha256": "d73542cfbf2867842cccceef255ffadd8d084018305abc5cbc82b99afc697df6"
+    }
+  },
+  "renderer_sha256": "82c6675f3922278301b3c0f6b89c015f6fc804b0c5115c92d902bc68438c7eaa"
+}

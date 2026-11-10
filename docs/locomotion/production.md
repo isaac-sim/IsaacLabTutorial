@@ -32,6 +32,8 @@ The native panel reference images use [one portable physical snapshot](evidence/
 
 The supported actuator activity also has [portable native traces and a physical snapshot](evidence/actuator-data.json). `plot_actuator.py --data ...` rebuilds its reversal/clock figures without simulation; `capture_actuator.py --receipt ...` renders the same native widgets over the retained physical state with no replay physics. Its [validation](evidence/actuator-validation.json) keeps mouse-event checks, recorder noninterference, actual repeated resets and their tiny residual differences distinct.
 
+The [robot reference plates](reference/robot-asset.md) use one recorded reset pose for front, side, three-quarter, joint/frame and collider views. `capture_reference.py` rebuilds their native geometry and annotations; `inspect_contacts.py` independently reads the actual task's enabled colliders. [Validation](evidence/reference-validation.json) confirms the kinematic/projection checks, unchanged pose and byte-identical repeated captures.
+
 ## Keep the learner in control
 
 Open each lesson with an action or prediction, show an observable result, then reveal the explanation. Each slider must state whether it changes the next command, merely rescales a recorded score, or launches a fresh experiment. GUI callbacks request changes at a control boundary; they must not advance physics independently.

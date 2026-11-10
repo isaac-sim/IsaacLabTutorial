@@ -1,0 +1,43 @@
+{
+  "kind": "actual-newton-robot-colliders-v1",
+  "task": "MicroDuckTutorial-Inspect",
+  "scope": "Actual Newton/MJWarp task model after reset; supported root; no gait/hardware qualification.",
+  "asset_provenance": {
+    "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.2/Isaac/IsaacLab/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
+    "name": "microduck_walk.usd",
+    "sha256": "288c6696ffa0f83df89512497860801f543d72874b835bb716db342df60385d4",
+    "bytes": 7479847,
+    "authored_mass_sum_kg": 0.7372431745752692,
+    "authored_mass_entries": 18,
+    "composed_nonanonymous_usd_layers": 1
+  },
+  "robot_colliders": [
+    {
+      "name": "/World/envs/env_0/Robot/Geometry/trunk_base/yaw2roll/hip_l/upper_leg_left/leg/ankle_left/left_foot_collision/sole_left",
+      "flags": 6,
+      "body": "/World/envs/env_0/Robot/Geometry/trunk_base/yaw2roll/hip_l/upper_leg_left/leg/ankle_left",
+      "geometry_type": 10,
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "/World/envs/env_0/Robot/Geometry/trunk_base/bearing_roll/hip_l_2/upper_leg_right/leg_2/ankle_right/right_foot_collision/sole_right",
+      "flags": 6,
+      "body": "/World/envs/env_0/Robot/Geometry/trunk_base/bearing_roll/hip_l_2/upper_leg_right/leg_2/ankle_right",
+      "geometry_type": 10,
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "shape_count_including_ground": 76,
+  "physics_dt_s": 0.005,
+  "control_dt_s": 0.02,
+  "rollout_control_steps": 0,
+  "producer_sha256": "1549205ceb8e62f4b1d39185af6c03998395dcc0cd747c7ca9e469f6780b2204"
+}

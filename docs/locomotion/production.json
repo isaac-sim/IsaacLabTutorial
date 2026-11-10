@@ -211,11 +211,35 @@
       "id": "V05",
       "topic": "robot-reference-plate",
       "kind": "simulator_still",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
-          "path": "docs/locomotion/media/puppet-supported.jpg",
-          "sha256": "27444ce090648b752f5b4801f4c7fc3509ab78378a166835d000a381ed108ea3"
+          "path": "docs/locomotion/reference/robot-asset.md",
+          "sha256": "ed3f3e515cfb771f05eee5067817798825bc7a30a583636d0b4b8bf0bf4b69db"
+        },
+        {
+          "path": "docs/locomotion/media/reference-front.jpg",
+          "sha256": "16ac9f07686ea80bf66e7c1b755819287a272da2cc9da79d44f7726d625d4da2"
+        },
+        {
+          "path": "docs/locomotion/media/reference-side.jpg",
+          "sha256": "316d950463f9cc083dfda776719f36c15b8591338b74938fc66d9da070cba95b"
+        },
+        {
+          "path": "docs/locomotion/media/reference-three-quarter.jpg",
+          "sha256": "7669034aa3141c2e0d609b092c883fa00182f408a439d9e4136d8d33a5aae550"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-pose.json",
+          "sha256": "e74588997f27df55b394507542bc6da6fc992463a792959ba6861a51c508c35b"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-capture.json",
+          "sha256": "5451459a01c10f8d2ab9c30a853431615008dcc3a843d030f130b3bebfd686d4"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-validation.json",
+          "sha256": "08122e34be321d594293aa14b821dadc08b72bee981c4b9f94afb478172fd633"
         }
       ],
       "acceptance": "Views are actual renders of the selected asset; labels agree with measured joint names and the robot perspective.",
@@ -228,14 +252,31 @@
       "dimensions": "1920x1080 or greater master; readable publication derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Supported three-quarter still exists; same-stance front and side plates remain."
+      "remaining": null
     },
     {
       "id": "V06",
       "topic": "joints-and-frames",
       "kind": "annotated_simulator_still",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/reference-joints.jpg",
+          "sha256": "7c0ca61ac645450ec5fc84a57ca8bb94cfe1eb9178c20ef3c3858885718263c2"
+        },
+        {
+          "path": "docs/locomotion/reference/robot-asset.md",
+          "sha256": "ed3f3e515cfb771f05eee5067817798825bc7a30a583636d0b4b8bf0bf4b69db"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-capture.json",
+          "sha256": "5451459a01c10f8d2ab9c30a853431615008dcc3a843d030f130b3bebfd686d4"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-validation.json",
+          "sha256": "08122e34be321d594293aa14b821dadc08b72bee981c4b9f94afb478172fd633"
+        }
+      ],
       "acceptance": "Servo order matches the action contract; no passive joint is mislabeled as an independently commanded servo.",
       "required_labels": [
         "Joint names and order",
@@ -246,14 +287,35 @@
       "dimensions": "1920x1080 or greater master; readable publication derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Capture actual frames and label all 14 servo joints and world/base axes."
+      "remaining": null
     },
     {
       "id": "V07",
       "topic": "walking-collision-overlay",
       "kind": "annotated_simulator_still",
-      "status": "missing",
-      "outputs": [],
+      "status": "produced",
+      "outputs": [
+        {
+          "path": "docs/locomotion/media/reference-collisions.jpg",
+          "sha256": "d73542cfbf2867842cccceef255ffadd8d084018305abc5cbc82b99afc697df6"
+        },
+        {
+          "path": "docs/locomotion/reference/robot-asset.md",
+          "sha256": "ed3f3e515cfb771f05eee5067817798825bc7a30a583636d0b4b8bf0bf4b69db"
+        },
+        {
+          "path": "docs/locomotion/evidence/runtime-contacts.json",
+          "sha256": "ae3913ea022ea855cf33636ce07762b3925a3cb0057b6fad01d2f04df5aecc02"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-capture.json",
+          "sha256": "5451459a01c10f8d2ab9c30a853431615008dcc3a843d030f130b3bebfd686d4"
+        },
+        {
+          "path": "docs/locomotion/evidence/reference-validation.json",
+          "sha256": "08122e34be321d594293aa14b821dadc08b72bee981c4b9f94afb478172fd633"
+        }
+      ],
       "acceptance": "Overlay is obtained from inspected collision geometry, not inferred from the visible mesh.",
       "required_labels": [
         "Walking asset",
@@ -264,7 +326,7 @@
       "dimensions": "1920x1080 or greater master; readable publication derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Capture the actual walking collision geometry beside visual meshes."
+      "remaining": null
     },
     {
       "id": "V08",

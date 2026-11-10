@@ -29,6 +29,12 @@ Try this three-move challenge:
 
 **Pause playground** freezes control stepping while preserving viewer interaction. **Save experiment** writes named targets and timing to `outputs/playground/experiment.json`.
 
+## Find the hinge before moving it
+
+Pick `left_knee` or `head_yaw` on the [joint and frame plate](reference/robot-asset.md). Predict its positive direction, then make a small slider change. The plate maps the actual hinges to the 14 action slots and distinguishes the world and trunk-base frames. Its [front and side views](reference/robot-asset.md#same-home-pose-different-cameras) use one identical recorded home pose.
+
+**Try another view:** toggle **Show Collision** and **Show Visual** in Newton's **Visualization** section. Only the sole shapes are active robot colliders in this walking asset. [Compare them with the visible meshes](reference/robot-asset.md#which-geometry-can-make-contact) before removing support.
+
 ## Remove support
 
 ```bash
