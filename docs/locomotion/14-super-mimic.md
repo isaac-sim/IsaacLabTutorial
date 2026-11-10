@@ -143,6 +143,18 @@ Use `--adapt-actor-normalization` to repeat the adaptive-statistics ablation. Fi
 
 In seed-42 feasibility trials, the final policy passed the complete response protocol after 1000 native actor updates; rates `1e-6` and `2e-5` lost that behavior. These experiments assess preservation through conservative model-based fine-tuning. They establish neither improvement over the teacher nor successful learning from scratch. Repeat the full pipeline with independently trained teachers and matched physical starts before judging reliability.
 
+### Repeat a matched-start study
+
+After running the full recipe with independent teachers and student seeds, use the same collector as PPO:
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/qualify.py --agent supermimic --checkpoint outputs/supermimic-warmstart-seed42/model_2499.pt --checkpoint outputs/supermimic-warmstart-seed0/model_2499.pt --checkpoint outputs/supermimic-warmstart-seed1/model_2499.pt --output outputs/supermimic-qualification
+```
+
+Replace these example run paths with your final checkpoints. Keep `warmstart.json`, `params/` and `run.json` beside each model. The collector checks the SuperMimic task, actual native optimizer counters, common student/initialization recipes, and equal phase budgets. It reports teacher, imitation and native physical transitions separately and retains teacher/checkpoint/metadata hashes. Reusing one teacher across student seeds does not create independent teacher/student pairs; keep each teacher's original training artifacts as well.
+
+The default ten physical starts, response criteria, failed-attempt denominators and resumable receipt checks match [lesson 09](09-evaluation.md). The history actor and differentiable adapter currently require nominal evaluation conditions; the PPO delay/backlash training profiles are separate experiments.
+
 ### Measured fixed-normalization validation
 
 Fresh runs with the fixed recipe qualified **30/30 trials, with zero falls**, across independent teacher/student seed pairs 42, 0, and 1 and the same ten `balance-starts-v1` samples. Each student received its correspondingly trained SAC teacher. The shared aggregator checked actual starting poses and velocities, counted ten unique physical starts, and retained every attempt.

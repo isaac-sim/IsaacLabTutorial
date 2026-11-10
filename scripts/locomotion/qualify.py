@@ -30,10 +30,71 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def initialization_record(checkpoint: Path, seed: int, progress: dict, physical_transitions: int) -> dict | None:
+    """Retain teacher identity and compare phase recipes/budgets separately from native collection."""
+    path = checkpoint.parent / "warmstart.json"
+    if not path.is_file():
+        if json.loads((checkpoint.parent / "run.json").read_text()).get("initialization"):
+            raise ValueError("Retain warmstart.json with a teacher-initialized SuperMimic checkpoint.")
+        return None
+    metadata = json.loads(path.read_text())
+    if (
+        metadata["status"] != "complete"
+        or metadata["final_checkpoint_sha256"] != sha256(checkpoint)
+        or metadata["training_seed"] != seed
+    ):
+        raise ValueError("SuperMimic initialization does not match the selected completed checkpoint.")
+    imitation, warmup, native = (metadata[key] for key in ("imitation", "model_warmup", "native_rl"))
+    if (
+        native["physical_transitions"] != physical_transitions
+        or metadata["final_optimizer_step_counters"] != progress["optimizer_step_counters"]
+        or imitation["completed_physical_transitions"] != imitation["planned_physical_transitions"]
+    ):
+        raise ValueError("SuperMimic initialization counters do not match realized checkpoint progress.")
+    return {
+        "metadata_sha256": sha256(path),
+        "teacher_checkpoint_sha256": metadata["teacher_checkpoint_sha256"],
+        "teacher_receipt_sha256": metadata["teacher_receipt_sha256"],
+        "scope": metadata["scope"],
+        "budget": {
+            "teacher_physical_transitions": metadata["teacher_actual_physical_transitions"],
+            "imitation_physical_transitions": imitation["completed_physical_transitions"],
+            "imitation_optimizer_steps": imitation["optimizer_steps"],
+            "model_warmup_optimizer_step_counters": warmup["optimizer_step_counters"],
+            "native_physical_transitions": physical_transitions,
+            "total_physical_transitions": (
+                metadata["teacher_actual_physical_transitions"]
+                + imitation["completed_physical_transitions"]
+                + physical_transitions
+            ),
+        },
+        "recipe": {
+            "producer_sha256": metadata["producer_sha256"],
+            "workflow_lock_sha256": metadata["workflow_lock_sha256"],
+            "imitation": {
+                key: imitation[key]
+                for key in (
+                    "optimizer",
+                    "learning_rate",
+                    "betas",
+                    "eps",
+                    "max_gradient_norm",
+                    "cache_samples",
+                    "batch_size",
+                    "updates_per_collection_step",
+                )
+            },
+            "model_warmup_initial_learning_rate": warmup["initial_learning_rate"],
+            "native_initial_learning_rate": native["initial_learning_rate"],
+            "actor_normalization": native["actor_normalization"],
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, action="append", required=True)
-    parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo")
+    parser.add_argument("--agent", choices=("ppo", "sac", "supermimic"), default="ppo")
     parser.add_argument("--training-profile", choices=tuple(PROFILE_TASKS), default="nominal")
     parser.add_argument("--seeds", nargs="+", type=int, default=list(range(10)))
     parser.add_argument("--start-protocol", choices=START_PROTOCOLS, default="balance-starts-v1")
@@ -59,6 +120,14 @@ def main() -> None:
         or args.observation_delay_ms % 20
     ):
         parser.error("Delays must be nonnegative multiples of 5 ms (commands) and 20 ms (observations).")
+    training_task = (
+        "MicroDuckTutorial-Velocity-Flat-SuperMimic"
+        if args.agent == "supermimic"
+        else PROFILE_TASKS[args.training_profile]
+    )
+    evaluation_task = (
+        "MicroDuckTutorial-Velocity-Flat-SuperMimic" if args.agent == "supermimic" else PROFILE_TASKS["nominal"]
+    )
     models = []
     try:
         if args.effects:
@@ -69,6 +138,8 @@ def main() -> None:
             effects = EffectSettings(
                 command_delay_ms=args.command_delay_ms, observation_delay_ms=args.observation_delay_ms
             )
+        if args.agent == "supermimic" and effects != EffectSettings():
+            raise ValueError("The SuperMimic Duck adapter currently supports nominal evaluation conditions only.")
         for checkpoint in args.checkpoint:
             if not checkpoint.is_file():
                 raise ValueError("Choose exact saved checkpoints, not a moving latest selector.")
@@ -79,11 +150,21 @@ def main() -> None:
                 raise ValueError("The agent selection does not match the saved training algorithm.")
             if agent.get("resume", "false").lower() != "false":
                 raise ValueError("Use fresh independent training runs for this qualification matrix.")
-            if args.training_profile != "nominal":
+            if args.training_profile != "nominal" or args.agent == "supermimic":
                 task = json.loads((checkpoint.parent / "run.json").read_text())["task"]
-                if task != PROFILE_TASKS[args.training_profile]:
+                if task != training_task:
                     raise ValueError("The selected training profile does not match the recorded task.")
             progress = checkpoint_progress(checkpoint)
+            initialization = (
+                initialization_record(
+                    checkpoint,
+                    int(agent["seed"]),
+                    progress,
+                    int(env["scene"]["num_envs"]) * int(agent["num_steps_per_env"]) * progress["completed_iterations"],
+                )
+                if args.agent == "supermimic"
+                else None
+            )
             models.append(
                 {
                     "checkpoint": str(checkpoint),
@@ -97,6 +178,7 @@ def main() -> None:
                     ],
                     "checkpoint_progress": progress,
                     "requested_iterations": int(agent["max_iterations"]),
+                    **({"initialization": initialization} if args.agent == "supermimic" else {}),
                 }
             )
         if len({model["sha256"] for model in models}) != len(models) or len(
@@ -110,6 +192,14 @@ def main() -> None:
             for model in models
         ):
             raise ValueError("Independent training replicates must share the task, learner, and experience budget.")
+        if args.agent == "supermimic":
+
+            def initialization_recipe(model):
+                record = model["initialization"]
+                return None if record is None else {key: record[key] for key in ("recipe", "budget")}
+
+            if any(initialization_recipe(model) != initialization_recipe(models[0]) for model in models):
+                raise ValueError("SuperMimic replicates must share initialization recipes and complete phase budgets.")
         samples = {str(seed): sample_start_condition(args.start_protocol, seed) for seed in args.seeds}
     except (ValueError, TypeError, OSError, KeyError) as error:
         parser.error(str(error))
@@ -123,6 +213,17 @@ def main() -> None:
         root / "src/isaaclab_tutorial/locomotion/profiles.py",
         root / "src/isaaclab_tutorial/tasks/locomotion/config/microduck/env_cfg.py",
     ]
+    if args.agent == "supermimic":
+        producer_paths.extend(
+            root / name
+            for name in (
+                "src/isaaclab_tutorial/locomotion/supermimic.py",
+                "src/isaaclab_tutorial/locomotion/history_export.py",
+                "src/isaaclab_tutorial/locomotion/warmstart.py",
+                "src/isaaclab_tutorial/tasks/locomotion/config/microduck/supermimic_env_cfg.py",
+                "src/isaaclab_tutorial/tasks/locomotion/config/microduck/agents/rsl_rl_supermimic_cfg.py",
+            )
+        )
     configuration = {
         "agent": args.agent,
         "training_profile": args.training_profile,
@@ -173,6 +274,12 @@ def main() -> None:
     def run_trial(model, seed):
         if stopped.is_set():
             return None
+        initialization = model.get("initialization")
+        if (
+            initialization is not None
+            and sha256(Path(model["checkpoint"]).parent / "warmstart.json") != initialization["metadata_sha256"]
+        ):
+            raise ValueError("SuperMimic initialization metadata changed during qualification.")
         directory = args.output / "trials" / f"train-seed-{model['training_seed']}" / f"eval-seed-{seed}"
         directory.mkdir(parents=True, exist_ok=True)
         receipt_path = directory / "receipt.json"
@@ -235,17 +342,23 @@ def main() -> None:
             or receipt["start_condition"] != samples[str(seed)]
             or receipt["algorithm"] != args.agent
             or receipt.get("training_profile", "nominal") != args.training_profile
-            or receipt.get("training_task", PROFILE_TASKS["nominal"]) != PROFILE_TASKS[args.training_profile]
+            or receipt.get("training_task", PROFILE_TASKS["nominal"]) != training_task
         ):
             stopped.set()
             raise ValueError(f"Stale or mismatched receipt at {receipt_path}")
         expected = {
-            "task": "MicroDuckTutorial-Velocity-Flat",
+            "task": evaluation_task,
             "start_protocol": args.start_protocol,
             "command_delay_ms": effects.command_delay_ms,
             "observation_delay_ms": effects.observation_delay_ms,
             **({"effects": asdict(effects)} if args.effects else {}),
         }
+        if (
+            initialization is not None
+            and receipt.get("training_initialization", {}).get("run_metadata_sha256")
+            != initialization["metadata_sha256"]
+        ):
+            raise ValueError("Receipt initialization metadata does not match the frozen training recipe.")
         if receipt["conditions"] != expected or receipt["horizon_s"] != 20 or receipt.get("interactive"):
             stopped.set()
             raise ValueError(f"Receipt conditions differ at {receipt_path}")
@@ -276,6 +389,11 @@ def main() -> None:
         )
         return {
             **{key: receipt[key] for key in keys},
+            **(
+                {"training_initialization": receipt["training_initialization"]}
+                if "training_initialization" in receipt
+                else {}
+            ),
             "training_seed": model["training_seed"],
             "receipt_path": str(receipt_path),
             "receipt_sha256": sha256(receipt_path),

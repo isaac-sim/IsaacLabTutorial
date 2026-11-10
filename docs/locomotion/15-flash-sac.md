@@ -74,7 +74,13 @@ To repeat one varied-start trial with your own candidate:
 uv run --project environments/workflows --locked python scripts/locomotion/evaluate.py --agent sac --checkpoint latest --start-protocol balance-starts-v1 --seed 0 --export --output outputs/sac-varied-start-0
 ```
 
-Keep each receipt, including invalid or fallen attempts. Repeat the same evaluation seeds for independently trained policies and aggregate with the shared `locomotion.qualification.aggregate_trials` function, passing each receipt's `training_seed` explicitly. Continue to use separate studies for command or observation delays.
+For fresh runs using the same saved recipe and realized budget, collect the matrix with the [shared qualification tool](09-evaluation.md#repeat-the-same-physical-starts-across-training-seeds):
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/qualify.py --agent sac --checkpoint logs/rsl_rl/microduck_tutorial_sac/SEED_42_RUN/model_1499.pt --checkpoint logs/rsl_rl/microduck_tutorial_sac/SEED_0_RUN/model_1499.pt --checkpoint logs/rsl_rl/microduck_tutorial_sac/SEED_1_RUN/model_1499.pt --output outputs/sac-qualification
+```
+
+Replace the example run directories with your saved runs. Keep every receipt, including invalid or fallen attempts. The default ten physical starts and seed-level aggregation match PPO; use separate studies for command or observation delays. The historical screen above retains its declared checkpoint-save cadence difference; the collector requires new replicates to share their saved recipe, including that cadence.
 
 ## Tune with OSMO
 
