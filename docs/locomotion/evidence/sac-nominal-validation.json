@@ -1,0 +1,118 @@
+{
+  "scope": "Exploratory nominal deterministic reset; three independent training seeds, one fixed command schedule each; no hardware or randomized-state robustness claim.",
+  "learner": "sac",
+  "num_envs": 4096,
+  "iterations": 1500,
+  "steps_per_env": 8,
+  "physical_transitions_per_run": 49152000,
+  "updates_per_collection_iteration": 32,
+  "schedule_updates": 48000,
+  "device": "NVIDIA L40",
+  "runs": [
+    {
+      "workflow": "microduck-sac-u32-s42-1",
+      "training_seed": 42,
+      "evaluation_seed": 0,
+      "source_revision": "05021116e7c714b1067c0090d60b4ada4906f867",
+      "checkpoint_sha256": "834cc751528dbcdd4fefde3e57cf12df85a850695ff77efaa455d361a5838557",
+      "training_seconds": 449.93,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02013921617584439,
+          0.021693716970917126,
+          0.06874429567864516
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 1.7583370208740234e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "exit_status": {
+        "exit_code": 0
+      }
+    },
+    {
+      "workflow": "microduck-sac-u32-s0-1",
+      "training_seed": 0,
+      "evaluation_seed": 0,
+      "source_revision": "05021116e7c714b1067c0090d60b4ada4906f867",
+      "checkpoint_sha256": "a253f97c35ffbf2c6526132e854426c23669ae79bd12eee91c19c9a3c33ad632",
+      "training_seconds": 444.7,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.02417782403721625,
+          0.023395444252064662,
+          0.09236689291641419
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 1.6689300537109375e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "exit_status": {
+        "exit_code": 0
+      }
+    },
+    {
+      "workflow": "microduck-sac-u32-s1-1",
+      "training_seed": 1,
+      "evaluation_seed": 0,
+      "source_revision": "05021116e7c714b1067c0090d60b4ada4906f867",
+      "checkpoint_sha256": "375770ea26797d7aef1ace5fa4ff1bbfa1f6546873a0e8484a09fd330e0384de",
+      "training_seconds": 441.49,
+      "metrics": {
+        "fell": false,
+        "alive_time_s": 20.0,
+        "coverage": 1.0,
+        "tracking_rmse": [
+          0.025737231230428106,
+          0.02567963834144888,
+          0.09492321629139273
+        ],
+        "tracking_units": [
+          "m/s",
+          "m/s",
+          "rad/s"
+        ],
+        "tracking_scope": "available pre-fall samples; interpret together with failure and coverage"
+      },
+      "onnx_parity": {
+        "checked": true,
+        "samples": 1000,
+        "max_abs_error": 2.0116567611694336e-06,
+        "atol": 1e-05,
+        "rtol": 0.0001,
+        "provider": "CPUExecutionProvider"
+      },
+      "exit_status": {
+        "exit_code": 0
+      }
+    }
+  ]
+}

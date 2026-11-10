@@ -29,7 +29,28 @@ flowchart LR
 
 The initial action interval is **[-1, 1] raw**, or ±1 rad about each home joint. PPO's Gaussian actor is not identically bounded. Report this difference; tuning the interval is an explicit experiment, not an unnoticed change in the action interface. Normalization stays inside the exported actor, and the inference-only evaluator disables training concerns by running deterministic actor outputs.
 
-For a larger new trial, increase `--num_envs` and `--max_iterations`. The initial 4096 × 8 × 1500 setting collects 49,152,000 transitions. Three independent training seeds and the same ten evaluation seeds are required before a recipe comparison. Keep the training and evaluation receipts, numerical failures, and falls.
+For a larger new trial, increase `--num_envs` and `--max_iterations`. The 4096 × 8 × 1500 setting collects 49,152,000 transitions. Use independent training seeds and the same named evaluation protocol before comparing recipes. The nominal reset is deterministic: changing only its evaluation seed does not create independent initial states. Robustness comparisons need explicit, recorded state or perturbation variation. Keep numerical failures and falls.
+
+## Measured nominal validation
+
+An OSMO screen held training seed 42, transition budget and learning-rate decay phase fixed while changing replay updates per collection iteration. All three final policies survived the 20-second fixed-command evaluation:
+
+| Updates | Forward RMSE (m/s) | Lateral RMSE (m/s) | Yaw RMSE (rad/s) |
+| --- | --- | --- | --- |
+| 8 | 0.05022 | 0.05466 | 0.29010 |
+| 16 | 0.02005 | 0.02820 | 0.12914 |
+| 32 | 0.02014 | 0.02169 | 0.06874 |
+
+The 32-update setting was then trained independently with seeds 0 and 1. Their RMSE vectors were `(0.02418, 0.02340, 0.09237)` and `(0.02574, 0.02568, 0.09492)`; both also survived all 20 seconds. All three 32-update policies passed native/ONNX parity over 1000 observations each, with maximum absolute action error below 2.02×10⁻⁶. Training took 441–450 seconds per 32-update trial on one NVIDIA L40, including learner startup and compilation. Bootstrap, evaluation, and collection time are additional.
+
+These are exploratory nominal results from three training seeds and one deterministic evaluation schedule, with no randomized-state or hardware validation. They support 32 updates as a candidate recipe for this task; they do not establish algorithm superiority. [The compact evidence](evidence/sac-nominal-validation.json) records immutable source revisions, checkpoint hashes, device, budgets, individual timings, metrics and parity.
+
+To reproduce the candidate locally:
+
+```bash
+uv run --project environments/workflows --locked isaaclab train --rl_library rsl_rl --task MicroDuckTutorial-Velocity-Flat --agent rsl_rl_sac_cfg_entry_point --num_envs 4096 --max_iterations 1500 --seed 42 --run_name sac_u32 --visualizer none agent.algorithm.num_updates=32 agent.algorithm.schedule_updates=48000
+uv run --project environments/workflows --locked python scripts/locomotion/evaluate.py --agent sac --checkpoint latest --export --output outputs/sac-u32
+```
 
 ## Tune with OSMO
 
