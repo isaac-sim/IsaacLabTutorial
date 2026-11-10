@@ -1,0 +1,233 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""Compare the Duck world-model heads with physical reward and deployment boundaries."""
+
+import gymnasium as gym
+import pytest
+import torch
+from tensordict import TensorDict
+
+pytest.importorskip("rsl_rl.algorithms.supermimic_task", reason="Requires the pinned workflows environment")
+if not torch.cuda.is_available():
+    pytest.skip("Duck simulation parity requires a CUDA GPU", allow_module_level=True)
+
+from isaaclab.app import launch_simulation
+
+from isaaclab_tasks.utils import resolve_task_config
+
+import isaaclab_tutorial.tasks  # noqa: F401
+from isaaclab_tutorial.locomotion.history_export import DuckHistoryPolicy
+from isaaclab_tutorial.locomotion.supermimic import MicroDuckTask
+
+
+@pytest.fixture(scope="module")
+def duck_env():
+    cfg, _ = resolve_task_config(
+        "MicroDuckTutorial-Velocity-Flat-SuperMimic", "rsl_rl_supermimic_cfg_entry_point", overrides=()
+    )
+    cfg.scene.num_envs = 16
+    # A free drop exercises the air-time window and touchdown peak before repeated resets.
+    cfg.scene.robot.init_state.pos = (0.0, 0.0, 0.4)
+    cfg.sim.visualizer_cfgs = []
+    cfg.commands.base_velocity.resampling_time_range = (1e9, 1e9)
+    with launch_simulation(cfg):
+        env = gym.make("MicroDuckTutorial-Velocity-Flat-SuperMimic", cfg=cfg).unwrapped
+        try:
+            yield env
+        finally:
+            env.close()
+
+
+@pytest.mark.integration
+def test_differentiable_duck_heads_match_pre_reset_simulator_rewards_and_sensor_features(duck_env):
+    env = duck_env
+    obs, _ = env.reset(seed=42)
+    task = MicroDuckTask(env, device=env.device, air_time_gradient_width=0.025)
+    previous = torch.zeros(16, 2, 14, device=env.device)
+    nonzero_terms = set()
+    for step in range(256):
+        command = env.command_manager.get_command("base_velocity")
+        command[:8] = 0
+        command[8:] = torch.tensor([0.2, 0.1, 0.3], device=env.device)
+        obs = env.observation_manager.compute()
+        state = task.representation.unflatten(obs["state"])
+        torch.testing.assert_close(
+            task.actor_obs(state, obs["goal"], obs["context"], previous),
+            obs["policy"][:, :48],
+            atol=2e-6,
+            rtol=2e-5,
+        )
+        torch.testing.assert_close(task.actor_goal(state, obs["goal"]), obs["policy"][:, 48:])
+        phase = torch.arange(14, device=env.device) * 0.4 + step * 0.15
+        action = (0.25 * torch.sin(phase)).expand(16, -1).clone()
+        _, physical_reward, terminated, truncated, extras = env.step(action)
+        final = extras["final_obs"]
+        successor = task.representation.unflatten(final["state"])
+        terms = task.reward_terms(state, action, successor, obs["goal"], previous, final["labels"])
+        index = step % 16
+        for name, values in env.reward_manager.get_active_iterable_terms(index):
+            expected = values[0] * env.step_dt
+            assert float(terms[name][index]) == pytest.approx(expected, abs=3e-6, rel=2e-4), name
+            if abs(expected) > 1e-8:
+                nonzero_terms.add(name)
+        imagined_reward = task.reward(state, action, successor, obs["goal"], previous, final["labels"])
+        torch.testing.assert_close(imagined_reward, physical_reward, atol=4e-6, rtol=2e-4)
+        torch.testing.assert_close(task.termination_prob(successor, obs["goal"], final["labels"]), terminated.float())
+        previous = torch.stack((previous[:, -1], action), dim=1)
+        previous[terminated | truncated] = 0
+    assert {"track_lin_vel", "pose", "air_time", "foot_swing_height", "foot_slip"} <= nonzero_terms
+    flat = final["state"].detach().requires_grad_(True)
+    differentiable = list(task.representation.unflatten(flat))
+    stationary_feet = torch.zeros_like(differentiable[6], requires_grad=True)
+    differentiable[6] = stationary_feet
+    air_time = torch.zeros_like(differentiable[7], requires_grad=True)
+    differentiable[7] = air_time
+    task.reward(state, action, differentiable, obs["goal"], previous, final["labels"]).sum().backward()
+    assert torch.isfinite(flat.grad).all() and flat.grad.abs().max() > 0
+    assert torch.isfinite(stationary_feet.grad).all()
+    # Forward values remain the exact physical window while this optional estimator
+    # supplies a useful gradient toward entering it from a double-stance state.
+    assert air_time.grad is not None, "Air-time reward supplied no gradient"
+    assert torch.isfinite(air_time.grad).all() and air_time.grad.abs().max() > 0
+
+
+@pytest.mark.integration
+def test_duck_history_export_preserves_frozen_training_normalization_and_reset(duck_env, tmp_path):
+    import numpy as np
+    import onnxruntime as ort
+    from rsl_rl.models import SuperMimicActor
+
+    from isaaclab_tutorial.locomotion.deployment import inline_onnx_weights
+    from isaaclab_tutorial.locomotion.warmstart import freeze_actor_normalization
+
+    env = duck_env
+    task = MicroDuckTask(env, device=env.device)
+    native = (
+        SuperMimicActor(
+            task,
+            {"state": ["state"], "goal": ["goal"], "context": ["context"], "prev_action": ["previous_actions"]},
+            obs_dim=48,
+            goal_dim=13,
+            num_envs=1,
+            num_actions=14,
+            history_length=3,
+            latent_dim=8,
+            encoder_hidden_dims=(32,),
+            decoder_hidden_dims=(32,),
+        )
+        .to(env.device)
+        .eval()
+    )
+    native.train()
+    probes = []
+    for normalizer, width in ((native.obs_norm, 48), (native.goal_norm, 13)):
+        normalizer.update(torch.ones(4, width, device=env.device))
+        probe = torch.full((2, width), 2.0, device=env.device)
+        probes.append((normalizer, probe, normalizer(probe).detach().clone()))
+    freeze_actor_normalization(native)
+    # Native train_mode() may run again; fixed moments must survive that mode change.
+    native.train()
+    for normalizer, probe, expected in probes:
+        normalizer.update(torch.full((4, probe.shape[-1]), -3.0, device=env.device))
+        torch.testing.assert_close(normalizer(probe), expected)
+    wrapper = DuckHistoryPolicy(native.as_onnx().cpu(), history_length=3).eval()
+    jit = torch.jit.script(wrapper)
+    path = tmp_path / "policy.onnx"
+    torch.onnx.export(
+        wrapper,
+        wrapper.get_dummy_inputs(),
+        path,
+        opset_version=18,
+        input_names=["obs", "h_in", "c_in"],
+        output_names=["actions", "h_out", "c_out"],
+    )
+    inline_onnx_weights(path)
+    path.with_name("policy.onnx.data").unlink(missing_ok=True)
+    session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+    for step in range(16):
+        if step in (0, 8):
+            env.reset(seed=42)
+            native.reset()
+            _, h, c = wrapper.get_dummy_inputs()
+            onnx_h, onnx_c = h.numpy().copy(), c.numpy().copy()
+        obs = TensorDict(env.observation_manager.compute(), batch_size=[16])[:1]
+        with torch.no_grad():
+            expected = native(obs)
+            raw = obs["policy"].cpu()
+            result, h, c = jit(raw, h, c)
+            onnx_action, onnx_h, onnx_c = session.run(None, {"obs": raw.numpy(), "h_in": onnx_h, "c_in": onnx_c})
+            torch.testing.assert_close(result, expected.cpu(), atol=1e-5, rtol=1e-4)
+            np.testing.assert_allclose(onnx_action, expected.cpu().numpy(), atol=1e-5, rtol=1e-4)
+            env.step(expected.expand(16, -1))
+    for normalizer, probe, expected in probes:
+        torch.testing.assert_close(normalizer(probe), expected)
+    native.forward_history(native.history, obs["goal"]).sum().backward()
+    assert all(parameter.requires_grad for parameter in native.parameters())
+    assert any(parameter.grad is not None and parameter.grad.abs().max() > 0 for parameter in native.parameters())
+
+
+def test_duck_adapter_rejects_reward_replacement_sensor_delay_and_mismatched_feet(duck_env, monkeypatch):
+    from isaaclab_tasks.contrib.microduck import mdp
+
+    cfg = duck_env.reward_manager.get_term_cfg("track_lin_vel")
+    with monkeypatch.context() as patch:
+        patch.setattr(cfg, "func", mdp.lin_vel_z_l2)
+        with pytest.raises(ValueError, match="reward function"):
+            MicroDuckTask(duck_env, device=duck_env.device)
+    with monkeypatch.context() as patch:
+        patch.setitem(duck_env.cfg.observations.policy.imu.params, "max_lag", 2)
+        with pytest.raises(ValueError, match="sensor"):
+            MicroDuckTask(duck_env, device=duck_env.device)
+    with monkeypatch.context() as patch:
+        selection = duck_env.reward_manager.get_term_cfg("foot_clearance").params["asset_cfg"]
+        patch.setattr(selection, "body_ids", selection.body_ids.flip(0))
+        with pytest.raises(ValueError, match="ordered feet"):
+            MicroDuckTask(duck_env, device=duck_env.device)
+
+
+@pytest.mark.integration
+def test_teacher_replay_preserves_applied_controls_and_pre_reset_physical_successors(duck_env):
+    from rsl_rl.runners import OnPolicyRunner
+
+    from isaaclab.utils import to_dict
+
+    from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
+
+    from isaaclab_tutorial.locomotion.warmstart import prepare_teacher_transition
+
+    env = duck_env
+    _, cfg = resolve_task_config(
+        "MicroDuckTutorial-Velocity-Flat-SuperMimic", "rsl_rl_supermimic_cfg_entry_point", overrides=()
+    )
+    cfg.algorithm.replay_buffer_size = 16 * 8
+    cfg.algorithm.warmup_steps = 8
+    wrapped = RslRlVecEnvWrapper(env, clip_actions=None)
+    algorithm = OnPolicyRunner(wrapped, to_dict(cfg), log_dir=None, device=env.device).alg
+    env.reset(seed=42)
+    algorithm.actor.reset()
+    expected_states, expected_successors = [], []
+    for step, target in enumerate((0.2, -0.1)):
+        observation = TensorDict(env.observation_manager.compute(), batch_size=[16])
+        expected_states.append(observation["state"].clone())
+        algorithm.actor.sync_actions(observation)
+        previous = algorithm.actor.previous_actions.clone()
+        algorithm.actor(observation)
+        action = torch.full((16, 14), target, device=env.device)
+        prepare_teacher_transition(algorithm, observation, action, previous)
+        if step == 1:
+            env.episode_length_buf[:] = env.max_episode_length - 1
+        successor, rewards, dones, extras = wrapped.step(action)
+        expected_successors.append(extras["final_obs"]["state"].clone())
+        algorithm.process_env_step(successor, rewards, dones, extras)
+    replay = algorithm.storage.data
+    torch.testing.assert_close(replay["state"][:2], torch.stack(expected_states))
+    torch.testing.assert_close(replay["next_state"][:2], torch.stack(expected_successors))
+    torch.testing.assert_close(replay["actions"][0], torch.full_like(action, 0.2))
+    torch.testing.assert_close(replay["actions"][1], torch.full_like(action, -0.1))
+    torch.testing.assert_close(replay["prev_actions"][1, :, -1], torch.full_like(action, 0.2))
+    assert dones.all(), "The second physical successor must precede an actual timeout reset."
+    assert not torch.allclose(replay["next_state"][1], successor["state"])
+    assert not algorithm.actor.previous_actions.any(), "Reset controls must not retain teacher commands."

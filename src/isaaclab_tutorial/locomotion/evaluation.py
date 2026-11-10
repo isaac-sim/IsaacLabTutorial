@@ -45,18 +45,24 @@ def resolve_checkpoint(
     return checkpoint
 
 
-def validate_training_contract(checkpoint: Path, env_cfg: dict, agent_cfg: dict) -> None:
-    """Require saved inference semantics to match the selected, declared training configuration.
-
-    Training reward changes are allowed: the reward workshop deliberately trains new objectives.
-    Shape-compatible observation/action changes require a separate matching evaluator.
-    """
+def load_training_parameters(checkpoint: Path) -> tuple[dict, dict]:
+    """Read resolved training parameters without constructing Python objects from YAML tags."""
     params = checkpoint.parent / "params"
     try:
         saved_env = yaml.load((params / "env.yaml").read_text(), Loader=_TrainingConfigLoader)
         saved_agent = yaml.load((params / "agent.yaml").read_text(), Loader=_TrainingConfigLoader)
     except FileNotFoundError as error:
         raise ValueError("Checkpoint training contract is missing; retain params/env.yaml and agent.yaml.") from error
+    return saved_env, saved_agent
+
+
+def validate_training_contract(checkpoint: Path, env_cfg: dict, agent_cfg: dict) -> None:
+    """Require saved inference semantics to match the selected, declared training configuration.
+
+    Training reward changes are allowed: the reward workshop deliberately trains new objectives.
+    Shape-compatible observation/action changes require a separate matching evaluator.
+    """
+    saved_env, saved_agent = load_training_parameters(checkpoint)
     # Normalize callable references and tuple tags using the same serializer as training.
     expected_env = yaml.load(yaml.dump(env_cfg, sort_keys=False), Loader=_TrainingConfigLoader)
     expected_agent = yaml.load(yaml.dump(agent_cfg, sort_keys=False), Loader=_TrainingConfigLoader)

@@ -1,0 +1,8 @@
+{
+  "scope": "Measured simulated responses and per-training-seed rates; no hardware or improvement claim.",
+  "adaptive_evidence_sha256": "1d18fba7401f761685bac04db3a816deee20c0f62e0cb9d29044f650ac228eda",
+  "fixed_evidence_sha256": "76d4957c08951007cf06adbf773d8a58708e8d06f01ed385344e6bd74ce2338d",
+  "renderer_sha256": "52fda313c66564fc2f6042243eb03050bc1ae3c3bdb1b1bdab70e2938ae41d61",
+  "image_sha256": "346968552f0c2d19894d9cac1b88d11d6c354ee54dba565f8dc38ad956d2d991",
+  "matplotlib_version": "3.11.2"
+}

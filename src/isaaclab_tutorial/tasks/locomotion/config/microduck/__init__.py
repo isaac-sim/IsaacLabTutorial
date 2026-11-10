@@ -25,6 +25,18 @@ for task_id, config in (
         },
     )
 
+gym.register(
+    id="MicroDuckTutorial-Velocity-Flat-SuperMimic",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.supermimic_env_cfg:SuperMimicEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{__name__}.agents.rsl_rl_supermimic_cfg:MicroDuckSuperMimicRunnerCfg",
+        "rsl_rl_supermimic_cfg_entry_point": f"{__name__}.agents.rsl_rl_supermimic_cfg:MicroDuckSuperMimicRunnerCfg",
+        "default_agent": "rsl_rl",
+    },
+)
+
 for suffix, config in (("Delay", "DelayEnvCfg"), ("Backlash", "BacklashEnvCfg"), ("Combined", "CombinedEnvCfg")):
     gym.register(
         id=f"MicroDuckTutorial-Velocity-Flat-{suffix}",

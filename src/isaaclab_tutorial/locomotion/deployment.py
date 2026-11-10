@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Offline artifacts for pollen-robotics/microduck's existing feed-forward policy runtime."""
+"""Offline artifacts for pollen-robotics/microduck's standard policy runtime."""
 
 from __future__ import annotations
 
@@ -93,14 +93,14 @@ def rehearsal_trace(observations) -> list[dict]:
 
 
 def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
-    """Describe a parity-checked feed-forward gait using the standard schema-2 manifest."""
+    """Describe a parity-checked gait using the standard schema-2 manifest."""
     check_duck_contract(receipt["contract"])
     parity = receipt.get("onnx_parity", {})
     if receipt.get("valid") is not True or not parity.get("checked") or parity.get("samples", 0) <= 0:
         raise ValueError("A valid simulated trial and executed ONNX parity check are required.")
     return {
         "schema_version": 2,
-        "model_api": 1,
+        "model_api": 2 if "history" in receipt["contract"] else 1,
         "obs_len": 61,
         "action_len": 14,
         "robot": {"model": "microduck", "hw_rev": 1, "servos": "xl330", "control_hz": 50},
@@ -118,11 +118,14 @@ def build_manifest(receipt: dict, *, onnx_sha256: str) -> dict:
             "body": "six zero commands; nonzero body commands were not trained",
         },
         "training": {
-            "task_id": receipt.get("training_task", "MicroDuckTutorial-Velocity-Flat"),
+            "task_id": receipt.get(
+                "training_task", receipt.get("conditions", {}).get("task", "MicroDuckTutorial-Velocity-Flat")
+            ),
             "profile": receipt.get("training_profile", "nominal"),
             "conditions": receipt.get("training_conditions"),
             "checkpoint": receipt["checkpoint"],
             "checkpoint_sha256": receipt["checkpoint_sha256"],
+            **({"initialization": receipt["training_initialization"]} if "training_initialization" in receipt else {}),
         },
         "eval": {
             "seed": receipt["seed"],
