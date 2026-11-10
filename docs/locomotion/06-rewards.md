@@ -9,6 +9,23 @@ uv run --project environments/locomotion python scripts/locomotion/reward_worksh
 
 The reward workshop replays **recorded motion**. Move reward-weight sliders and watch the original/candidate scores. Change velocity tolerance to make the tracking curve narrower or broader. These controls rescore the same states; they do not update a policy or generate alternate movement.
 
+<details>
+<summary>See the working controls before trying them</summary>
+
+![Native Newton reward workshop: the recorded duck and unchanged tracking measurements appear beside all 14 active weight sliders, velocity tolerance, original and candidate scores, and the save command](media/reward-workshop.jpg)
+
+This is the baseline policy's actual pose at 6.00 s. The scores integrate all 1000 recorded transitions over 20 seconds. Changing only `action_rate_l2` from −0.1 to −1.0 gives 251.4055 → 244.6884 for this same motion; its measured tracking errors stay unchanged. The candidate **objective** is loaded here; its separately trained policy appears below.
+
+Each original coefficient stays visible above its candidate slider. The disabled `head_pose_bias` term is absent because the recording cannot recover it. **Save candidate and training command** exports a recipe; it does not start training. [Capture, actual mouse-event checks and source hashes](evidence/reward-panel-validation.json).
+
+Rebuild this panel from the compact recorded data without running physics or training:
+
+```bash
+uv run --project environments/locomotion --locked python scripts/locomotion/capture_rewards.py --receipt docs/locomotion/evidence/reward-panel-data.json --candidate docs/locomotion/experiments/reward-action-rate.json --output outputs/reward-panel/reward-workshop.jpg
+```
+
+</details>
+
 The manager evaluates each active term, multiplies it by its configured weight, sums the results, then multiplies by the 0.02 s control interval. Recorded per-term rates are converted back to raw terms before applying candidate weights. Terms disabled during collection cannot be reconstructed and are not offered as new controls.
 
 The linear tracking reward is `exp(-squared_heading_velocity_error / std²)`. Width changes recompute this term from the squared error recorded at the same post-physics instant as the reward, before autoreset. The evaluator's separate pre-step metric velocities are not substituted for that reward-time state. Merely multiplying the previous score would be incorrect.

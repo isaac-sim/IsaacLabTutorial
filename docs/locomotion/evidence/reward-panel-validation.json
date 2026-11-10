@@ -1,0 +1,111 @@
+{
+  "scope": "Working native reward controls, actual recorded baseline pose and same-motion rescoring. No policy training, alternate motion inference or robot hardware.",
+  "capture": {
+    "kind": "recorded-native-reward-panel-v1",
+    "receipt_sha256": "cc5f97e70a251e81495d72edf97b671cad30561bac351610273b219f0e57c377",
+    "source_full_receipt_sha256": "7cd32ab9586d05af069f4ded71bad32c823d11c6497fce76c90f5b6ba67d90b0",
+    "candidate_sha256": "61735da88a0bd7f92188601b602dd9b9a455b506003957f1b055888f542ec56b",
+    "frame_index": 300,
+    "physical_pose_time_s": 6.0,
+    "score_scope": "All recorded reward-time transitions; independent of the displayed pose frame.",
+    "scored_transitions": 1000,
+    "original_score": 251.4054565158929,
+    "candidate_score": 244.68842620326922,
+    "original_weights": {
+      "track_lin_vel": 4.0,
+      "track_ang_vel": 4.0,
+      "upright": 2.0,
+      "pose": 1.0,
+      "body_ang_vel": -0.05,
+      "angular_momentum": -0.02,
+      "dof_pos_limits": -1.0,
+      "action_rate_l2": -0.1,
+      "air_time": 3.0,
+      "foot_clearance": -2.0,
+      "foot_swing_height": -1.1289062499999996,
+      "foot_slip": -0.1,
+      "self_collisions": -1.0,
+      "head_pose_tracking": 2.0
+    },
+    "candidate_weights": {
+      "track_lin_vel": 4.0,
+      "track_ang_vel": 4.0,
+      "upright": 2.0,
+      "pose": 1.0,
+      "body_ang_vel": -0.05,
+      "angular_momentum": -0.02,
+      "dof_pos_limits": -1.0,
+      "action_rate_l2": -1.0,
+      "air_time": 3.0,
+      "foot_clearance": -2.0,
+      "foot_swing_height": -1.1289062499999996,
+      "foot_slip": -0.1,
+      "self_collisions": -1.0,
+      "head_pose_tracking": 2.0
+    },
+    "tracking_std_m_s": 0.15,
+    "physics_steps_during_capture": 0,
+    "policy_updates_during_capture": 0,
+    "source_sha256": {
+      "scripts/locomotion/capture_rewards.py": "b15f1c604109fafecc962d71ce946fcac98796edd16666726b4412ee061e22fa",
+      "src/isaaclab_tutorial/locomotion/playground/reward_panel.py": "b7b024b314ce9864c1d4ec0d263d48a3aa7402894e3651f2b258a520c1783be3",
+      "src/isaaclab_tutorial/locomotion/playground/rewards.py": "3ee8c125da6a20225b4c1aff2ae75b0e8b6e304ccfb5cd33ebcd6044332aeacf"
+    },
+    "image_sha256": "0b9175e8b023945585bb514693082d2b94b85f6a92d9957034a700eca154c766"
+  },
+  "mouse_events": {
+    "scope": "Actual ImGui mouse events against the same callback as the live workshop. Save request verified here; output files checked with the headless workshop separately.",
+    "actual_imgui_mouse_events": true,
+    "active_weight_widgets": 14,
+    "initial_score": 251.40545651589287,
+    "changed_action_rate_l2_weight": -0.5109999775886536,
+    "score_after_weight_change": 248.33801284039214,
+    "changed_tracking_std_m_s": 0.3149999976158142,
+    "score_after_width_change": 251.35050404298892,
+    "save_requested": true,
+    "receipt_and_raw_terms_unchanged": true,
+    "physics_steps": 0,
+    "policy_updates": 0,
+    "receipt_sha256": "7cd32ab9586d05af069f4ded71bad32c823d11c6497fce76c90f5b6ba67d90b0",
+    "panel_source_sha256": "b7b024b314ce9864c1d4ec0d263d48a3aa7402894e3651f2b258a520c1783be3"
+  },
+  "recorded_data_projection": {
+    "source_receipt_sha256": "7cd32ab9586d05af069f4ded71bad32c823d11c6497fce76c90f5b6ba67d90b0",
+    "scored_transitions": 1000,
+    "fields_copied_without_quantization": [
+      "reward_terms",
+      "reward_tracking_error_sq",
+      "t_sim_s"
+    ],
+    "physical_snapshot_frame": 300,
+    "all_copied_values_compared_to_full_source": true,
+    "data_sha256": "cc5f97e70a251e81495d72edf97b671cad30561bac351610273b219f0e57c377"
+  },
+  "saved_candidate_check": {
+    "all_weights_and_width_match_selected_candidate": true,
+    "all_hydra_overrides_in_training_command": true,
+    "output_files": [
+      "candidate.json",
+      "scores.json",
+      "scores.png",
+      "train-candidate.txt"
+    ],
+    "scores": {
+      "original_score": 251.4054565158929,
+      "candidate_score": 244.68842620326922,
+      "motion_changed": false
+    }
+  },
+  "native_capture": {
+    "width": 1920,
+    "height": 1400,
+    "rebuild_identical_bytes_on_this_host": true,
+    "limitation": "Viewer FPS text is a wall-time diagnostic; byte identity across machines or render drivers is not guaranteed. Capture uses the same scoring callback as the live workshop."
+  },
+  "validation": {
+    "pytest_command": "uv run --project environments/locomotion --locked pytest tests/test_locomotion_reward_replay.py tests/test_locomotion_reward_report.py -q",
+    "passed": 4,
+    "failed": 0,
+    "new_ci_tests": 0
+  }
+}

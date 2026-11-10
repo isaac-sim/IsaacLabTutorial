@@ -15,6 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
+from isaaclab_tutorial.locomotion.playground.reward_panel import draw_reward_controls
 from isaaclab_tutorial.locomotion.playground.rewards import RewardReplay
 
 
@@ -108,27 +109,7 @@ def main() -> None:
     state = {"frame": 0, "paused": False, "save": False}
 
     def panel(imgui) -> None:
-        imgui.set_next_item_open(True, imgui.Cond_.once)
-        if not imgui.collapsing_header("Reward workshop"):
-            return
-        imgui.text_wrapped(
-            "RECORDED MOTION: sliders change its score. A new training run is needed to change behavior."
-        )
-        imgui.text(f"Original score: {replay.original_total:.4f} | Candidate: {replay.total():.4f}")
-        _, state["paused"] = imgui.checkbox("Pause recorded playback", state["paused"])
-        _, state["frame"] = imgui.slider_int("Recorded frame", state["frame"], 0, len(receipt["trajectory"]) - 1)
-        if imgui.button("Restart recording"):
-            state.update(frame=0, paused=False)
-        for index, name in enumerate(replay.names):
-            bound = max(abs(replay.original_weights[index]) * 2, 1.0)
-            changed, value = imgui.slider_float(name, float(replay.weights[index]), -bound, bound)
-            if changed:
-                replay.set_weight(name, value)
-        changed, width = imgui.slider_float("Velocity tolerance (m/s)", replay.tracking_std, 0.03, 0.6)
-        if changed:
-            replay.set_tracking_width(width)
-        if imgui.button("Save candidate and training command"):
-            state["save"] = True
+        draw_reward_controls(imgui, replay, state, len(receipt["trajectory"]))
 
     cfg, _ = resolve_task_config("MicroDuckTutorial-Control", "rsl_rl_cfg_entry_point", overrides=())
     cfg.scene.num_envs = 1
