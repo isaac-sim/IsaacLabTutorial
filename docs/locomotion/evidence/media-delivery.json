@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "Prepared locally for review; no public release or upload performed.",
+  "status": "Staged in an unpublished draft release for review; public download URLs remain empty.",
   "repository": "https://github.com/isaac-sim/IsaacLabTutorial",
   "pull_request": "https://github.com/isaac-sim/IsaacLabTutorial/pull/28",
   "artifacts": [
@@ -81,5 +81,13 @@
   "source_revision": "24dd2a05d415540af95e650d7b0be43cfe289234",
   "core_environment_lock_sha256": "b0354cdf31de8551ca6493057cfdadac624d7069cb8d61832d7ad427b0be6e29",
   "workflows_environment_lock_sha256": "fd75ab3cb00b91587eff439540a726cc73fd9207625ee9cfb308c971208d93b8",
-  "frozen_policy_archive_clean_checkout_evaluations": "clean-walkthrough.json"
+  "frozen_policy_archive_clean_checkout_evaluations": "clean-walkthrough.json",
+  "release": {
+    "url": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/tag/untagged-7213662db1da479cf2e4",
+    "id": 440328177,
+    "tag": "microduck-tutorial-media-3463b86",
+    "draft": true,
+    "uploaded_files_including_manifest": 11,
+    "server_sha256_and_sizes_verified": true
+  }
 }
