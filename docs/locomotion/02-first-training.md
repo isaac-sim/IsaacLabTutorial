@@ -30,7 +30,7 @@ Find the printed run directory under `logs/rsl_rl/microduck_tutorial/`. Checkpoi
 uv run --project environments/locomotion python scripts/locomotion/evaluate.py --checkpoint latest --capture
 ```
 
-This attempts the fixed command protocol and stops at the first fall or timeout. It writes `outputs/evaluation/receipt.json` and a pre-fall image. A native window is optional: add `--viewer` on a graphical desktop. `latest` selects the most recently written tutorial checkpoint; for a controlled comparison, pass its exact path.
+This attempts the fixed command protocol and stops at the first fall or timeout. It writes `outputs/evaluation/receipt.json` and a pre-fall image. A native window is optional: add `--viewer` on a graphical desktop. `latest` selects the latest run whose `run.json` identifies the nominal tutorial task, then its highest-numbered checkpoint. An explicitly chosen checkpoint must also belong to that task. For controlled comparisons, pass its exact path so a training job cannot move the selection between trials.
 
 **Look for:** finite learning diagnostics, a real checkpoint, and its actual behavior. Falling, drifting, or barely moving are valid learning observations. A traceback, non-finite state, or missing checkpoint is a software/setup failure to diagnose.
 

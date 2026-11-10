@@ -27,6 +27,12 @@ uv run --project environments/locomotion python scripts/locomotion/reward_worksh
 
 Add `--candidate outputs/reward-workshop/candidate.json` to reload saved weights. Add `--capture` with `--headless` to render the recorded pose stream.
 
-The later reference-ghost checkpoint will compare an actual retrained candidate with the baseline. Reward-only changes keep one motion stream. Compare both trajectories under both objectives and retain independent tracking/fall metrics; do not compare only each policy's preferred reward.
+Once candidate training writes a checkpoint, compare the two actual policies with a ghost:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/reality_gap.py --checkpoint logs/rsl_rl/microduck_tutorial/BASELINE_RUN/model_49.pt --candidate-checkpoint logs/rsl_rl/microduck_tutorial/CANDIDATE_RUN/model_49.pt --seed 0
+```
+
+Replace both paths with saved checkpoints. Reward-only rescoring keeps one motion stream; this command runs two learned policies. Compare both recorded trajectories under both objectives using the workshop and retain independent tracking/fall metrics. Do not compare only each policy's preferred reward. See [the ghost controls](11-effects.md) for synchronized playback and early-ending markers.
 
 **Record:** “I increased the score by …; this does/does not demonstrate improved walking because ….”

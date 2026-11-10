@@ -16,7 +16,7 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 6. [Map the reality gap](10-reality-gap.md), [investigate delays/backlash](11-effects.md), [train for robustness](12-robustness.md), and [export for deployment](13-deployment.md).
 7. Finish with [Super Mimic](14-super-mimic.md) and [Flash SAC](15-flash-sac.md) when their merged integrations are available.
 
-The first runnable milestone includes supported/free-base joint control, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/replay, and native/export inference checks. A short run is not a validated walking controller. Full reference-ghost overlays, hardware transfer, and the two incoming integrations are subsequent production checkpoints.
+The runnable path includes supported/free-base joint control, observation inspection, a bounded fresh PPO run, failure-aware evaluation, reward rescoring/replay, independent reference-ghost comparisons, and executed JIT/ONNX inference checks. A short run is not a validated walking controller. Hardware transfer and the Duck adaptations of the two incoming learners remain production checkpoints.
 
 ## How to use the lessons
 

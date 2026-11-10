@@ -10,9 +10,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+from contextlib import ExitStack
 from pathlib import Path
 
 import gymnasium as gym
+import numpy as np
 import torch
 from isaaclab_visualizers.newton import NewtonGLBackendCfg
 from rsl_rl.runners import OnPolicyRunner
@@ -28,36 +31,42 @@ from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 from isaaclab_tasks.utils import resolve_task_config
 
 import isaaclab_tutorial.tasks  # noqa: F401
-from isaaclab_tutorial.locomotion.evaluation import summarize_episode
+from isaaclab_tutorial.locomotion.deployment import build_manifest, check_duck_contract, rehearsal_trace, staged_bundle
+from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
 from isaaclab_tutorial.locomotion.recording import RecordedLinearTracking
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, default=Path("latest"), help="Saved PPO checkpoint or latest.")
+    parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo", help="Use the matching pinned environment.")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--viewer", action="store_true")
     parser.add_argument("--capture", action="store_true")
     parser.add_argument(
-        "--export", action="store_true", help="Export JIT/ONNX and verify JIT actions against native inference."
+        "--export", action="store_true", help="Execute JIT and ONNX parity checks and write a standard Duck bundle."
     )
     parser.add_argument("--command-delay-ms", type=int, default=0)
     parser.add_argument("--observation-delay-ms", type=int, default=0)
     parser.add_argument("--output", type=Path, default=Path("outputs/evaluation"))
     args = parser.parse_args()
-    if args.checkpoint == Path("latest"):
-        checkpoints = list(Path("logs/rsl_rl/microduck_tutorial").glob("*/model_*.pt"))
-        if not checkpoints:
-            parser.error("No tutorial checkpoint exists yet. Run the lesson-02 training command first.")
-        args.checkpoint = max(checkpoints, key=lambda path: path.stat().st_mtime_ns)
-    if args.seconds <= 0 or not args.checkpoint.is_file():
+    try:
+        experiment = "microduck_tutorial" if args.agent == "ppo" else "microduck_tutorial_sac"
+        args.checkpoint = resolve_checkpoint(args.checkpoint, log_root=Path("logs/rsl_rl") / experiment)
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
+    if not math.isfinite(args.seconds) or args.seconds < 0.02 or not args.checkpoint.is_file():
         parser.error("A saved checkpoint and positive --seconds are required.")
+    if args.export and (args.output / "exported").exists():
+        parser.error("Export bundle already exists; choose a fresh --output directory to preserve its provenance.")
     if args.command_delay_ms < 0 or args.command_delay_ms % 5:
         parser.error("Command delay must be a nonnegative multiple of the 5 ms physics step.")
     if args.observation_delay_ms < 0 or args.observation_delay_ms % 20:
         parser.error("Observation delay must be a nonnegative multiple of the 20 ms observation sample.")
-    cfg, agent = resolve_task_config("MicroDuckTutorial-Velocity-Flat", "rsl_rl_cfg_entry_point", overrides=())
+    entry_point = "rsl_rl_cfg_entry_point" if args.agent == "ppo" else "rsl_rl_sac_cfg_entry_point"
+    cfg, agent = resolve_task_config("MicroDuckTutorial-Velocity-Flat", entry_point, overrides=())
+    validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
     cfg.rewards.track_lin_vel.func = RecordedLinearTracking
@@ -80,8 +89,11 @@ def main() -> None:
     rows = []
     last_frame = None
     max_export_error = 0.0
+    max_onnx_error = 0.0
+    export_observations, export_actions = [], []
     schedule = ([0.0, 0.0, 0.0], [0.2, 0.0, 0.0], [-0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.5])
-    with launch_simulation(cfg):
+    with ExitStack() as resources, launch_simulation(cfg):
+        bundle = resources.enter_context(staged_bundle(args.output / "exported")) if args.export else None
         env = gym.make("MicroDuckTutorial-Velocity-Flat", cfg=cfg)
         wrapped = RslRlVecEnvWrapper(env, clip_actions=agent.clip_actions)
         try:
@@ -90,12 +102,44 @@ def main() -> None:
             runner.load(str(args.checkpoint))
             policy = runner.get_inference_policy(device=base.device)
             exported = None
+            onnx_session = None
             if args.export:
-                runner.export_policy_to_jit(path=str(args.output / "exported"), filename="policy.pt")
-                runner.export_policy_to_onnx(path=str(args.output / "exported"), filename="policy.onnx")
-                exported = torch.jit.load(str(args.output / "exported" / "policy.pt"), map_location=base.device)
+                runner.export_policy_to_jit(path=str(bundle), filename="policy.pt")
+                runner.export_policy_to_onnx(path=str(bundle), filename="policy.onnx")
+                exported = torch.jit.load(str(bundle / "policy.pt"), map_location=base.device)
+                import onnxruntime as ort
+
+                options = ort.SessionOptions()
+                options.intra_op_num_threads = 1
+                onnx_session = ort.InferenceSession(
+                    str(bundle / "policy.onnx"), options, providers=["CPUExecutionProvider"]
+                )
+                if [(x.name, x.shape) for x in onnx_session.get_inputs()] != [("obs", [1, 61])]:
+                    raise ValueError("The standard Duck runtime requires a single obs[1,61] input.")
+                if [(x.name, x.shape) for x in onnx_session.get_outputs()] != [("actions", [1, 14])]:
+                    raise ValueError("The standard Duck runtime requires a single actions[1,14] output.")
             base.reset(seed=args.seed)
             robot = base.scene["robot"]
+            descriptor = base.action_manager.get_term("joint_pos").IO_descriptor
+            scale = descriptor.scale
+            if isinstance(scale, torch.Tensor):
+                scale = scale[0].cpu().tolist()
+            contract = {
+                "joint_names": list(descriptor.joint_names),
+                "home_rad": descriptor.offset,
+                "action_scale": [scale] * 14 if isinstance(scale, int | float) else scale,
+                "control_dt_s": base.step_dt,
+                "observation_layout": dict(
+                    zip(
+                        base.observation_manager.active_terms["policy"],
+                        [int(np.prod(shape)) for shape in base.observation_manager.group_obs_term_dim["policy"]],
+                        strict=True,
+                    )
+                ),
+                "normalization": "embedded",
+            }
+            if args.export:
+                check_duck_contract(contract)
             with torch.inference_mode():
                 for step in range(round(args.seconds / base.step_dt)):
                     command = schedule[min(int(step * base.step_dt // 4), 4)]
@@ -112,6 +156,7 @@ def main() -> None:
                         "root_pos_w": robot.data.root_link_pos_w.torch[0].cpu().tolist(),
                         "root_quat_xyzw": robot.data.root_link_quat_w.torch[0].cpu().tolist(),
                         "joint_pos_rad": robot.data.joint_pos.torch[0].cpu().tolist(),
+                        "body_poses_w": robot.data.body_link_pose_w.torch[0].cpu().tolist(),
                     }
                     if args.capture:
                         last_frame = base.sim.visualizers[0].render_rgb_array()
@@ -120,6 +165,12 @@ def main() -> None:
                         exported_action = exported(obs["policy"])
                         torch.testing.assert_close(exported_action, action, atol=1e-5, rtol=1e-4)
                         max_export_error = max(max_export_error, float((exported_action - action).abs().max()))
+                        raw_observation = obs["policy"].cpu().numpy()
+                        onnx_action = onnx_session.run(["actions"], {"obs": raw_observation})[0]
+                        np.testing.assert_allclose(onnx_action, action.cpu().numpy(), atol=1e-5, rtol=1e-4)
+                        max_onnx_error = max(max_onnx_error, float(np.max(np.abs(onnx_action - action.cpu().numpy()))))
+                        export_observations.append(raw_observation[0].copy())
+                        export_actions.append(action[0].cpu().tolist())
                     _, reward, dones, _ = wrapped.step(action)
                     nan_state = bool(base.termination_manager.get_term("nan_state")[0])
                     fell_over = bool(base.termination_manager.get_term("fell_over")[0])
@@ -144,9 +195,12 @@ def main() -> None:
                 Image.fromarray(last_frame).save(args.output / "evaluation.png")
             valid = not any(row["termination_reason"] == "nan_state" for row in rows)
             receipt = {
+                "schema_version": 2,
+                "protocol_id": "flat-velocity-v1",
                 "valid": valid,
                 "checkpoint": str(args.checkpoint.resolve()),
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
+                "algorithm": args.agent,
                 "seed": args.seed,
                 "control_dt_s": base.step_dt,
                 "horizon_s": args.seconds,
@@ -158,6 +212,14 @@ def main() -> None:
                 "trajectory": rows,
                 "schedule_segment_s": 4.0,
                 "joint_names": list(robot.joint_names),
+                "body_names": list(robot.body_names),
+                "asset_url": cfg.scene.robot.spawn.usd_path,
+                "conditions": {
+                    "task": "MicroDuckTutorial-Velocity-Flat",
+                    "command_delay_ms": args.command_delay_ms,
+                    "observation_delay_ms": args.observation_delay_ms,
+                },
+                "contract": contract,
                 "reward_weights": {
                     name: base.reward_manager.get_term_cfg(name).weight for name in base.reward_manager.active_terms
                 },
@@ -170,8 +232,29 @@ def main() -> None:
                     "rtol": 1e-4,
                     "normalization": "embedded in exported actor",
                 },
+                "onnx_parity": {
+                    "checked": args.export,
+                    "samples": len(export_observations),
+                    "max_abs_error": max_onnx_error if args.export else None,
+                    "atol": 1e-5,
+                    "rtol": 1e-4,
+                    "provider": "CPUExecutionProvider",
+                },
             }
             (args.output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+            if args.export and valid:
+                manifest = build_manifest(
+                    receipt, onnx_sha256=hashlib.sha256((bundle / "policy.onnx").read_bytes()).hexdigest()
+                )
+                (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+                (bundle / "trace.json").write_text(json.dumps(rehearsal_trace(export_observations)) + "\n")
+                (bundle / "native-actions.json").write_text(json.dumps(export_actions) + "\n")
+                (bundle / "robotd-policy.toml").write_text(
+                    "# Review and merge into your robotd policy section; this does not install or actuate.\n"
+                    "# The tutorial was trained without target low-pass filtering.\n"
+                    "[policy]\naction_scale = 1.0\nstanding_action_scale = 1.0\n"
+                    "gain = 200\nhead_lowpass = 1.0\nlegs_lowpass = 1.0\n"
+                )
             print(json.dumps(receipt["metrics"], indent=2))
             if not valid:
                 raise RuntimeError(

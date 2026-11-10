@@ -3,7 +3,7 @@
 name = "isaaclab-tutorial-locomotion-env"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["isaaclab_tutorial", "isaaclab==3.0.0"]
+dependencies = ["isaaclab_tutorial", "isaaclab==3.0.0", "onnxruntime>=1.24,<2"]
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.11", "codespell>=2.4"]

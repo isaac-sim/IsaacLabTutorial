@@ -1,0 +1,100 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# One independent Duck SAC trial per GPU. Upload source.tar.gz and source.sha256
+# to /osmo/run/workspace/microduck-input using workflow rsync before training starts.
+version: 2
+workflow:
+  name: {{ workflow_name }}
+  resources:
+    default:
+      gpu: 1
+      cpu: 8
+      memory: 64Gi
+      storage: 96Gi
+      platform: {{ platform }}
+  timeout:
+    exec_timeout: 60m
+    queue_timeout: 30m
+  tasks:
+  - name: train
+    lead: true
+    image: {{ image }}
+    {% if image_credential %}
+    credentials:
+      {{ image_credential }}: nvcr.io
+    {% endif %}
+    command: [bash]
+    args: [/tmp/microduck-trial.sh, "{{output}}"]
+    environment:
+      ACCEPT_EULA: Y
+      OMNI_KIT_ACCEPT_EULA: "YES"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      PYTHONUNBUFFERED: "1"
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
+      OPENBLAS_NUM_THREADS: "8"
+    files:
+    - path: /tmp/microduck-trial.sh
+      contents: |
+        set -euo pipefail
+        OUT="${1:?OSMO output directory required}"
+        INPUT=/osmo/run/workspace/microduck-input
+        ROOT=/osmo/run/workspace/microduck-tutorial
+        mkdir -p "$OUT" "$ROOT"
+        finish() {
+          result=$?
+          trap - EXIT
+          set +e
+          printf '{"exit_code":%d}\n' "$result" > "$OUT/exit-status.json"
+          touch "$OUT/trial-finished"
+          echo "TRIAL_FINISHED: status $result; download {{output}} with osmo workflow rsync download."
+          # Retain failures as well as successes for accounts without an output bucket.
+          # Upload 'collected' to INPUT after downloading to release the task early.
+          deadline=$((SECONDS + 300))
+          until [[ -f "$INPUT/collected" ]] || (( SECONDS >= deadline )); do sleep 2; done
+          exit "$result"
+        }
+        trap finish EXIT
+        deadline=$((SECONDS + 300))
+        until (cd "$INPUT" && sha256sum -c source.sha256) 2>/dev/null; do
+          if (( SECONDS >= deadline )); then echo 'Source upload deadline exceeded'; exit 1; fi
+          sleep 2
+        done
+        tar -xzf "$INPUT/source.tar.gz" -C "$ROOT" --no-same-owner
+        cp "$INPUT/source.sha256" "$OUT/source.sha256"
+        cp "$INPUT/source.tar.gz" "$OUT/source.tar.gz"
+        cd "$ROOT"
+        export PATH="/workspace/isaaclab/.venv/bin:/root/.local/bin:$PATH"
+        unset UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PYTHONPATH
+        export UV_CACHE_DIR="$ROOT/.cache/uv" WARP_CACHE_PATH="$ROOT/.cache/warp"
+        nvidia-smi --query-gpu=name,uuid,driver_version --format=csv > "$OUT/device.csv"
+        uv sync --project environments/workflows --locked > "$OUT/bootstrap.log" 2>&1
+        mkdir -p "$OUT/logs"
+        ln -s "$OUT/logs" logs
+        uv run --project environments/workflows --locked isaaclab train \
+          --rl_library rsl_rl --task MicroDuckTutorial-Velocity-Flat \
+          --agent rsl_rl_sac_cfg_entry_point --num_envs {{ num_envs }} \
+          --max_iterations {{ iterations }} --seed {{ seed }} --run_name osmo_sac \
+          --visualizer none agent.algorithm.num_updates={{ updates }} \
+          agent.algorithm.actor_learning_rate={{ learning_rate }} \
+          agent.algorithm.critic_learning_rate={{ learning_rate }} \
+          agent.algorithm.alpha_learning_rate={{ learning_rate }} \
+          > "$OUT/training.log" 2>&1
+        uv run --project environments/workflows --locked python scripts/locomotion/evaluate.py \
+          --agent sac --checkpoint latest --seed 0 --export --output "$OUT/evaluation" \
+          > "$OUT/evaluation.log" 2>&1
+        touch "$OUT/training-complete"
+
+default-values:
+  workflow_name: microduck-sac-trial
+  image: nvcr.io/nvidia/isaac-lab:3.0.0
+  image_credential: ""
+  platform: ovx-l40
+  seed: 42
+  num_envs: 4096
+  iterations: 1500
+  updates: 16
+  learning_rate: 0.0003

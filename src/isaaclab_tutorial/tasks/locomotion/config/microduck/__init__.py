@@ -20,6 +20,7 @@ for task_id, config in (
         kwargs={
             "env_cfg_entry_point": f"{__name__}.env_cfg:{config}",
             "rsl_rl_cfg_entry_point": f"{__name__}.agents.rsl_rl_ppo_cfg:PPORunnerCfg",
+            "rsl_rl_sac_cfg_entry_point": f"{__name__}.agents.rsl_rl_sac_cfg:MicroDuckSACRunnerCfg",
             "default_agent": "rsl_rl",
         },
     )
