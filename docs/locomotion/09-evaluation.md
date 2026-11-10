@@ -88,6 +88,31 @@ A matched ghost requires the same start protocol, evaluation seed, and actual in
 
 A duck that stands still through a forward command has survived but failed the task. `flat-response-v1` requires the complete 20-second protocol, no fall, every segment's tracking limits, sufficient signed response, and limited standing drift. Unattempted segments retain unavailable scores. Open the [exact numerical criteria](reference/evaluation-protocols.md#survival-is-only-one-check) after making your prediction in the explorer.
 
+<details>
+<summary>Predict, then inspect standing stability and target changes</summary>
+
+Can a policy that falls at two seconds earn a good four-second standing score? Would smaller changes in joint targets prove that it walks better?
+
+These panels use the separate [four-profile controlled study](12-robustness.md): three independent training seeds per profile, ten reused physical starts, four fixed conditions and all 480 attempts. Each colored point averages the eligible starts for **one policy**. Black marks show the mean and sample standard deviation of available policy means, not a confidence interval. The labels retain eligible / attempted counts; missing seeds have no point.
+
+![Standing planar and absolute yaw drift across four training profiles and fixed test conditions; incomplete windows remain unavailable, and the large backlash-trained drift under lag stays visible](media/standing-metrics.jpg)
+
+Standing drift uses the first and last recorded pre-step samples at 0.00 and 3.98 s. Only complete standing sampling windows enter these means. Under 40 ms lag, just 1/30 nominal-policy and 3/30 backlash-trained attempts completed that window. The latter three belong to one training seed and average 0.139 m planar drift, above the dashed 0.03 m criterion. The other attempts are not zero-drift successes.
+
+![Requested-target rate RMS across the same policies and conditions, with no value for trials that ended early; delay-trained policies can have low target rates while still failing command response](media/target-rate-metrics.jpg)
+
+This second plot includes only complete valid 20-second trials. It computes RMS across all 14 requested joint-target differences divided by 0.02 s, in rad/s. It does not measure actual joint speed, torque or energy. A trial can be included here and still fail the response criteria; read these magnitudes beside the survival/response grid in lesson 12. All failed attempts remain in that grid's denominators.
+
+[Portable measurements and validation](evidence/evaluation-metrics-validation.json) preserve every attempt and its receipt hash. Rebuild both plots without physics or training:
+
+```bash
+uv run --project environments/locomotion --locked python scripts/locomotion/plot_evaluation_metrics.py --output outputs/evaluation-metrics/plots
+```
+
+To extract a new measured study, run `collect_evaluation_metrics.py --trial PATH --trial PATH ... --output DATA.json` with all 12 collected trial directories. It uses the same full source/model/budget/start audit as the robustness report, recomputes metrics and qualification from every raw trajectory, then extracts these diagnostics. Pass the resulting file with the plotter's `--data` option.
+
+</details>
+
 ## Repeat the same physical starts across training seeds
 
 Use independently trained checkpoints from the same recipe and transition budget. Pass each exact checkpoint path once:

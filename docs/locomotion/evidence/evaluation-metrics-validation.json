@@ -1,0 +1,39 @@
+{
+  "scope": "Conditional standing and requested-target-rate diagnostics from the complete audited 480-attempt study, not a new training or hardware claim.",
+  "data_sha256": "59f144e5c8fca88b6073556f71a3ba9ebc9d92e08de7b5bb0678edfe99dddfa0",
+  "render_sha256": "7f8bf6af217f95ef1e945c0a43924b57d5c85a3e8443325651efdf5dc447d99a",
+  "full_raw_motion_audit_completed": true,
+  "attempts": 480,
+  "policies": 12,
+  "training_seeds": [
+    0,
+    1,
+    42
+  ],
+  "reused_physical_starts": 10,
+  "identities_receipt_hashes_outcomes_metrics_and_models_match_existing_audited_study": true,
+  "all_144_seed_means_counts_checked_against_original_reports_with_independent_statistics": true,
+  "invalid_trial_probe": {
+    "excluded_from_conditional_mean": true,
+    "all_attempt_denominator_preserved": 30,
+    "eligible_starts_for_affected_seed": 9
+  },
+  "partial_window_probe": {
+    "nominal_under_lag_complete_standing": 1,
+    "nominal_under_lag_complete_20s": 0,
+    "attempted": 30
+  },
+  "plot_bounds_regression": {
+    "red_actual_seed_mean_m": 0.13908512137282117,
+    "red_axis_upper_bound_m": 0.03138924020299906,
+    "root_cause": "Setting shared-axis limits inside the condition loop disabled autoscaling before later large drifts were added.",
+    "fix": "Compute limits from every displayed seed mean, summary upper SD and criterion before finalizing all matching axes.",
+    "green_all_actual_seed_points_within_axes_both_figures": true
+  },
+  "image_sha256": {
+    "standing-metrics.jpg": "357ad62fce29da7ae939eed9b3210c5a7849b56adb22ee41e3162b42026c0122",
+    "target-rate-metrics.jpg": "f07aaf02cef9b435805d6177761007a5e3f65781a95882ec169b861dc4eb4edc"
+  },
+  "hardware_validated": false,
+  "portable_rebuild_identical_jpg_bytes": true
+}

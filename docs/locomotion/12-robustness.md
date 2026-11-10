@@ -52,6 +52,8 @@ Delay training qualified **30/30** fixed-40-ms trials, compared with **0/30** fo
 
 The nominal policy already qualified 30/30 trials on this specific backlash variant. The backlash-only training row therefore shows no improvement in that response metric; baseline measurement prevents assuming every modeled effect needs a successful fix.
 
+Inspect the [standing and requested-target-rate panels](09-evaluation.md#survival-is-only-one-check) for this same study. Their complete-window filters keep a short pre-fall prefix from looking like a stable stand or smooth full walking trial. Missing values and counts remain visible.
+
 **Challenge:** explain the combined row's 30% nominal response rate and 52-percentage-point standard deviation. One training seed qualified 9/10 starts; the other two qualified none. Which single video would have given you a misleading impression?
 
 <details>
