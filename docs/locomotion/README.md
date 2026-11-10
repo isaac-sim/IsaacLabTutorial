@@ -12,7 +12,7 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 2. [Play with the puppet duck](03-puppet.md): move joint sliders and compare pose with balance.
 3. [Follow a command through the actuator](04-actions.md).
 4. [Investigate observations](05-observations.md) and [experiment with rewards](06-rewards.md).
-5. [Understand PPO](07-ppo.md), [read the training evidence](08-training.md), then [drive the frozen policy with sliders and evaluate independently](09-evaluation.md).
+5. [Understand PPO](07-ppo.md), [play with the batch calculator and compare real training curves](08-training.md), then [drive the frozen policy with sliders and evaluate independently](09-evaluation.md).
 6. [Map the reality gap](10-reality-gap.md), [investigate delays/backlash](11-effects.md), [train for robustness](12-robustness.md), and [export for deployment](13-deployment.md).
 7. Finish with [Super Mimic](14-super-mimic.md) and [Flash SAC](15-flash-sac.md) when their merged integrations are available.
 

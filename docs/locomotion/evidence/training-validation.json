@@ -1,0 +1,53 @@
+{
+  "scope": "One training seed, two fresh single-GPU nominal PPO runs, one deterministic initial state per evaluation. Different fresh-data budgets; no equal-budget, aggregate robustness, or hardware claim.",
+  "source_revisions": {
+    "isaaclab": "90a16f06685dbf7948262eafa628c470b4cdc78c",
+    "newton": "42f7def118c2c4299ce493457bafd4e8a22a696e",
+    "rsl_rl": "5.5.1",
+    "mujoco": "3.15.0",
+    "mujoco_warp": "3.15.0"
+  },
+  "gpu": "NVIDIA RTX 5090",
+  "frozen_settings": {
+    "task": "MicroDuckTutorial-Velocity-Flat",
+    "seed": 42,
+    "rollout_steps": 24,
+    "iterations": 50,
+    "epochs": 5,
+    "minibatches": 4,
+    "control_dt_s": 0.02
+  },
+  "changed_setting": {
+    "name": "num_envs",
+    "baseline": 128,
+    "candidate": 256
+  },
+  "checks": {
+    "actual_optimizer_counters": [
+      1000,
+      1000
+    ],
+    "tracked_config_fingerprints_match": true,
+    "browser": "Chrome 157.0.8103.50; actual budget/plan download, diagnostic selector, axis/cursor, replay and narrow-screen interactions passed with no JavaScript errors.",
+    "generated_launcher": "Contract-checked launcher executed a saved2-iteration baseline plan with N changed16\u219232, completed finite updates. Generated underlying Hydra syntax was separately checked with16env2iterations.",
+    "reader": "Real TensorBoard events, resolved YAML parameters and weights-only checkpoint optimizer counters. Missing iteration history and mismatched global FPS/time budgets are rejected.",
+    "review_regressions": "Numerical-failure evaluation remains visible with charts; current-source qualification gates custom saved reports; observation order/timing and source-edited candidate plans fail before training.",
+    "browser_regression_command": "uv run --project environments/locomotion --locked --with playwright pytest tests/test_locomotion_training_browser.py -q",
+    "browser_regression_proof": "Persistent browser test passed. Reintroducing invalid-metric access made that same test fail with undefined.toFixed; restoring the guard made it pass again."
+  },
+  "evaluation_receipts_sha256": {
+    "n128": "aaf328b9267f839cdada6a98f2177038fd0a496c31170aa705fb56a4fa20b0d8",
+    "n256": "146d9373b1b04e3956fbc611dc44ecd299c83b6b11600f9e90b15a24ee5d4b08"
+  },
+  "media": {
+    "training-budget.jpg": "Actual Chrome capture of the calculator at candidate N=256, with all other counts fixed.",
+    "training-curves.jpg": "Matplotlib plot of the raw recorded training samples, without smoothing. The short-run and candidate use different experience budgets."
+  },
+  "output_sha256": {
+    "training-budget.jpg": "ea237f6057897f5b2c5ab51fdeb00d4fa8896d899e4a14776990ed4ff09e52a1",
+    "training-curves.jpg": "c96438385709a0dc6af8a914931888b5a5118909f1d01f94fec23c929a0bd9b2",
+    "training-comparison.json": "2e25d69eb4ba3884599ab0098cd891d9a5cfc2d0858933995fcf88143cc4c3cc"
+  },
+  "rebuild": "uv run --project environments/locomotion python scripts/locomotion/training_workshop.py --report docs/locomotion/evidence/training-comparison.json",
+  "data_note": "Checkpoint weights are not included. Source/run hashes and numerical curves are retained. Local replay commands appear only when that checkpoint path exists."
+}
