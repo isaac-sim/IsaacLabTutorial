@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
+  "scope": "Production inventory for requested visuals V01\u2013V45 and activities I01\u2013I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
   "source_revision": "12b0bceba479f905118fd03ba6a9b8f23c70c7d4",
   "source_lock": [
     {
@@ -172,6 +172,14 @@
     {
       "path": "docs/locomotion/evidence/stress-comparison-video.json",
       "sha256": "c60d376be29ee33fd10e44d4c0d2b9464961555eba341bc148f9b80d7c1d390e"
+    },
+    {
+      "path": "docs/locomotion/evidence/media-delivery.json",
+      "sha256": "2f9e3eee0211dc51bbbb209efc89b5016e871bc69c79b1a118ee526d3edde0b5"
+    },
+    {
+      "path": "docs/locomotion/evidence/clean-walkthrough.json",
+      "sha256": "0d199ada42ff10a8a0707ebb72053b80178a637f629af2815259a8b113d12e00"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
