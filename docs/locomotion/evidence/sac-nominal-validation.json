@@ -114,5 +114,47 @@
         "exit_code": 0
       }
     }
-  ]
+  ],
+  "rust_runtime_rehearsal": {
+    "runtime_revision": "da34a2212ae12eddfd73d0dfbf924f291aaf1dc9",
+    "scope": "Standard Duck Rust runtime executed offline on workstation CPU; no robot bus or board.",
+    "records": [
+      {
+        "training_seed": 42,
+        "maximum_action_error": 1.7583370208740234e-06,
+        "samples": 1000,
+        "latency_ms": {
+          "max": 0.027326,
+          "p50": 0.015055,
+          "p95": 0.015338000000000001,
+          "p99": 0.016569
+        },
+        "over_20_ms": 0
+      },
+      {
+        "training_seed": 0,
+        "maximum_action_error": 1.6689300537109375e-06,
+        "samples": 1000,
+        "latency_ms": {
+          "max": 0.086011,
+          "p50": 0.015123000000000001,
+          "p95": 0.015418999999999999,
+          "p99": 0.017533
+        },
+        "over_20_ms": 0
+      },
+      {
+        "training_seed": 1,
+        "maximum_action_error": 2.0116567611694336e-06,
+        "samples": 1000,
+        "latency_ms": {
+          "max": 0.018148,
+          "p50": 0.015039,
+          "p95": 0.015231,
+          "p99": 0.017092
+        },
+        "over_20_ms": 0
+      }
+    ]
+  }
 }

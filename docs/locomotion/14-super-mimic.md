@@ -32,7 +32,7 @@ uv run --project environments/workflows --locked python scripts/locomotion/evalu
 
 The tests compare each weighted reward and the total against the actual simulator at its pre-reset boundary, including flight, touchdown, standing and moving commands. They also compare deployable sensor features and falls. A separate native/JIT/ONNX sequence exercises history initialization and an episode reset.
 
-The 64-environment smoke performed 37 learner updates with finite model, label, policy and critic losses. It fell after 0.84 s when evaluated. Its 42 action samples matched JIT within 8.94×10⁻⁸ and ONNX within 1.79×10⁻⁷. The standard Duck Rust `policy-rehearsal` executable also reproduced those 42 actions within 1.79×10⁻⁷, using the maintained runtime at `da34a2212ae12eddfd73d0dfbf924f291aaf1dc9`. These checks establish adapter and export operation; they do not establish learned walking or hardware operation.
+The 64-environment smoke performed 37 learner updates with finite model, label, policy and critic losses. It fell after 0.84 s when evaluated. Its 42 action samples matched JIT within 8.94×10⁻⁸ and ONNX within 1.79×10⁻⁷. The standard Duck Rust `policy-rehearsal` executable also reproduced two concatenated copies of that episode, with an explicit reset at samples 0 and 42: all 84 actions matched within 1.35×10⁻⁷. [The rehearsal evidence](evidence/supermimic-runtime-rehearsal.json) identifies the maintained runtime revision, model hash and workstation CPU scope. These checks establish adapter and export operation; they do not establish learned walking or hardware operation.
 
 ## Understand the export state
 
@@ -50,6 +50,14 @@ uv run --project environments/workflows --locked python scripts/locomotion/evalu
 ```
 
 This is an exploratory training recipe. Retain falls and model/label losses as well as reward. One-step prediction quality can improve while long imagined trajectories drift. Compare horizons 8/16/32 on separate runs with otherwise identical settings, then validate promising settings on fresh training seeds and the same evaluation protocol. Report physical transitions and actual optimizer updates separately.
+
+Measure drift along fresh simulated physical sequences, without adding those samples to replay or updating the model:
+
+```bash
+uv run --project environments/workflows --locked python scripts/locomotion/model_error.py --checkpoint latest --num-envs 64 --steps 1024 --seed 123 --output outputs/supermimic-model-error.json
+```
+
+This diagnostic adds Gaussian noise with a raw-action standard deviation of 0.05 to the policy's actual physical controls. Every 32 steps it initializes the world model from a measured state, then advances it using those same controls. It reports prediction error at steps 1/8/16/32 in physical units and relative to training increment scales, plus event Brier score and sample counts. Successors at a fall remain valid targets; later predictions in that window are excluded after the physical reset and counted explicitly. Longer horizons can therefore have fewer samples. Different policies visit different states: use these curves to inspect within-model drift, alongside the fixed-command evaluation, rather than treating their model errors as a common-dataset ranking.
 
 The adapter currently requires nominal, undelayed sensor features and flat terrain. It rejects reward-function replacements, changed foot ordering, enabled persistent head-bias rewards, corruption and unsupported sensor transforms because these require an extended state or matching actor model. Preserve these guards when adding robustness experiments.
 
