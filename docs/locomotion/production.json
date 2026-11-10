@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "e538d12006627db8fdfad72945b3bacccd5bc706",
+  "source_revision": "50b6d7e3084a753dc99b2c3e3e74a943626aadf7",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -60,6 +60,14 @@
     {
       "path": "docs/locomotion/evidence/supermimic-warmstart-heldout-seed2.json",
       "sha256": "a8eaf8e85b74c1c4664ae5aee8f24dcdad34be36158401bbbad918201fbf0243"
+    },
+    {
+      "path": "docs/locomotion/evidence/signal-delay40.json",
+      "sha256": "d32cd0e2c96f6538af7395e90d35079093e4b6bfb2d957238bda7d90323a11d8"
+    },
+    {
+      "path": "docs/locomotion/evidence/signal-validation.json",
+      "sha256": "ce6b8118ab910ca95ceeaccf4655cd0253403611161941c45bccab574afac458"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -680,7 +688,11 @@
       "outputs": [
         {
           "path": "docs/locomotion/11-effects.md",
-          "sha256": "2f7e62e33f309022b839c4b0356eaa94009291efafe9b743202afb2bfbd5b38d"
+          "sha256": "26293cf9e9813f32dfd6db901fe397e284317b970253b9fab9caae5fde70ef91"
+        },
+        {
+          "path": "docs/locomotion/media/signal-delay40.jpg",
+          "sha256": "7d9b334ac7cff62d9f66852ad38d71ef773c8fc4492b1f44f8fff360b1859c77"
         }
       ],
       "acceptance": "Clock conversions and event order agree with instrumented pulse tests, including empty-buffer behavior.",
@@ -694,7 +706,7 @@
       "dimensions": "Editable vector master; readable at 960 px content width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Delay clocks are explained; timestamped raw/observed/applied signal traces remain."
+      "remaining": "Actual raw-versus-actor control-clock trace exists. Per-physics-step applied targets and hardware capture/receive ages remain."
     },
     {
       "id": "V30",
@@ -1067,7 +1079,7 @@
       "dimensions": "1920x1080 or greater working UI capture; panels readable at normal lesson width",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Native controls and independently simulated ghosts captured; signal-age/reversal plots remain."
+      "remaining": "Native controls, independent ghosts and actual raw-versus-actor traces captured; applied-target age and bounded reversal plots remain."
     }
   ],
   "experiences": [
@@ -1167,7 +1179,7 @@
           "sha256": "370828e6a7806fff731305037f9d50c3db15f7691ba0f18124260580ac9a8a83"
         }
       ],
-      "scope": "Native isolated effects, latched apply, matched physical starts and real ghosts; timestamp/age/reversal plots remain."
+      "scope": "Native effects, latched apply, matched starts/ghosts and raw-versus-actor signal plots; per-physics applied-target age and bounded reversal views remain."
     },
     {
       "id": "I08",

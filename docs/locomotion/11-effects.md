@@ -47,6 +47,30 @@ This example uses training seed 42 and physical-start seed 0. Both completed 20 
 
 The [locked robot inputs](evidence/asset-lock.json) include the actual USD hashes. The backlash asset adds 14 tiny passive bodies, totaling 14 mg of additional authored mass. Treat the selection as the documented asset intervention; it is not a mathematically identical mass model with a single scalar changed.
 
+## See what the actor actually received
+
+**Predict:** with a configured 40 ms lag, are both IMU channels already two samples old immediately after reset?
+
+![Actual simulated gyro and ankle-velocity readings compared with actor inputs, plus requested targets and servo positions; the delayed policy falls at 1.8 seconds](media/signal-delay40.jpg)
+
+The actor's ankle-velocity input matches the physical value from two control samples earlier after warmup. The IMU has its own startup rule: gyro and gravity delays begin at zero, then change on separate update phases. In this recording, the first gyro/raw difference occurs at 0.88 s and the first gravity/raw difference at 0.64 s. A configured lag alone does not describe the age of every initial sample. This policy fell at 1.80 s during the initial standing segment, before any walking command.
+
+The black trace is the **requested** angle, and the blue trace is the measured servo angle. They differ because an actuator has dynamics and limits. The requested target is not a measured delayed/applied target; these control-boundary samples do not expose every 5 ms actuator step. With the backlash asset, the plot additionally shows servo angle plus passive play as the mechanical output.
+
+After recording any new workshop trial with the current evaluator, inspect it with:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/plot_signals.py --receipt outputs/backlash-workshop/trial-00/receipt.json --joint left_ankle --output outputs/backlash-signals/signals.jpg
+```
+
+The recorder reads raw physics alongside the actual actor input at the same pre-step simulation boundary; it does not recompute histories or alter the policy. The published [portable signal data](evidence/signal-delay40.json) rebuilds this exact figure without the full trajectory:
+
+```bash
+uv run --project environments/locomotion python scripts/locomotion/plot_signals.py --data docs/locomotion/evidence/signal-delay40.json --output outputs/signal-rebuild/signals.jpg
+```
+
+These are simulation timestamps. Sensor capture, transport, receive and motor-application timestamps on the real robot still need hardware measurement.
+
 <details>
 <summary>Inspect delay clocks and the smaller delay-only launcher</summary>
 

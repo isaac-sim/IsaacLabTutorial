@@ -1,0 +1,25 @@
+{
+  "scope": "Single-policy fixed-lag instrumentation proof, not a new robustness claim or hardware age measurement.",
+  "checkpoint_sha256": "bbbd21bed6d7789312d951721597500593f6ca41b3324193dffee6f0a2e85873",
+  "start_protocol": "balance-starts-v1",
+  "seed": 0,
+  "recorded_control_samples": 90,
+  "receipt_sha256": "8d8b3912d7c282d704cfc5a7c8f0325e10df71e7873b8a66dc44df06a038c560",
+  "previous_receipt_sha256": "08a5cc89d0dbf8667f4a5c3d73ead4636b36d07c0b2eb3c8cbb7ebfc9cf625ae",
+  "physical_actions_commands_unchanged_vs_previous_recording": true,
+  "joint_velocity_lag_samples_after_warmup": 2,
+  "joint_velocity_max_absolute_match_error": 0.0,
+  "first_gyro_difference_s": 0.88,
+  "first_gravity_difference_s": 0.64,
+  "fell": true,
+  "alive_time_s": 1.8,
+  "portable_rebuild_byte_identical": true,
+  "rebuild": "uv run --project environments/locomotion python scripts/locomotion/plot_signals.py --data docs/locomotion/evidence/signal-delay40.json --output outputs/signal-rebuild/signals.jpg",
+  "files_sha256": {
+    "scripts/locomotion/evaluate.py": "300a314729aab449b12c774dc8735f9af531bf0de6dce4af91063188159df6e7",
+    "scripts/locomotion/plot_signals.py": "e74f1ccac911241d2dff0bdffdffffd661a30e7c59690d8c74a4ddf12e29a2d0",
+    "docs/locomotion/evidence/signal-delay40.json": "d32cd0e2c96f6538af7395e90d35079093e4b6bfb2d957238bda7d90323a11d8",
+    "docs/locomotion/media/signal-delay40.jpg": "7d9b334ac7cff62d9f66852ad38d71ef773c8fc4492b1f44f8fff360b1859c77"
+  },
+  "hardware_validated": false
+}

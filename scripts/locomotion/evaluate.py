@@ -262,6 +262,11 @@ def main() -> None:
                         "root_pos_w": robot.data.root_link_pos_w.torch[0].cpu().tolist(),
                         "root_quat_xyzw": robot.data.root_link_quat_w.torch[0].cpu().tolist(),
                         "joint_pos_rad": robot.data.joint_pos.torch[0].cpu().tolist(),
+                        "joint_vel_rad_s": robot.data.joint_vel.torch[0].cpu().tolist(),
+                        "raw_imu": {
+                            "angular_velocity_body_rad_s": robot.data.root_ang_vel_b.torch[0].cpu().tolist(),
+                            "projected_gravity_body": robot.data.projected_gravity_b.torch[0].cpu().tolist(),
+                        },
                         "body_poses_w": robot.data.body_link_pose_w.torch[0].cpu().tolist(),
                         "actor_observation": obs["policy"][0].cpu().tolist(),
                     }
