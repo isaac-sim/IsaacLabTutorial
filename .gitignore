@@ -101,3 +101,8 @@ benchmark_*.json
 *.onnx.data
 *.jit
 !src/isaaclab_tutorial/assets/reset_poses.pt
+
+# Local locomotion validation and viewer state
+.production/
+environments/locomotion/.venv/
+imgui.ini

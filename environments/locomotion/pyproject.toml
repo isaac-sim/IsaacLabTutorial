@@ -1,0 +1,56 @@
+# Opt-in Microduck environment. Build the aggregate Isaac Lab wheel with its runtime resources.
+[project]
+name = "isaaclab-tutorial-locomotion-env"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = ["isaaclab_tutorial", "isaaclab==3.0.0"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.11", "codespell>=2.4"]
+
+[tool.uv]
+package = false
+prerelease = "allow"
+index-strategy = "unsafe-best-match"
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'linux' and platform_machine == 'aarch64'", "sys_platform == 'win32' and platform_machine == 'AMD64'"]
+override-dependencies = [
+    "isaaclab @ git+https://github.com/AntoineRichard/IsaacLab.git@90a16f06685dbf7948262eafa628c470b4cdc78c#subdirectory=tools/wheel_builder",
+    "numpy>=2",
+    "mujoco~=3.15.0",
+    "mujoco-warp~=3.15.0",
+    "newton[sim] @ git+https://github.com/newton-physics/newton.git@42f7def118c2c4299ce493457bafd4e8a22a696e",
+    "newton-usd-schemas>=0.5.0",
+    "usd-exchange==3.0.1",
+    "usd-optimize~=1.3.1",
+    "urdf-usd-converter==0.3.4",
+    "mujoco-usd-converter==0.7.0",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "fsspec>=2026.6.0",
+    "packaging>=20,<27",
+    "urllib3>=2.8.0",
+]
+
+[tool.uv.sources]
+isaaclab_tutorial = { path = "../..", editable = true }
+isaaclab = { git = "https://github.com/AntoineRichard/IsaacLab.git", rev = "90a16f06685dbf7948262eafa628c470b4cdc78c", subdirectory = "tools/wheel_builder" }
+"omniverseclient" = { index = "pypi-public" }
+"ovphysx" = { index = "pypi-public" }
+"ovrtx" = { index = "pypi-public" }
+"ovstage" = { index = "pypi-public" }
+"torch" = { index = "pytorch-cu130" }
+"torchvision" = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+url = "https://pypi.nvidia.com"
+explicit = false
+
+[[tool.uv.index]]
+name = "pypi-public"
+url = "https://pypi.org/simple"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
