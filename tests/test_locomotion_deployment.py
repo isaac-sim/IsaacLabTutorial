@@ -66,6 +66,7 @@ def test_manifest_requires_executed_parity_and_records_standard_runtime_contract
         "contract": contract(),
         "seed": 42,
         "metrics": {"fell": False},
+        "qualification": {"passed": False, "criteria": {"id": "flat-response-v1"}},
         "onnx_parity": {"checked": True, "samples": 2, "max_abs_error": 1e-6},
     }
     manifest = build_manifest(receipt, onnx_sha256="b" * 64)
@@ -73,6 +74,8 @@ def test_manifest_requires_executed_parity_and_records_standard_runtime_contract
     assert (manifest["obs_len"], manifest["action_len"], manifest["robot"]["control_hz"]) == (61, 14, 50)
     assert manifest["kind"] == "perpetual" and manifest["slot"] == "walk"
     assert manifest["training"]["checkpoint_sha256"] == "a" * 64
+    assert manifest["eval"]["simulation_qualified"] is False
+    assert manifest["eval"]["response_qualification"] == receipt["qualification"]
     changed = copy.deepcopy(receipt)
     changed["onnx_parity"]["checked"] = False
     with pytest.raises(ValueError, match="parity"):

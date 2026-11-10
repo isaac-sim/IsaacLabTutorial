@@ -10,6 +10,7 @@ import copy
 import pytest
 
 from isaaclab_tutorial.locomotion.comparison import RecordedComparison
+from isaaclab_tutorial.locomotion.protocols import sample_start_condition
 
 
 def recording(positions, *, fell=False):
@@ -75,4 +76,22 @@ def test_quaternion_sign_equivalence_is_valid_but_unordered_times_are_not():
     RecordedComparison(reference, candidate)
     candidate["trajectory"][1]["t_sim_s"] = -0.01
     with pytest.raises(ValueError, match="time"):
+        RecordedComparison(reference, candidate)
+
+
+def test_matching_poses_do_not_hide_different_start_velocities_or_protocols():
+    reference = recording([0.0, 0.1])
+    reference["start_condition"] = sample_start_condition("nominal-v1", 42)
+    reference["initial_state"] = {
+        "root_linear_velocity_w": [0, 0, 0],
+        "root_angular_velocity_w": [0, 0, 0],
+        "joint_vel_rad_s": [0, 0],
+    }
+    candidate = copy.deepcopy(reference)
+    candidate["initial_state"]["root_linear_velocity_w"][0] = 0.1
+    with pytest.raises(ValueError, match="velocity"):
+        RecordedComparison(reference, candidate)
+    candidate = copy.deepcopy(reference)
+    candidate["start_condition"] = sample_start_condition("balance-starts-v1", 42)
+    with pytest.raises(ValueError, match="start protocol"):
         RecordedComparison(reference, candidate)

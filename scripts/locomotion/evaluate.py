@@ -22,6 +22,7 @@ from rsl_rl.runners import OnPolicyRunner
 from tensordict import TensorDict
 
 from isaaclab.app import launch_simulation
+from isaaclab.managers import EventTermCfg
 from isaaclab.utils import to_dict
 from isaaclab.utils.math import quat_apply_inverse, yaw_quat
 from isaaclab.visualizers import VisualizerCfg
@@ -39,7 +40,24 @@ from isaaclab_tutorial.locomotion.deployment import (
     staged_bundle,
 )
 from isaaclab_tutorial.locomotion.evaluation import resolve_checkpoint, summarize_episode, validate_training_contract
+from isaaclab_tutorial.locomotion.protocols import (
+    START_PROTOCOLS,
+    analyze_velocity_protocol,
+    apply_start_condition,
+    capture_initial_state,
+    sample_start_condition,
+    velocity_command,
+)
 from isaaclab_tutorial.locomotion.recording import RecordedLinearTracking
+
+
+def _finite_json(value):
+    """Retain numerical-failure diagnostics as strict JSON with explicit null samples."""
+    if isinstance(value, dict):
+        return {key: _finite_json(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_finite_json(item) for item in value]
+    return None if isinstance(value, float) and not math.isfinite(value) else value
 
 
 def main() -> None:
@@ -47,6 +65,7 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, default=Path("latest"), help="Saved PPO checkpoint or latest.")
     parser.add_argument("--agent", choices=("ppo", "sac"), default="ppo", help="Use the matching pinned environment.")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--start-protocol", choices=START_PROTOCOLS, default="nominal-v1")
     parser.add_argument("--seconds", type=float, default=20.0)
     parser.add_argument("--viewer", action="store_true")
     parser.add_argument("--capture", action="store_true")
@@ -58,6 +77,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=Path("outputs/evaluation"))
     args = parser.parse_args()
     try:
+        start_condition = sample_start_condition(args.start_protocol, args.seed)
         experiment = "microduck_tutorial" if args.agent == "ppo" else "microduck_tutorial_sac"
         args.checkpoint = resolve_checkpoint(args.checkpoint, log_root=Path("logs/rsl_rl") / experiment)
     except (ValueError, FileNotFoundError) as error:
@@ -75,6 +95,10 @@ def main() -> None:
     validate_training_contract(args.checkpoint, to_dict(cfg), to_dict(agent))
     cfg.scene.num_envs = 1
     cfg.seed = args.seed
+    if args.start_protocol != "nominal-v1":
+        cfg.events.evaluation_start = EventTermCfg(
+            func=apply_start_condition, mode="reset", params={"condition": start_condition}
+        )
     cfg.rewards.track_lin_vel.func = RecordedLinearTracking
     cfg.commands.base_velocity.resampling_time_range = (1e9, 1e9)
     cfg.scene.robot.actuators["servos"].min_delay = args.command_delay_ms // 5
@@ -97,7 +121,8 @@ def main() -> None:
     max_export_error = 0.0
     max_onnx_error = 0.0
     export_observations, export_actions = [], []
-    schedule = ([0.0, 0.0, 0.0], [0.2, 0.0, 0.0], [-0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.5])
+    initial_state = None
+    initial_actor_observation = None
     with ExitStack() as resources, launch_simulation(cfg):
         bundle = resources.enter_context(staged_bundle(args.output / "exported")) if args.export else None
         env = gym.make("MicroDuckTutorial-Velocity-Flat", cfg=cfg)
@@ -150,9 +175,12 @@ def main() -> None:
                 check_duck_contract(contract)
             with torch.inference_mode():
                 for step in range(round(args.seconds / base.step_dt)):
-                    command = schedule[min(int(step * base.step_dt // 4), 4)]
+                    command = velocity_command(step * base.step_dt)
                     base.command_manager.get_command("base_velocity")[:] = torch.tensor(command, device=base.device)
                     obs = TensorDict(base.observation_manager.compute(update_history=False), batch_size=[1])
+                    if step == 0:
+                        initial_state = capture_initial_state(base)
+                        initial_actor_observation = obs["policy"][0].cpu().tolist()
                     linear = quat_apply_inverse(
                         yaw_quat(robot.data.root_link_quat_w.torch), robot.data.root_link_lin_vel_w.torch
                     )
@@ -169,6 +197,15 @@ def main() -> None:
                     if args.capture:
                         last_frame = base.sim.visualizers[0].render_rgb_array()
                     action = policy(obs)
+                    applied = (
+                        action if agent.clip_actions is None else action.clamp(-agent.clip_actions, agent.clip_actions)
+                    )
+                    row["action"] = applied[0].cpu().tolist()
+                    row["target_pos_rad"] = (
+                        np.asarray(row["action"]) * np.asarray(contract["action_scale"])
+                        + np.asarray(contract["home_rad"])
+                        - base.action_manager.get_term("joint_pos").encoder_bias[0].cpu().numpy()
+                    ).tolist()
                     if exported is not None:
                         exported_action = exported(obs["policy"])
                         torch.testing.assert_close(exported_action, action, atol=1e-5, rtol=1e-4)
@@ -187,7 +224,15 @@ def main() -> None:
                         reward=float(reward[0]),
                         terminated=bool(base.reset_terminated[0]),
                         truncated=bool(base.reset_time_outs[0]),
-                        termination_reason="nan_state" if nan_state else ("fell_over" if fell_over else None),
+                        termination_reason=(
+                            "nan_state"
+                            if nan_state
+                            else "fell_over"
+                            if fell_over
+                            else "manual_reset"
+                            if bool(base.reset_terminated[0])
+                            else None
+                        ),
                         reward_tracking_error_sq=float(reward_error_sq) if torch.isfinite(reward_error_sq) else None,
                         reward_terms=dict(
                             (name, values[0]) for name, values in base.reward_manager.get_active_iterable_terms(0)
@@ -201,7 +246,25 @@ def main() -> None:
                 from PIL import Image
 
                 Image.fromarray(last_frame).save(args.output / "evaluation.png")
-            valid = not any(row["termination_reason"] == "nan_state" for row in rows)
+            invalid_reason = next(
+                (
+                    row["termination_reason"]
+                    for row in rows
+                    if row["termination_reason"] in ("nan_state", "manual_reset")
+                ),
+                None,
+            )
+            valid = invalid_reason is None
+            if valid:
+                try:
+                    metrics = summarize_episode(rows, base.step_dt, args.seconds)
+                    qualification = analyze_velocity_protocol(rows, base.step_dt)
+                except ValueError as error:
+                    valid = False
+                    invalid_reason = f"invalid_measurements: {error}"
+            if not valid:
+                metrics = {"invalid_reason": invalid_reason}
+                qualification = {"passed": False, "invalid_reason": invalid_reason}
             receipt = {
                 "schema_version": 2,
                 "protocol_id": "flat-velocity-v1",
@@ -210,13 +273,16 @@ def main() -> None:
                 "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
                 "algorithm": args.agent,
                 "seed": args.seed,
+                "start_condition": start_condition,
+                "initial_state": initial_state,
+                "initial_actor_observation": initial_actor_observation,
+                "interactive": args.viewer,
                 "control_dt_s": base.step_dt,
                 "horizon_s": args.seconds,
                 "command_delay_ms": args.command_delay_ms,
                 "observation_delay_ms": args.observation_delay_ms,
-                "metrics": summarize_episode(rows, base.step_dt, args.seconds)
-                if valid
-                else {"invalid_reason": "nan_state"},
+                "metrics": metrics,
+                "qualification": qualification,
                 "trajectory": rows,
                 "schedule_segment_s": 4.0,
                 "joint_names": list(robot.joint_names),
@@ -224,6 +290,7 @@ def main() -> None:
                 "asset_url": cfg.scene.robot.spawn.usd_path,
                 "conditions": {
                     "task": "MicroDuckTutorial-Velocity-Flat",
+                    "start_protocol": args.start_protocol,
                     "command_delay_ms": args.command_delay_ms,
                     "observation_delay_ms": args.observation_delay_ms,
                 },
@@ -249,7 +316,9 @@ def main() -> None:
                     "provider": "CPUExecutionProvider",
                 },
             }
-            (args.output / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+            (args.output / "receipt.json").write_text(
+                json.dumps(_finite_json(receipt), indent=2, allow_nan=False) + "\n"
+            )
             if args.export and valid:
                 manifest = build_manifest(
                     receipt, onnx_sha256=hashlib.sha256((bundle / "policy.onnx").read_bytes()).hexdigest()
@@ -266,7 +335,7 @@ def main() -> None:
             print(json.dumps(receipt["metrics"], indent=2))
             if not valid:
                 raise RuntimeError(
-                    "Numerical failure invalidated this trial; termination reasons were saved in receipt.json."
+                    f"Trial invalidated by {invalid_reason}; termination reasons were saved in receipt.json."
                 )
         finally:
             wrapped.close()

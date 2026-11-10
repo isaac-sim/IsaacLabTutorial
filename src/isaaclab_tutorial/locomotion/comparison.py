@@ -28,6 +28,16 @@ class RecordedComparison:
         for field in ("seed", "control_dt_s", "horizon_s", "protocol_id"):
             if field not in reference or reference[field] != candidate.get(field):
                 raise ValueError(f"Reference and candidate must use the same {field}.")
+        if "start_condition" in reference or "start_condition" in candidate:
+            for field in ("name", "definition_sha256", "sample_sha256"):
+                first = reference.get("start_condition", {}).get(field)
+                if first is None or first != candidate.get("start_condition", {}).get(field):
+                    raise ValueError("Reference and candidate must use the same explicit start protocol and sample.")
+            for field in ("root_linear_velocity_w", "root_angular_velocity_w", "joint_vel_rad_s"):
+                first = reference.get("initial_state", {}).get(field)
+                second = candidate.get("initial_state", {}).get(field)
+                if first is None or second is None or not np.allclose(first, second, atol=1e-5, rtol=0):
+                    raise ValueError("Reference and candidate initial velocity states differ or are missing.")
         first_a, first_b = reference["trajectory"][0], candidate["trajectory"][0]
         if not np.allclose(first_a["root_pos_w"], first_b["root_pos_w"], atol=1e-5, rtol=0):
             raise ValueError("Reference and candidate initial positions differ; regenerate the reference.")
