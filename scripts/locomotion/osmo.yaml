@@ -3,8 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# One independent Duck SAC trial per GPU. Upload source.tar.gz and source.sha256
-# to /osmo/run/workspace/microduck-input using workflow rsync before training starts.
+# One independent Duck SAC trial per GPU, from a published immutable Git commit.
 version: 2
 workflow:
   name: {{ workflow_name }}
@@ -36,6 +35,8 @@ workflow:
       OMP_NUM_THREADS: "8"
       MKL_NUM_THREADS: "8"
       OPENBLAS_NUM_THREADS: "8"
+      TUTORIAL_SOURCE_REPOSITORY: "{{ source_repository }}"
+      TUTORIAL_SOURCE_REVISION: "{{ source_revision }}"
     files:
     - path: /tmp/microduck-trial.sh
       contents: |
@@ -43,7 +44,7 @@ workflow:
         OUT="${1:?OSMO output directory required}"
         INPUT=/osmo/run/workspace/microduck-input
         ROOT=/osmo/run/workspace/microduck-tutorial
-        mkdir -p "$OUT" "$ROOT"
+        mkdir -p "$OUT" "$ROOT" "$INPUT"
         finish() {
           result=$?
           trap - EXIT
@@ -58,14 +59,16 @@ workflow:
           exit "$result"
         }
         trap finish EXIT
-        deadline=$((SECONDS + 300))
-        until (cd "$INPUT" && sha256sum -c source.sha256) 2>/dev/null; do
-          if (( SECONDS >= deadline )); then echo 'Source upload deadline exceeded'; exit 1; fi
-          sleep 2
-        done
-        tar -xzf "$INPUT/source.tar.gz" -C "$ROOT" --no-same-owner
-        cp "$INPUT/source.sha256" "$OUT/source.sha256"
-        cp "$INPUT/source.tar.gz" "$OUT/source.tar.gz"
+        if [[ ! "$TUTORIAL_SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+          echo 'A full immutable Git commit SHA is required'; exit 1
+        fi
+        export GIT_LFS_SKIP_SMUDGE=1
+        git init "$ROOT" > "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" fetch --depth=1 -- "$TUTORIAL_SOURCE_REPOSITORY" "$TUTORIAL_SOURCE_REVISION" >> "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" checkout --detach FETCH_HEAD >> "$OUT/source-fetch.log" 2>&1
+        git -C "$ROOT" rev-parse HEAD > "$OUT/source-revision.txt"
+        git -C "$ROOT" archive --format=tar.gz HEAD > "$OUT/source.tar.gz"
+        (cd "$OUT" && sha256sum source.tar.gz > source.sha256)
         cd "$ROOT"
         export PATH="/workspace/isaaclab/.venv/bin:/root/.local/bin:$PATH"
         unset UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PYTHONPATH
@@ -92,6 +95,8 @@ default-values:
   workflow_name: microduck-sac-trial
   image: nvcr.io/nvidia/isaac-lab:3.0.0
   image_credential: ""
+  source_repository: https://github.com/AntoineRichard/IsaacLabTutorial.git
+  source_revision: a02f7aac7e5d46f9f4e2ef781d76c9e710156843
   platform: ovx-l40
   seed: 42
   num_envs: 4096

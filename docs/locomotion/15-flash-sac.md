@@ -33,17 +33,14 @@ For a larger new trial, increase `--num_envs` and `--max_iterations`. The initia
 
 ## Tune with OSMO
 
-The supplied [one-GPU workflow](../../scripts/locomotion/osmo.yaml) runs one independent trial. These incoming learners do not support multi-GPU training; parallelize trials instead. Package the exact local source, including its experimental lock:
+The supplied [one-GPU workflow](../../scripts/locomotion/osmo.yaml) runs one independent trial. These incoming learners do not support multi-GPU training; parallelize trials instead. It fetches a published, immutable tutorial commit, including its experimental lock:
 
 ```bash
-uv run --project environments/workflows --locked python scripts/locomotion/pack_osmo.py
 osmo workflow submit scripts/locomotion/osmo.yaml --pool YOUR_POOL --set workflow_name=microduck-sac-seed42 seed=42 updates=16
 osmo workflow query WORKFLOW_ID
-osmo workflow rsync upload WORKFLOW_ID train outputs/osmo-input/source.tar.gz:/osmo/run/workspace/microduck-input/source.tar.gz
-osmo workflow rsync upload WORKFLOW_ID train outputs/osmo-input/source.sha256:/osmo/run/workspace/microduck-input/source.sha256
 ```
 
-Choose the image, platform, and optional image credential for your pool. Replace `WORKFLOW_ID` with the returned name and wait until its task is running before the two uploads. The task waits up to five minutes for a checksummed source archive and has queue/execution limits. It writes the original source, device details, bootstrap/training logs, checkpoints, evaluation receipt, and checked ONNX bundle to OSMO's output directory. Its exit handler allows five minutes for artifact download on **success or failure**, preserving the original exit status. Download with `osmo workflow rsync download` before that collection window ends when no output bucket is configured. For unattended sweeps, add your approved output storage URL as described in [OSMO inputs and outputs](https://nvidia.github.io/OSMO/release/6.3/user_guide/workflows/specification/inputs_and_outputs.html).
+Choose the image, platform, and optional image credential for your pool. The workflow records its default `source_repository` and full `source_revision`; override them to use another published tutorial commit. Uncommitted edits are not included. Replace `WORKFLOW_ID` with the returned name. The task has queue/execution limits and writes the fetched source archive, SHA-256, Git revision, device details, bootstrap/training logs, checkpoints, evaluation receipt, and checked ONNX bundle to OSMO's output directory. Its exit handler allows five minutes for artifact download on **success or failure**, preserving the original exit status. Download with `osmo workflow rsync download` before that collection window ends when no output bucket is configured. For unattended sweeps, add your approved output storage URL as described in [OSMO inputs and outputs](https://nvidia.github.io/OSMO/release/6.3/user_guide/workflows/specification/inputs_and_outputs.html).
 
 Start with one smoke job, then screen update ratios 8/16/32 under the same seed and transition budget. Validate promising settings across fresh seeds before selecting a teaching recipe. PPO warm-start is a separate experiment.
 
