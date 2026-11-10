@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "7661009a54217473cb2ad8d3351525264363fb64",
+  "source_revision": "2dd66a53172364ad23c3619f9337cf21e4d94785",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -116,6 +116,18 @@
     {
       "path": "docs/locomotion/evidence/reward-panel-data.json",
       "sha256": "cc5f97e70a251e81495d72edf97b671cad30561bac351610273b219f0e57c377"
+    },
+    {
+      "path": "docs/locomotion/evidence/evaluation-metrics.json",
+      "sha256": "59f144e5c8fca88b6073556f71a3ba9ebc9d92e08de7b5bb0678edfe99dddfa0"
+    },
+    {
+      "path": "docs/locomotion/evidence/evaluation-metrics-render.json",
+      "sha256": "7f8bf6af217f95ef1e945c0a43924b57d5c85a3e8443325651efdf5dc447d99a"
+    },
+    {
+      "path": "docs/locomotion/evidence/evaluation-metrics-validation.json",
+      "sha256": "43bad4bb82979bd5c41fa595ecb2d7731c5ea2d0cf875fb7ca2dc5fbf0bcca39"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -700,11 +712,19 @@
       "id": "V23",
       "topic": "evaluation-metrics",
       "kind": "measured_plot",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/qualification-matrix.jpg",
           "sha256": "fc490e2584ee35dfbc737747ec996c586fc4d81bb54b9b10dc4ab762bc941e93"
+        },
+        {
+          "path": "docs/locomotion/media/standing-metrics.jpg",
+          "sha256": "357ad62fce29da7ae939eed9b3210c5a7849b56adb22ee41e3162b42026c0122"
+        },
+        {
+          "path": "docs/locomotion/media/target-rate-metrics.jpg",
+          "sha256": "f07aaf02cef9b435805d6177761007a5e3f65781a95882ec169b861dc4eb4edc"
         }
       ],
       "acceptance": "Variation is across independent training seeds; failures remain in denominators and aggregation is reproducible.",
@@ -718,7 +738,7 @@
       "dimensions": "Readable at 960 px content width; vector and high-resolution raster masters",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "The outcomes grid is published; seed-level standing/action-rate metric views remain."
+      "remaining": null
     },
     {
       "id": "V24",
@@ -911,7 +931,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/12-robustness.md",
-          "sha256": "2f51269dca8c705cfa660ec1be4ed60c01aa845857ab548e52abf6ab3327eb56"
+          "sha256": "f0a844ab5d96ff6f99772e89b8fae7fdeb1a9d3bf75959f65f65f5991559bca1"
         }
       ],
       "acceptance": "Every interval is measured or explicitly justified; no visually invented hardware tolerances.",
