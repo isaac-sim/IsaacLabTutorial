@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01–V45 and activities I01–I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "905f4e00ea8138b4235ac92d83feec4b74fb4dce",
+  "source_revision": "12b0bceba479f905118fd03ba6a9b8f23c70c7d4",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
@@ -156,6 +156,22 @@
     {
       "path": "docs/locomotion/evidence/first-attempt-video.json",
       "sha256": "1b9c989ea72baf81ff39d7481c0305dc0ff195539ef732ceac156d3677025a70"
+    },
+    {
+      "path": "docs/locomotion/evidence/core-movie-validation.json",
+      "sha256": "e4c6594488196a86117791c35c7aab1bfa0e62eb6399efea612924f47cf04dce"
+    },
+    {
+      "path": "docs/locomotion/evidence/flat-walking-overview-study.json",
+      "sha256": "093bf2177d2faebd0777a1d1e10be9dd1f5417f1d87739ff9f230edfe749fef8"
+    },
+    {
+      "path": "docs/locomotion/evidence/flat-walking-overview-video.json",
+      "sha256": "f4d030c511dd9af21fba5462454417be4dc976ccae26fe37ccdf30ea30e429a8"
+    },
+    {
+      "path": "docs/locomotion/evidence/stress-comparison-video.json",
+      "sha256": "c60d376be29ee33fd10e44d4c0d2b9464961555eba341bc148f9b80d7c1d390e"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",
@@ -170,6 +186,10 @@
         {
           "path": "docs/locomotion/media/policy-driving.jpg",
           "sha256": "96bdf5423d55d41c2fc9d38b06b13d8ae9975a5f5ecc7dc96436a2250e9d87c2"
+        },
+        {
+          "path": "docs/locomotion/media/flat-walking-overview.jpg",
+          "sha256": "98afb3063d90337c91bfd64c2133a78acd019ce9930e654bb4f6ba0395b6655e"
         }
       ],
       "acceptance": "Checkpoint, task, asset, renderer, camera, seed, and playback speed are recorded; no fabricated velocity overlay.",
@@ -181,7 +201,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Only a real still is published; native-time walking video and camera receipt remain."
+      "remaining": "Native 1080p/50 Hz/20 s movie, camera and input/encoding receipts are prepared locally and verified. Public video and recorded-input archive URLs remain to publish."
     },
     {
       "id": "V02",
@@ -191,7 +211,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/README.md",
-          "sha256": "699e42acbefc32375835d8cc08acfc5dec66886555bcfabfaa4ea4fa2aadbbea"
+          "sha256": "9fc5194f4f7dbb7019660491b3e8472b32843d623546325c780a5c6ad3faf00c"
         }
       ],
       "acceptance": "Inference path cannot be mistaken for a controller that needs rewards or critic values on hardware.",
@@ -964,7 +984,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/12-robustness.md",
-          "sha256": "f0a844ab5d96ff6f99772e89b8fae7fdeb1a9d3bf75959f65f65f5991559bca1"
+          "sha256": "586e338e1a0034ce002b73264d45e32655001f5804adabb9d900cbaa57abf0a8"
         }
       ],
       "acceptance": "Every interval is measured or explicitly justified; no visually invented hardware tolerances.",
@@ -1017,6 +1037,10 @@
         {
           "path": "docs/locomotion/media/robust-training-ghost.jpg",
           "sha256": "0285c9501df844a88d632aafe3a598e543629a0baa2f7faa22a43e53b486e512"
+        },
+        {
+          "path": "docs/locomotion/media/stress-comparison.jpg",
+          "sha256": "a6e5864d5f226fc5a6e022297ebc2b1a25affc9a0f49c8800f67c60c46beab9e"
         }
       ],
       "acceptance": "All changed factors are declared; a failing panel remains visible and is not replaced with a better seed.",
@@ -1029,7 +1053,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Actual independently recorded matched-stress ghost still and runnable comparison exist; published native-time video remains."
+      "remaining": "Native 1080p/50 Hz/20 s movie, camera and input/encoding receipts are prepared locally and verified. Public video and recorded-input archive URLs remain to publish."
     },
     {
       "id": "V34",

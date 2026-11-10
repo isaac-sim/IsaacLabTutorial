@@ -60,12 +60,16 @@ sha256sum policy-input.tar.gz YOUR_RUN/model_999.pt
 osmo workflow submit scripts/locomotion/osmo_effect_sweep.yaml --pool YOUR_POOL --set workflow_name=duck-sensitivity-preflight mechanism=command_delay_ms eval_seed_count=3 case_name=command_delay_ms-5 --set-string image=YOUR_VALIDATED_IMAGE_DIGEST checkpoint_sha256=YOUR_MODEL_SHA256 policy_archive_sha256=YOUR_ARCHIVE_SHA256
 ```
 
-Supply `image_credential=YOUR_CREDENTIAL_NAME` with `--set-string` when required by the registry. The workflow fetches the pinned published source; override its full `source_revision` only with another published producer commit. Upload the archive first, then the readiness marker, using the returned workflow name:
+Supply `image_credential=YOUR_CREDENTIAL_NAME` with `--set-string` when required by the registry. The workflow fetches the pinned published source; override its full `source_revision` only with another published producer commit. Upload the archive first, then the readiness marker, using the returned workflow name. The source-directory trailing slashes are deliberate: they copy directory contents and avoid the [upstream named-source Landlock issue](https://github.com/gokrazy/rsync/issues/66) in affected bundled clients.
+
+Use a client that preserves those trailing slashes or includes the named-source upload fix. The tested `6.3.1.210ffea0` wrapper removed the slash and reported successful transfers with zero files; the isolated `6.4.0.1f5b2c86` client preserves it. Verify the task's actual archive-digest check before treating input delivery as successful. Changing a CLI binary does not change the frozen simulation source or policy.
 
 ```bash
-osmo workflow rsync upload WORKFLOW evaluate policy-input.tar.gz:/osmo/run/workspace/microduck-input/policy-input.tar.gz
-touch input-ready
-osmo workflow rsync upload WORKFLOW evaluate input-ready:/osmo/run/workspace/microduck-input/input-ready
+mkdir -p policy-upload/archive policy-upload/ready
+cp policy-input.tar.gz policy-upload/archive/
+printf 'ready\n' > policy-upload/ready/input-ready
+osmo workflow rsync upload WORKFLOW evaluate policy-upload/archive/:/osmo/run/workspace/microduck-input/
+osmo workflow rsync upload WORKFLOW evaluate policy-upload/ready/:/osmo/run/workspace/microduck-input/
 ```
 
 The task checks the archive digest before extracting it, then checks the selected model digest before any evaluation. Input delivery, execution, and the collection window are bounded. Inspect the preflight's retained reports and archive before production. For the full plan, submit `nominal` once and each of the six mechanism names with `eval_seed_count=10` and an empty `case_name`. Use the same source, image, model and GPU type/driver for every job.
