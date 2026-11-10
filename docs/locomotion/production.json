@@ -196,6 +196,10 @@
     {
       "path": "docs/locomotion/evidence/hardware-signal-map.json",
       "sha256": "eebc33a0dab4ed035ef7bde504dc3f893a5e124ac888b281bb6947235a89d913"
+    },
+    {
+      "path": "docs/locomotion/evidence/media-publication.json",
+      "sha256": "bb8b204e6860970a36c4a955ac9d451fcec4bc5229fa42904892280dc71396db"
     }
   ],
   "rights": "Actual simulator captures/plots and repository-native diagrams. Pollen Robotics Microduck credit; no generated image is used as measured evidence.",

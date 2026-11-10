@@ -2,6 +2,8 @@
 
 These files accompany the measured examples. They are separate from the fresh short policy you train in lesson 2. [The delivery manifest](../evidence/media-delivery.json) records every SHA256, size and purpose; the release also includes `manifest.json`.
 
+[Public download verification](../evidence/media-publication.json) checked every file without a login against its exact size and SHA256.
+
 | File | Contents |
 | --- | --- |
 | [flat-walking-overview.mp4](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4) | 20-second flat-ground command sequence |
