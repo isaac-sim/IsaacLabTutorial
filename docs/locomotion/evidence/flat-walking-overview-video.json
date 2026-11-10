@@ -72,7 +72,8 @@
       1920,
       1080
     ],
-    "codec": "h264"
+    "codec": "h264",
+    "public_url": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4"
   },
   "thumbnail": {
     "sha256": "98afb3063d90337c91bfd64c2133a78acd019ce9930e654bb4f6ba0395b6655e",

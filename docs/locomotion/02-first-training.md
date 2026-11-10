@@ -83,6 +83,8 @@ This attempts the fixed command protocol and stops at the first fall or timeout.
 
 ![The actual 128-environment, 50-iteration policy's final recorded pose: it fell at 5.14 seconds after 153600 fresh transitions, and the replay explicitly holds its last pre-reset sample](media/first-attempt.jpg)
 
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/first-attempt.mp4). [Recording inputs and checksums](reference/downloads.md).
+
 This fresh seed-42 run collected 153,600 transitions and made 1,000 optimizer steps. Its frozen policy fell at 5.14 s in the nominal fixed-command test, covering 25.7% of the intended 20 seconds. The shown replay holds the last recorded pre-reset pose at 5.12 s; no physics continues after the episode ends. This is the short learner's own result. The larger walking policy is a separate run.
 
 Open [its actual training curves and replay information](08-training.md#open-the-investigator) when you reach lesson 8. [Checkpoint, event-log and recording provenance](evidence/checkpoint-media-validation.json) identify this attempt. Your run can differ; keep its own result.

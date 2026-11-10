@@ -26,6 +26,8 @@ When full recordings are installed locally and their checksums match, a delayed 
 
 ## Take the controls
 
+After trying your own first training run, you can also drive an [optional reference policy](reference/downloads.md#optional-reference-policies). Its full training budget and test conditions stay explicit.
+
 ```bash
 uv run --project environments/locomotion python scripts/locomotion/playground.py --mode policy --checkpoint latest
 ```

@@ -90,6 +90,8 @@ Predict which snapshot first survives, and which follows every command. These th
 
 ![At simulation time 14 seconds, the first checkpoint's fallen pose is explicitly held while the 101-iteration and 1000-iteration policies continue their own recordings; actual transition and optimizer budgets remain visible](media/training-progress.jpg)
 
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/training-progress.mp4). [Recording inputs and checksums](reference/downloads.md).
+
 | Saved checkpoint | Completed iterations | Fresh transitions | Optimizer steps | This fixed-start result |
 | --- | ---: | ---: | ---: | --- |
 | `model_0.pt` | 1 | 98,304 | 20 | Fell at 0.82 s |

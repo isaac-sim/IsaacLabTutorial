@@ -80,8 +80,12 @@
   },
   "publication": {
     "small_jpgs_and_provenance_in_repository": true,
-    "video_and_recording_archive_public_urls": null,
-    "status": "Prepared locally; public media hosting remains a production gate."
+    "video_and_recording_archive_public_urls": {
+      "training-progress.mp4": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/training-progress.mp4",
+      "first-attempt.mp4": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/first-attempt.mp4",
+      "checkpoint-progress-recordings.tar.gz": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/checkpoint-progress-recordings.tar.gz"
+    },
+    "status": "Published files verified against their retained SHA256 values."
   },
   "hardware_validated": false,
   "matched_progress_start": {

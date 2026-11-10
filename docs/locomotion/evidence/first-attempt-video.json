@@ -72,7 +72,8 @@
       1920,
       1080
     ],
-    "codec": "h264"
+    "codec": "h264",
+    "public_url": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/first-attempt.mp4"
   },
   "thumbnail": {
     "sha256": "a20c7f7e618a2b7dcab61554cbdc2e1d5457546aac977217fa765881f9127015",

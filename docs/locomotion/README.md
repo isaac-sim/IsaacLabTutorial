@@ -11,6 +11,8 @@ Run all commands below from the **repository root**. Python 3.12, uv, and a comp
 
 ![An actual frozen PPO policy follows the lateral command at 14 seconds on flat ground; its recorded command, measured velocity, checkpoint progress and world-space path remain visible](media/flat-walking-overview.jpg)
 
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4). [Recording inputs and checksums](reference/downloads.md).
+
 This is the longer seed-42 policy after 98,304,000 transitions, independently evaluated from `balance-starts-v1`, physical-start seed 0. The recorded 20-second protocol covers standing, forward, backward, lateral and turning commands. Its overlays use the actual recorded heading-frame forward/left velocities and world-Z yaw rate; the fixed camera preserves the whole world path.
 
 This policy passed the response criteria on this start. It is separate from the short first attempt you will train next, and one movie does not establish robustness. [Its exact checkpoint, asset, camera and native 50 Hz playback receipt](evidence/flat-walking-overview-video.json) identify the recording. Later, [drive a frozen policy yourself](09-evaluation.md) with bounded command sliders.

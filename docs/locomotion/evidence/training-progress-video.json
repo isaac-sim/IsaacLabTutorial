@@ -132,7 +132,8 @@
       1920,
       1080
     ],
-    "codec": "h264"
+    "codec": "h264",
+    "public_url": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/training-progress.mp4"
   },
   "thumbnail": {
     "sha256": "d954510fa6d959626eac718b2241f6798666d4b4fc5c5d9280f432eca23b24d3",

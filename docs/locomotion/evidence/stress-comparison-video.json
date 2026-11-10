@@ -132,7 +132,8 @@
     "dimensions": [
       1920,
       1080
-    ]
+    ],
+    "public_url": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/stress-comparison.mp4"
   },
   "thumbnail": {
     "sha256": "a6e5864d5f226fc5a6e022297ebc2b1a25affc9a0f49c8800f67c60c46beab9e",

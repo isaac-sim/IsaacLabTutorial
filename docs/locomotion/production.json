@@ -135,7 +135,7 @@
     },
     {
       "path": "docs/locomotion/evidence/checkpoint-media-validation.json",
-      "sha256": "fb6b528a2cfe9f1a3fa91d099e7e4d6e7465ff45e77b45bdbaeddba519f9bb0a"
+      "sha256": "2fcb6acb923c845a86bbb381157026c8dfb6ba4eb9400836732e6f97605de8b0"
     },
     {
       "path": "docs/locomotion/evidence/first-attempt-checkpoint.json",
@@ -151,15 +151,15 @@
     },
     {
       "path": "docs/locomotion/evidence/training-progress-video.json",
-      "sha256": "afd2989a96540b8e2d2b49a415e974349384bb30c4af1b04d554ed786626b086"
+      "sha256": "0a87a1077796851d5d60e01262343c74231c2893a6de805bdcccced52241f39e"
     },
     {
       "path": "docs/locomotion/evidence/first-attempt-video.json",
-      "sha256": "1b9c989ea72baf81ff39d7481c0305dc0ff195539ef732ceac156d3677025a70"
+      "sha256": "50f92b1d8371218014d7b2bebaa52ae6813ea4e79710460e29e5a30956912279"
     },
     {
       "path": "docs/locomotion/evidence/core-movie-validation.json",
-      "sha256": "e4c6594488196a86117791c35c7aab1bfa0e62eb6399efea612924f47cf04dce"
+      "sha256": "0accc12c0c73c45f8ff142b6d51a54f2006208fea0adf49e65e3fb9be50bd5a1"
     },
     {
       "path": "docs/locomotion/evidence/flat-walking-overview-study.json",
@@ -167,15 +167,15 @@
     },
     {
       "path": "docs/locomotion/evidence/flat-walking-overview-video.json",
-      "sha256": "f4d030c511dd9af21fba5462454417be4dc976ccae26fe37ccdf30ea30e429a8"
+      "sha256": "ac3c23de575f3844bac540b6a5cc5ff3974c6be0e76dfdd688557b1f3dc983f9"
     },
     {
       "path": "docs/locomotion/evidence/stress-comparison-video.json",
-      "sha256": "c60d376be29ee33fd10e44d4c0d2b9464961555eba341bc148f9b80d7c1d390e"
+      "sha256": "dbdd02080a69dd46b3892a42daf20b2ba1f8c58537672c45344e13596343a0ab"
     },
     {
       "path": "docs/locomotion/evidence/media-delivery.json",
-      "sha256": "232db22a88b7c157605261d62346b3f0932cbe5ac933ca800ae883ab1e5dc345"
+      "sha256": "01dffa25c6a7fbca3e1ae20e66ee2e7aafad325dc7be1c88249718db12e7ca0c"
     },
     {
       "path": "docs/locomotion/evidence/clean-walkthrough.json",
@@ -205,7 +205,7 @@
       "id": "V01",
       "topic": "flat-walking-overview",
       "kind": "simulator_video",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/policy-driving.jpg",
@@ -225,7 +225,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Native 1080p/50 Hz/20 s movie, camera and input/encoding receipts are prepared locally and verified. Public video and recorded-input archive URLs remain to publish."
+      "remaining": null
     },
     {
       "id": "V02",
@@ -235,7 +235,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/README.md",
-          "sha256": "9fc5194f4f7dbb7019660491b3e8472b32843d623546325c780a5c6ad3faf00c"
+          "sha256": "1dfac42b7b5f2ff542968500beecade387ceb069e7671a050872cfe36f5353f3"
         }
       ],
       "acceptance": "Inference path cannot be mistaken for a controller that needs rewards or critic values on hardware.",
@@ -261,7 +261,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/02-first-training.md",
-          "sha256": "cfea60756779907bc4203bc308585481e12aa4bca493f5c291938edf0324e338"
+          "sha256": "03317412936f1686713308a3ef9fe103646ec0455bc27b4e270becfd47495986"
         }
       ],
       "acceptance": "Every displayed path exists at the lesson checkpoint; config ownership and runtime execution are distinguished.",
@@ -284,7 +284,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/02-first-training.md",
-          "sha256": "cfea60756779907bc4203bc308585481e12aa4bca493f5c291938edf0324e338"
+          "sha256": "03317412936f1686713308a3ef9fe103646ec0455bc27b4e270becfd47495986"
         },
         {
           "path": "docs/locomotion/evidence/task-list.json",
@@ -742,7 +742,7 @@
       "id": "V21",
       "topic": "policy-progress",
       "kind": "comparison_video",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/training-progress.jpg",
@@ -759,7 +759,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "The native 1080p/50 Hz/20 s movie is prepared locally with all actual checkpoints, matched starts, fixed cameras, failure holds and verified source/input/video hashes. Public video and recording-archive URLs remain to publish."
+      "remaining": null
     },
     {
       "id": "V22",
@@ -1028,7 +1028,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/12-robustness.md",
-          "sha256": "586e338e1a0034ce002b73264d45e32655001f5804adabb9d900cbaa57abf0a8"
+          "sha256": "c19b10f9664d5a5417115a5a3ee17162d8353cf74c97f6d3a73b6b5c33348a47"
         }
       ],
       "acceptance": "Every interval is measured or explicitly justified; no visually invented hardware tolerances.",
@@ -1076,7 +1076,7 @@
       "id": "V33",
       "topic": "matched-stress-comparison",
       "kind": "comparison_video",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/robust-training-ghost.jpg",
@@ -1097,7 +1097,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Native 1080p/50 Hz/20 s movie, camera and input/encoding receipts are prepared locally and verified. Public video and recorded-input archive URLs remain to publish."
+      "remaining": null
     },
     {
       "id": "V34",
@@ -1174,7 +1174,7 @@
       "outputs": [
         {
           "path": "docs/locomotion/14-super-mimic.md",
-          "sha256": "2e53f84eb626d66f9e63af6e9a1b3fe55eefb32439b6dbef7c8c908fdf42961e"
+          "sha256": "0e40bba730ef413e7adbcda8c0b3a3e8868c7bb7a8a59ef5803e26f2aa48f068"
         }
       ],
       "acceptance": "Every stage traces to merged source/docs; no substitution with similarly named Mimic workflows.",
@@ -1193,7 +1193,7 @@
       "id": "V38",
       "topic": "super-mimic-experiment",
       "kind": "comparison_video",
-      "status": "partial",
+      "status": "produced",
       "outputs": [
         {
           "path": "docs/locomotion/media/supermimic-normalization.jpg",
@@ -1209,7 +1209,7 @@
         },
         {
           "path": "docs/locomotion/evidence/supermimic-native-video.json",
-          "sha256": "eee6732cee1865c3f313f020a14e2b3fa433d10256a50a3f365865674be7f8bb"
+          "sha256": "2d7de10f7c85bb16d0e33bb9698547110c4e2d33f25cbf4ae98f7ac7a5ae863f"
         }
       ],
       "acceptance": "Example runs under the merged integration; any supported non-Microduck example is explicitly identified.",
@@ -1222,7 +1222,7 @@
       "dimensions": "1920x1080; native simulation/real time; poster derivative",
       "caption_requirement": "State what to notice, condition/task, signal units, source/run, and any changed factors or illustrative status.",
       "alt_text_requirement": "Describe the teaching point and meaningful relationships or trend; do not repeat the title alone.",
-      "remaining": "Native-time1080p50Hz20sMP4 is complete and checked locally. Publish the exact checksum-bound video and add its reviewed external URL."
+      "remaining": null
     },
     {
       "id": "V39",
@@ -1479,7 +1479,7 @@
         },
         {
           "path": "docs/locomotion/evidence/checkpoint-media-validation.json",
-          "sha256": "fb6b528a2cfe9f1a3fa91d099e7e4d6e7465ff45e77b45bdbaeddba519f9bb0a"
+          "sha256": "2fcb6acb923c845a86bbb381157026c8dfb6ba4eb9400836732e6f97605de8b0"
         }
       ],
       "scope": "Actual fresh 128-environment/50-iteration PPO run, realized counters and native recorded failed-policy replay, with a working one-run Chrome investigator capture. The longer walking policy remains a separate run; public movie/recording archive URLs are pending."

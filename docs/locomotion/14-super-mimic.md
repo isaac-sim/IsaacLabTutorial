@@ -177,9 +177,11 @@ The traces show the same initial physical state for training seed 1. The adaptiv
 
 ![The adaptive-normalization Duck has fallen while the fixed-normalization Duck continues the recorded command trial](media/supermimic-native-video.jpg)
 
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/supermimic-normalization.mp4). [Recording inputs and checksums](reference/downloads.md).
+
 This frame comes from a complete 20-second, 1920×1080 recording rendered at the original 50 Hz control cadence. Both policies start from the same measured state: teacher/student seed 1, evaluation start 0. Adaptive input moments end in a fall at 5.36 s; fixed moments retain the full qualified response. The failed lane explicitly holds its final recorded pre-reset pose after the fall. Constant display translations separate the lanes; the camera stays fixed over both complete world-space paths, preserving drift. Commands and measured velocities retain m/s and rad/s units. This is teacher-transfer preservation in simulation, with the full teacher cost shown, and makes no learning-from-scratch or hardware claim.
 
-The [video receipt](evidence/supermimic-native-video.json) records original input/checkpoint hashes, the verified robot bytes, camera, all 1000 native frames, codec and MP4 checksum. Reproduce the local MP4 from the original evaluation receipts; publication of the large media file is a separate step:
+The [video receipt](evidence/supermimic-native-video.json) records original input/checkpoint hashes, the verified robot bytes, camera, all 1000 native frames, codec and MP4 checksum. Reproduce the MP4 from the original evaluation receipts in the downloaded recording archive:
 
 ```bash
 uv run --project environments/workflows --locked python scripts/locomotion/render_supermimic_video.py --adaptive PATH/TO/ADAPTIVE/train-seed-1/eval-seed-0/receipt.json --fixed PATH/TO/FIXED/train-seed-1/eval-seed-0/receipt.json --output outputs/supermimic-native.mp4 --thumbnail outputs/supermimic-native.jpg

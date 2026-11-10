@@ -36,7 +36,12 @@
     "all_member_hashes_roundtrip_checked": true
   },
   "overview_input_archive": "Reuse checkpoint-progress-recordings.tar.gz with --receipt-root pointing at its extracted directory; the overview study selects its iteration-999 receipt.",
-  "public_video_and_recording_urls": null,
-  "publication_status": "Prepared locally; public hosting remains pending.",
+  "public_video_and_recording_urls": {
+    "flat-walking-overview.mp4": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/flat-walking-overview.mp4",
+    "stress-comparison.mp4": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/stress-comparison.mp4",
+    "stress-recordings.tar.gz": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/stress-recordings.tar.gz",
+    "checkpoint-progress-recordings.tar.gz": "https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/checkpoint-progress-recordings.tar.gz"
+  },
+  "publication_status": "Published files verified against their retained SHA256 values.",
   "hardware_validated": false
 }

@@ -123,6 +123,8 @@ This pair uses training seed 42 and physical-start seed 0. Both policies experie
 
 ![At 14 seconds the blue nominal-trained ghost holds its final fallen pose and its own 1.82-second readings, while the white delay-trained candidate follows the lateral command; both retain original world coordinates](media/stress-comparison.jpg)
 
+[Watch the native movie](https://github.com/AntoineRichard/IsaacLabTutorial/releases/download/microduck-tutorial-media-3463b86/stress-comparison.mp4). [Recording inputs and checksums](reference/downloads.md).
+
 This poster comes from a new 20-second, 1,000-frame movie of those exact receipts at their native 50 Hz cadence. The blue actor has no collision participation. Its final pre-reset pose and readings are explicitly held after the fall; they are not a prediction of later behavior. The white actor replays body poses from its own independent closed-loop trial. The camera stays fixed, without translating either trajectory.
 
 [The movie receipt](evidence/stress-comparison-video.json) and [decoding/input validation](evidence/core-movie-validation.json) preserve the exact source, model, asset and recording hashes. To render your own matched pair, use the two full evaluation receipts:
