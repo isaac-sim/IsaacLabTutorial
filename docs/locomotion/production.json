@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "Production inventory for requested visuals V01\u2013V45 and activities I01\u2013I08. Produced means an output exists, not that every acceptance check or hardware gate is closed.",
-  "source_revision": "3463b86db0e692a22daa6849fe9f07b74efc7f2a",
+  "source_revision": "413ab239732f315e73abc6401c152add5c33b059",
   "source_lock": [
     {
       "path": "environments/locomotion/uv.lock",
