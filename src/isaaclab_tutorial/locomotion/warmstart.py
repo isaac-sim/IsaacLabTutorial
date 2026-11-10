@@ -16,6 +16,7 @@ import torch
 
 if TYPE_CHECKING:
     from rsl_rl.algorithms import SuperMimic
+    from rsl_rl.models import SuperMimicActor
     from tensordict import TensorDict
 
 
@@ -42,6 +43,17 @@ def qualified_teacher_receipt(checkpoint: Path, receipt_path: Path) -> dict:
     if receipt.get("checkpoint_sha256") != hashlib.sha256(checkpoint.read_bytes()).hexdigest():
         raise ValueError("Teacher qualification does not match the selected checkpoint weights.")
     return receipt
+
+
+def freeze_actor_normalization(actor: SuperMimicActor) -> None:
+    """Fix the Duck actor's fitted input moments while retaining trainable policy parameters.
+
+    Native ``train_mode`` can still enable actor training. Reapply this after loading a checkpoint
+    before further optimization: ``EmpiricalNormalization.until`` is not part of its state dictionary.
+    Inference already uses fixed saved moments through the learner's evaluation mode.
+    """
+    for normalizer in (actor.obs_norm, actor.goal_norm):
+        normalizer.until = int(normalizer.count)
 
 
 @torch.no_grad()

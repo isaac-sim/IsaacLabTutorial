@@ -95,12 +95,13 @@ def test_differentiable_duck_heads_match_pre_reset_simulator_rewards_and_sensor_
 
 
 @pytest.mark.integration
-def test_standard_duck_history_export_matches_native_actor_through_streaming_and_reset(duck_env, tmp_path):
+def test_duck_history_export_preserves_frozen_training_normalization_and_reset(duck_env, tmp_path):
     import numpy as np
     import onnxruntime as ort
     from rsl_rl.models import SuperMimicActor
 
     from isaaclab_tutorial.locomotion.deployment import inline_onnx_weights
+    from isaaclab_tutorial.locomotion.warmstart import freeze_actor_normalization
 
     env = duck_env
     task = MicroDuckTask(env, device=env.device)
@@ -120,6 +121,18 @@ def test_standard_duck_history_export_matches_native_actor_through_streaming_and
         .to(env.device)
         .eval()
     )
+    native.train()
+    probes = []
+    for normalizer, width in ((native.obs_norm, 48), (native.goal_norm, 13)):
+        normalizer.update(torch.ones(4, width, device=env.device))
+        probe = torch.full((2, width), 2.0, device=env.device)
+        probes.append((normalizer, probe, normalizer(probe).detach().clone()))
+    freeze_actor_normalization(native)
+    # Native train_mode() may run again; fixed moments must survive that mode change.
+    native.train()
+    for normalizer, probe, expected in probes:
+        normalizer.update(torch.full((4, probe.shape[-1]), -3.0, device=env.device))
+        torch.testing.assert_close(normalizer(probe), expected)
     wrapper = DuckHistoryPolicy(native.as_onnx().cpu(), history_length=3).eval()
     jit = torch.jit.script(wrapper)
     path = tmp_path / "policy.onnx"
@@ -149,6 +162,11 @@ def test_standard_duck_history_export_matches_native_actor_through_streaming_and
             torch.testing.assert_close(result, expected.cpu(), atol=1e-5, rtol=1e-4)
             np.testing.assert_allclose(onnx_action, expected.cpu().numpy(), atol=1e-5, rtol=1e-4)
             env.step(expected.expand(16, -1))
+    for normalizer, probe, expected in probes:
+        torch.testing.assert_close(normalizer(probe), expected)
+    native.forward_history(native.history, obs["goal"]).sum().backward()
+    assert all(parameter.requires_grad for parameter in native.parameters())
+    assert any(parameter.grad is not None and parameter.grad.abs().max() > 0 for parameter in native.parameters())
 
 
 def test_duck_adapter_rejects_reward_replacement_sensor_delay_and_mismatched_feet(duck_env, monkeypatch):

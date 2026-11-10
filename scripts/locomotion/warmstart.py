@@ -34,7 +34,11 @@ from isaaclab_tutorial.locomotion.evaluation import (
     resolve_checkpoint,
     validate_training_contract,
 )
-from isaaclab_tutorial.locomotion.warmstart import prepare_teacher_transition, qualified_teacher_receipt
+from isaaclab_tutorial.locomotion.warmstart import (
+    freeze_actor_normalization,
+    prepare_teacher_transition,
+    qualified_teacher_receipt,
+)
 
 
 def _sha256(path: Path) -> str:
@@ -54,6 +58,11 @@ def main() -> None:
         "--iterations", type=int, default=2500, help="Fresh native-policy collection steps per environment."
     )
     parser.add_argument("--learning-rate", type=float, default=1e-7)
+    parser.add_argument(
+        "--adapt-actor-normalization",
+        action="store_true",
+        help="Experimental ablation: continue adapting input moments.",
+    )
     args = parser.parse_args()
     cache_size, batch_size, imitation_updates = 131_072, 1024, 4
     if not 1 <= args.num_envs <= cache_size or min(args.imitation_steps, args.model_warmup, args.iterations) < 1:
@@ -149,6 +158,7 @@ def main() -> None:
             "physical_transitions": args.iterations * args.num_envs,
             "initial_learning_rate": args.learning_rate,
             "teacher_replay": "retained initially, then ordinary cyclic eviction as fresh transitions arrive",
+            "actor_normalization": "adaptive" if args.adapt_actor_normalization else "fixed_after_imitation",
         },
     }
 
@@ -259,9 +269,26 @@ def main() -> None:
                 algorithm._update_learning_rate()
                 student.save(str(args.output / "world_model_warmup.pt"))
                 metadata["status"] = "native_rl"
-                metadata["model_warmup"]["optimizer_steps"] = (
+                metadata["model_warmup"]["planned_optimizer_steps"] = (
                     args.model_warmup * agent.algorithm.num_world_model_updates
                 )
+                metadata["model_warmup"]["optimizer_step_counters"] = sorted(
+                    {
+                        int(value["step"])
+                        for value in algorithm.optimizers["world_model"].state.values()
+                        if "step" in value
+                    }
+                )
+                if not args.adapt_actor_normalization:
+                    freeze_actor_normalization(actor)
+                    metadata["native_rl"]["fixed_normalization_samples"] = {
+                        "observations": int(actor.obs_norm.count),
+                        "goals": int(actor.goal_norm.count),
+                    }
+                    metadata["native_rl"]["further_training"] = (
+                        "Reapply freeze_actor_normalization(runner.alg.actor) after loading, before runner.learn; "
+                        "the native normalizer's until setting is not serialized in checkpoint state."
+                    )
                 save_metadata()
                 student.learn(args.iterations)
                 checkpoint = args.output / f"model_{args.iterations - 1}.pt"
