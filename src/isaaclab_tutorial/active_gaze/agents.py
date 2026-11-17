@@ -1,7 +1,9 @@
 """Class-based SO-101 policy, loss, and optimizer presets."""
 
 from isaaclab.utils import configclass
+
 from isaaclab_rl.rsl_rl import RslRlCNNModelCfg, RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
+
 from isaaclab_tasks.utils import PresetCfg
 
 from isaaclab_tutorial.active_gaze.learning.config import LanguageVisionActorCfg

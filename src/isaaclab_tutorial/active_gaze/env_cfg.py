@@ -234,7 +234,9 @@ class LanguageProprioceptionCfg(ProprioceptionCfg):
 class VisionCfg(ObservationGroupCfg):
     tokens = ObservationTermCfg(
         func=DinoTokens,
-        params=dict(reference=DEFAULT_CHECKPOINT, checksum=DEFAULT_MD5, batch_size=128, data_type=CameraOutputNameCfg()),
+        params=dict(
+            reference=DEFAULT_CHECKPOINT, checksum=DEFAULT_MD5, batch_size=128, data_type=CameraOutputNameCfg()
+        ),
     )
     concatenate_dim = 0
     enable_corruption = False
@@ -339,7 +341,9 @@ class NumberedEnvCfg(NearestEnvCfg):
 class LanguageEnvCfg(NumberedEnvCfg):
     """Numbered placement from frozen foveated DINO tokens and a language instruction."""
 
-    scene: NumberedSceneCfg = NumberedSceneCfg(num_envs=128, env_spacing=0.9, eye=NUMBERED_CAMERA.replace(foveated_res=128))
+    scene: NumberedSceneCfg = NumberedSceneCfg(
+        num_envs=128, env_spacing=0.9, eye=NUMBERED_CAMERA.replace(foveated_res=128)
+    )
     observations: LanguageObservationsCfg = LanguageObservationsCfg()
 
 

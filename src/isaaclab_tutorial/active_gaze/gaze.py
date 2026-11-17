@@ -1,8 +1,8 @@
 """Gaze action of the active-gaze task, its reset, and the teacher's gaze labels.
 
-Gaze angles are (tilt, pan) [rad] from the scene camera's optical axis: positive tilt looks up and positive pan looks
-left, as for :meth:`isaaclab_fovi.sensors.FoveatedCamera.set_gaze_angles`. Camera-frame directions use the OpenCV
-convention: x right, y down, z forward.
+Gaze angles are (tilt, pan) [deg] from the scene camera's optical axis: positive tilt looks up and positive pan looks
+left, as for :meth:`isaaclab_fovi.sensors.FoveatedCamera.set_gaze_angles`. The policy sees and moves the gaze in field
+radii, half the retina's field of view. Camera-frame directions use the OpenCV convention: x right, y down, z forward.
 """
 
 from __future__ import annotations
@@ -27,25 +27,25 @@ RESET_MODES = ("random", "object", "goal", "near_object", "near_goal")
 either."""
 
 
-def angles_to_direction(angles: torch.Tensor) -> torch.Tensor:
-    """Camera-frame unit directions of gaze angles, shape (..., 2) to (..., 3)."""
-    tilt, pan = angles.unbind(-1)
+def angles_to_direction(angles_deg: torch.Tensor) -> torch.Tensor:
+    """Camera-frame unit directions of gaze angles [deg], shape (..., 2) to (..., 3)."""
+    tilt, pan = angles_deg.deg2rad().unbind(-1)
     return torch.stack((-tilt.cos() * pan.sin(), -tilt.sin(), tilt.cos() * pan.cos()), -1)
 
 
 def direction_to_angles(direction: torch.Tensor) -> torch.Tensor:
-    """Gaze angles of camera-frame directions, shape (..., 3) to (..., 2)."""
+    """Gaze angles [deg] of camera-frame directions, shape (..., 3) to (..., 2)."""
     x, y, z = direction.unbind(-1)
-    return torch.stack((-torch.atan2(y, torch.sqrt(x.square() + z.square())), -torch.atan2(x, z)), -1)
+    return torch.stack((-torch.atan2(y, torch.sqrt(x.square() + z.square())), -torch.atan2(x, z)), -1).rad2deg()
 
 
 def clamp_gaze(angles: torch.Tensor, limit: float) -> torch.Tensor:
-    """Scale gaze angles back onto the circle of radius ``limit`` [rad] when they leave it."""
+    """Scale gaze angles back onto the circle of radius ``limit`` when they leave it."""
     return angles * (limit / angles.norm(dim=-1, keepdim=True).clamp_min(limit))
 
 
 def random_gaze(count: int, limit: float, device=None) -> torch.Tensor:
-    """Gaze angles drawn uniformly over the disc of radius ``limit`` [rad], shape (count, 2)."""
+    """Gaze angles drawn uniformly over the disc of radius ``limit``, shape (count, 2)."""
     radius = limit * torch.rand(count, device=device).sqrt()
     angle = 2 * math.pi * torch.rand(count, device=device)
     return torch.stack((radius * angle.sin(), radius * angle.cos()), dim=-1)
@@ -99,9 +99,9 @@ def gaze_targets(env, vial_pose: torch.Tensor, rack_pose: torch.Tensor, env_ids=
 class GazeAction(ActionTerm):
     """Moves the scene camera's gaze by bounded increments in (tilt, pan) order.
 
-    An action of 1 changes an angle by ``step_size`` field radii, and the gaze stays within ``gaze_limit`` field radii
-    of the optical axis. The field radius is half the retina's field of view. At reset the gaze starts at one of
-    :data:`RESET_MODES`, drawn uniformly, or on the optical axis when ``mixed_resets`` is off.
+    Actions, limits and the observed gaze are in field radii. An action of 1 changes an angle by ``step_size`` and the
+    gaze stays within ``gaze_limit`` of the optical axis. At reset the gaze starts at one of :data:`RESET_MODES`, drawn
+    uniformly, or on the optical axis when ``mixed_resets`` is off.
     """
 
     cfg: GazeActionCfg
@@ -110,15 +110,11 @@ class GazeAction(ActionTerm):
         super().__init__(cfg, env)
         self.camera = env.scene[cfg.camera_name]
         self.camera_model = resolve_camera_model(self.camera.cfg)
-        self.field_radius = math.radians(sampling_geometry(self.camera.cfg)[0] / 2)
-        """Half the retina's field of view [rad]."""
-        self.max_step = cfg.step_size * self.field_radius
-        """Largest change of each gaze angle per step [rad]."""
-        self.limit = cfg.gaze_limit * self.field_radius
-        """Largest angle between the gaze and the optical axis [rad]."""
+        self.field_radius_deg = sampling_geometry(self.camera.cfg)[0] / 2
+        """Half the retina's field of view [deg]."""
         self.base_rotation = torch.tensor(self.camera.cfg.offset.rot, device=self.device)
         self._raw = torch.zeros(self.num_envs, 2, device=self.device)
-        self._angles = torch.zeros_like(self._raw)
+        self._gaze = torch.zeros_like(self._raw)
         self._velocity = torch.zeros_like(self._raw)
         self.reset_mode = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
         """Index into :data:`RESET_MODES` of each environment's last reset."""
@@ -133,19 +129,24 @@ class GazeAction(ActionTerm):
 
     @property
     def processed_actions(self) -> torch.Tensor:
-        return self._angles
+        return self._gaze
 
     @property
-    def angles(self) -> torch.Tensor:
-        """Current gaze angles [rad], shape (num_envs, 2)."""
-        return self._angles
+    def gaze(self) -> torch.Tensor:
+        """Current gaze in field radii, shape (num_envs, 2)."""
+        return self._gaze
+
+    @property
+    def angles_deg(self) -> torch.Tensor:
+        """Current gaze angles [deg], shape (num_envs, 2)."""
+        return self._gaze * self.field_radius_deg
 
     def process_actions(self, actions: torch.Tensor):
         self._raw.copy_(actions)
-        previous = self._angles.clone()
-        self._angles.copy_(clamp_gaze(self._angles + actions.clamp(-1, 1) * self.max_step, self.limit))
-        self._velocity.copy_((self._angles - previous) / self._env.step_dt)
-        self.camera.set_gaze_angles(self._angles)
+        previous = self._gaze.clone()
+        self._gaze.copy_(clamp_gaze(self._gaze + actions.clamp(-1, 1) * self.cfg.step_size, self.cfg.gaze_limit))
+        self._velocity.copy_((self._gaze - previous) / self._env.step_dt)
+        self.camera.set_gaze_angles(self.angles_deg)
 
     def apply_actions(self):
         pass
@@ -154,11 +155,11 @@ class GazeAction(ActionTerm):
         ids = torch.arange(self.num_envs, device=self.device)[slice(None) if env_ids is None else env_ids]
         self._raw[ids] = 0
         self._velocity[ids] = 0
+        self._gaze[ids] = 0
         self.reset_mode[ids] = 0
-        self._angles[ids] = 0
         if self.cfg.mixed_resets and len(ids):
             self._reset_mixed(ids)
-        self.camera.set_gaze_angles(self._angles)
+        self.camera.set_gaze_angles(self.angles_deg)
 
     def _reset_mixed(self, ids: torch.Tensor):
         """Start each gaze at one of :data:`RESET_MODES` for this episode's vial and rack."""
@@ -174,12 +175,12 @@ class GazeAction(ActionTerm):
         point = torch.where(((modes == 2) | (modes == 4))[:, None], goal_point, vial_point)
         direction = self.directions(point, ids)
         direction = torch.where((modes >= 3)[:, None], nearby_directions(direction), direction)
-        aligned = direction_to_angles(direction)
-        modes = torch.where(self.visible(direction) & (aligned.norm(dim=-1) <= self.limit), modes, 0)
+        aligned = direction_to_angles(direction) / self.field_radius_deg
+        modes = torch.where(self.visible(direction) & (aligned.norm(dim=-1) <= self.cfg.gaze_limit), modes, 0)
         # A random start lies inside the physical image too; the optical axis is the fallback.
-        random = random_gaze(len(ids), self.limit, self.device)
-        random = torch.where(self.visible(angles_to_direction(random))[:, None], random, 0)
-        self._angles[ids] = torch.where((modes == 0)[:, None], random, aligned)
+        random = random_gaze(len(ids), self.cfg.gaze_limit, self.device)
+        random = torch.where(self.visible(angles_to_direction(random * self.field_radius_deg))[:, None], random, 0)
+        self._gaze[ids] = torch.where((modes == 0)[:, None], random, aligned)
         self.reset_mode[ids] = modes
 
     def directions(self, points: torch.Tensor, env_ids=slice(None)) -> torch.Tensor:
@@ -196,21 +197,21 @@ class GazeAction(ActionTerm):
         A point is valid when the physical camera sees it and the gaze can reach it within the limit.
         """
         direction = self.directions(points)
-        desired = direction_to_angles(direction)
-        valid = self.visible(direction) & (desired.norm(dim=-1) <= self.limit)
-        action = ((clamp_gaze(desired, self.limit) - self._angles) / self.max_step).clamp(-1, 1)
+        desired = direction_to_angles(direction) / self.field_radius_deg
+        valid = self.visible(direction) & (desired.norm(dim=-1) <= self.cfg.gaze_limit)
+        action = ((clamp_gaze(desired, self.cfg.gaze_limit) - self._gaze) / self.cfg.step_size).clamp(-1, 1)
         return torch.where(valid[:, None], action, 0.0), valid
 
-    def fixation_error(self, points: torch.Tensor) -> torch.Tensor:
-        """Angle [rad] between the gaze and the direction to world points."""
+    def fixation_error_deg(self, points: torch.Tensor) -> torch.Tensor:
+        """Angle [deg] between the gaze and the direction to world points."""
         direction = self.directions(points)
-        gaze = angles_to_direction(self._angles)
+        gaze = angles_to_direction(self.angles_deg)
         # atan2 stays accurate near perfect alignment, unlike acos of the dot product.
-        return torch.atan2(torch.cross(gaze, direction, dim=-1).norm(dim=-1), (gaze * direction).sum(-1))
+        return torch.atan2(torch.cross(gaze, direction, dim=-1).norm(dim=-1), (gaze * direction).sum(-1)).rad2deg()
 
     def proprioception(self) -> torch.Tensor:
-        """Gaze angles, their velocity and the command. The virtual gaze reaches its command at once."""
-        return torch.cat((self._angles, self._velocity, self._angles), dim=-1)
+        """Gaze and its velocity, in field radii and field radii per second, shape (num_envs, 4)."""
+        return torch.cat((self._gaze, self._velocity), dim=-1)
 
 
 @configclass
@@ -221,10 +222,10 @@ class GazeActionCfg(ActionTermCfg):
     asset_name: str = "robot"
     camera_name: str = "eye"
     """Scene name of the foveated camera whose gaze the action moves."""
-    step_size: float = 0.17
-    """Change of each gaze angle per step at an action of 1, in field radii."""
-    gaze_limit: float = 0.975
-    """Largest angle between the gaze and the camera's optical axis, in field radii."""
+    step_size: float = 0.1
+    """Change of each gaze coordinate per step at an action of 1, in field radii."""
+    gaze_limit: float = 1.0
+    """Largest distance of the gaze from the camera's optical axis, in field radii."""
     mixed_resets: bool = True
     """Start episodes at a gaze drawn from :data:`RESET_MODES`; otherwise on the optical axis."""
 
@@ -244,7 +245,7 @@ def oracle_labels(env) -> torch.Tensor:
     gaze: GazeAction = env.action_manager.get_term("gaze")
     point = teacher_target(env)
     action, valid = gaze.teacher_action(point)
-    error = gaze.fixation_error(point).rad2deg()
+    error = gaze.fixation_error_deg(point)
     log = env.extras.setdefault("log", {})
     log["Gaze/target_error_deg"] = torch.where(valid, error, 0).sum() / valid.sum().clamp_min(1)
     log["Gaze/within_1deg"] = (valid & (error <= 1)).float().mean()
