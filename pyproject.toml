@@ -26,6 +26,8 @@ generate-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:gene
 view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_main"
 
 [project.optional-dependencies]
+# The foveated camera (isaaclab_fovi) and the libraries of the ActiveGaze task.
+fovi = ["isaaclab[fovi]", "transformers==5.19.0"]
 leapp = ["leapp==0.7.2"]
 ovphysx = ["ovphysx"]
 ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
@@ -39,10 +41,14 @@ wandb = ["isaaclab[wandb]", "wandb==0.26.1"]
 dev = ["codespell>=2.4", "pre-commit>=4.2", "pytest>=8.3", "ruff>=0.11"]
 
 [tool.uv]
-environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'win32' and platform_machine == 'AMD64'", "sys_platform == 'linux' and platform_machine == 'aarch64'"]
+# Isaac Lab pins transformers 5.10.4; the ActiveGaze language encoder (Cosmos3-Edge) first ships in 5.19.0.
+override-dependencies = ["transformers==5.19.0"]
+environments =["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'win32' and platform_machine == 'AMD64'", "sys_platform == 'linux' and platform_machine == 'aarch64'"]
 
 [tool.uv.sources]
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", branch = "release/3.0.0", subdirectory = "tools/wheel_builder" }
+# The ActiveGaze task needs isaaclab_fovi, which is under review in Isaac Lab. Until it merges, the tutorial builds
+# Isaac Lab from that pull request's branch.
+isaaclab = { git = "https://github.com/nblauch/IsaacLab.git", branch = "feat/isaaclab-fovi-sensors", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 torch = { index = "pytorch-cu130" }
