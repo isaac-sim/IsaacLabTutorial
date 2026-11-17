@@ -21,6 +21,7 @@ from isaaclab_tutorial.tasks.place_vial.mdp.progress import placement_progress
 from isaaclab_tutorial.tasks.place_vial.mdp.task import RACK_RIM_HEIGHT, VIAL_AXIS_MAX, VIAL_AXIS_MIN
 
 from .goals import CAP_LABEL_POSITION, RACK_LABEL_OFFSETS, target_holes
+from .sim2real import mount_randomization
 
 RESET_MODES = ("random", "object", "goal", "near_object", "near_goal")
 """Where the gaze starts an episode: anywhere in the camera's view, at the vial or the goal, or 2 to 5 degrees off
@@ -184,8 +185,10 @@ class GazeAction(ActionTerm):
         self.reset_mode[ids] = modes
 
     def directions(self, points: torch.Tensor, env_ids=slice(None)) -> torch.Tensor:
-        """Camera-frame unit directions from the camera to world points."""
-        return camera_directions(points, self.camera.data.pos_w.torch[env_ids], self.base_rotation)
+        """Camera-frame unit directions from the camera's mount to world points."""
+        mount = mount_randomization(self._env)
+        rotation = self.base_rotation if mount is None else mount.rotation[env_ids]
+        return camera_directions(points, self.camera.data.pos_w.torch[env_ids], rotation)
 
     def visible(self, direction: torch.Tensor) -> torch.Tensor:
         """Whether camera-frame directions fall inside the physical camera's image."""

@@ -18,25 +18,27 @@ import math
 import torch
 from isaaclab_fovi.sensors import FoveatedCameraCfg
 
-from isaaclab.assets import AssetBaseCfg
-from isaaclab.managers import CurriculumTermCfg, ManagerTermBase, ObservationGroupCfg, ObservationTermCfg
+from isaaclab.assets import AssetBaseCfg, VisualMaterialCfg
+from isaaclab.managers import CurriculumTermCfg, EventTermCfg, ManagerTermBase, ObservationGroupCfg, ObservationTermCfg
 from isaaclab.sensors import CameraCfg
 from isaaclab.sim import DomeLightCfg, PinholeCameraCfg
 from isaaclab.utils import configclass
 
-from isaaclab_tasks.utils import PresetCfg
+from isaaclab_tasks.utils import PresetCfg, preset
 
 from isaaclab_tutorial.assets.numbers import LABEL_ASSETS
-from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import ProprioceptionCfg
+from isaaclab_tutorial.tasks.place_vial.config.so101.camera_env_cfg import CameraSim2RealEventsCfg, ProprioceptionCfg
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
     ActionsCfg,
     CriticStateGroupCfg,
     EventsCfg,
     RewardsCfg,
+    Sim2RealEventsCfg,
     SO101SceneCfg,
     SO101VialEnvCfg,
     TerminationsCfg,
 )
+from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES
 
 from .gaze import GazeActionCfg, oracle_labels
 from .goals import (
@@ -55,6 +57,7 @@ from .learning.observations import DinoTokens
 from .render_options import CameraOutputCfg, CameraOutputNameCfg, CameraRenderSettingsCfg, FoviRendererCfg
 from .robot_geometry import spawn_without_wrist_camera
 from .sampling import ResetSampling
+from .sim2real import PHOTOMETRIC_RANGES, ExtrinsicsObservations, PhotometricVariation, randomize_camera_mount
 
 ##
 # Scene camera
@@ -118,6 +121,13 @@ class SceneCfg(SO101SceneCfg):
     eye = NEAREST_CAMERA
     light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=2000))
 
+    # Materials that the sim2real colour events vary; the Newton renderer only reads material colour.
+    robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
+    desk_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Desk/Looks/Wood", spawn=None)
+    rack_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Rack/WorkshopVisual/Looks/OmniPBR", spawn=None)
+    vial_body_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Vial_plastic", spawn=None)
+    vial_cap_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Vial/Looks/Vial_cap", spawn=None)
+
 
 @configclass
 class NumberedSceneCfg(SceneCfg):
@@ -140,19 +150,28 @@ class NumberedSceneCfg(SceneCfg):
 class SceneRGB(ManagerTermBase):
     """The scene camera's retina as RGB in [0, 1], shape (num_envs, 3, H, W).
 
-    The image is read again only when the policy decides, so an action chunk's native steps reuse it.
+    The image is read again only when the policy decides, so an action chunk's native steps reuse it. With
+    ``photometric`` ranges the retina's appearance varies per episode.
     """
 
     def __init__(self, cfg, env):
         super().__init__(cfg, env)
+        ranges = cfg.params.get("photometric")
+        self.photometric = PhotometricVariation(env.num_envs, env.device, ranges) if ranges is not None else None
         self.cached = None
 
-    def __call__(self, env):
+    def reset(self, env_ids=None):
+        if self.photometric is not None:
+            self.photometric.reset(env_ids)
+
+    def __call__(self, env, photometric=None):
         if not getattr(env, "refresh_policy_vision", True) and self.cached is not None:
             return self.cached
         camera = env.scene["eye"]
-        image = camera.data.output[camera.cfg.data_types[0]].torch
-        self.cached = image[..., :3].float().permute(0, 3, 1, 2).contiguous() / 255.0
+        image = camera.data.output[camera.cfg.data_types[0]].torch[..., :3]
+        if self.photometric is not None:
+            image = self.photometric(image)
+        self.cached = image.float().permute(0, 3, 1, 2).contiguous() / 255.0
         return self.cached
 
 
@@ -171,9 +190,13 @@ class ActiveGazeActionsCfg(ActionsCfg):
     gaze = GazeActionCfg()
 
 
+PHOTOMETRIC = preset(default=None, sim2real=PHOTOMETRIC_RANGES)
+"""Episode-wise photometric variation of the retina, on with ``presets=sim2real``."""
+
+
 @configclass
 class ImageCfg(ObservationGroupCfg):
-    image = ObservationTermCfg(func=SceneRGB)
+    image = ObservationTermCfg(func=SceneRGB, params=dict(photometric=PHOTOMETRIC))
     concatenate_dim = 0
     enable_corruption = False
 
@@ -235,7 +258,11 @@ class VisionCfg(ObservationGroupCfg):
     tokens = ObservationTermCfg(
         func=DinoTokens,
         params=dict(
-            reference=DEFAULT_CHECKPOINT, checksum=DEFAULT_MD5, batch_size=128, data_type=CameraOutputNameCfg()
+            reference=DEFAULT_CHECKPOINT,
+            checksum=DEFAULT_MD5,
+            batch_size=128,
+            data_type=CameraOutputNameCfg(),
+            photometric=PHOTOMETRIC,
         ),
     )
     concatenate_dim = 0
@@ -257,6 +284,7 @@ class LanguageObservationsCfg:
     instruction = InstructionCfg()
     critic = NumberedCriticCfg()
     oracle = OracleObservationCfg()
+    extrinsics = preset(default=None, sim2real=ExtrinsicsObservations())
 
 
 @configclass
@@ -292,6 +320,33 @@ class NumberedEventsCfg(EventsCfg):
 
 
 @configclass
+class ActiveGazeSim2RealEventsCfg(Sim2RealEventsCfg):
+    """The tutorial's physical sim2real randomization, the scene's colours and the camera's mount.
+
+    The colours are those of the tutorial's wrist-camera task. Unlike the tutorial's sim2real resets, every reset
+    phase stays in use, so the reset curriculum still applies.
+    """
+
+    robot_color = CameraSim2RealEventsCfg().robot_color
+    desk_color = CameraSim2RealEventsCfg().desk_color
+    rack_color = CameraSim2RealEventsCfg().rack_color
+    vial_body_color = CameraSim2RealEventsCfg().vial_body_color
+    vial_cap_color = CameraSim2RealEventsCfg().vial_cap_color
+    camera_mount = EventTermCfg(func=randomize_camera_mount, mode="reset", params=dict(camera_name="eye"))
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.reset_from_dataset.params["phase_weights"] = ALL_PHASES
+
+
+@configclass
+class NumberedSim2RealEventsCfg(ActiveGazeSim2RealEventsCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.reset_from_dataset.func = NumberedResetFromDataset
+
+
+@configclass
 class NumberedTerminationsCfg(TerminationsCfg):
     success = TerminationsCfg().success.replace(func=TargetPlacementSuccess)
 
@@ -316,6 +371,7 @@ class NearestEnvCfg(SO101VialEnvCfg):
     scene: SceneCfg = SceneCfg(num_envs=128, env_spacing=0.9)
     actions: ActiveGazeActionsCfg = ActiveGazeActionsCfg()
     observations: ObservationsCfg = ObservationsCfg()
+    events = preset(default=EventsCfg(), sim2real=ActiveGazeSim2RealEventsCfg())
     rewards: ActiveGazeRewardsCfg = ActiveGazeRewardsCfg()
     curriculum: CurriculumCfg = CurriculumCfg()
     compute_final_obs = FinalObservationCfg()
@@ -332,7 +388,7 @@ class NumberedEnvCfg(NearestEnvCfg):
 
     scene: NumberedSceneCfg = NumberedSceneCfg(num_envs=128, env_spacing=0.9)
     observations: NumberedObservationsCfg = NumberedObservationsCfg()
-    events: NumberedEventsCfg = NumberedEventsCfg()
+    events = preset(default=NumberedEventsCfg(), sim2real=NumberedSim2RealEventsCfg())
     rewards: NumberedRewardsCfg = NumberedRewardsCfg()
     terminations: NumberedTerminationsCfg = NumberedTerminationsCfg()
 
