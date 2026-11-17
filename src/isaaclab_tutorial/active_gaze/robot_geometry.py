@@ -2,7 +2,7 @@
 
 from isaaclab.sim.utils import clone
 
-from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import spawn_so101
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import _spawn_so101 as spawn_so101
 
 WRIST_CAMERA_PARTS = (
     "gripper/wowrobo_2MP_camera",

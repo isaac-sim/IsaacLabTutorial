@@ -98,7 +98,6 @@ class ResetSampling(ManagerTermBase):
         self.phase_sizes = torch.bincount(self.phases, minlength=len(self.bin_names))
         self.eligible = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
         self.sampled = torch.zeros_like(self.history.episodes)
-        env.reset_sampling = self
 
     def phase_probabilities(self):
         conditional = getattr(self.reset_term, "sampling_row_probabilities", None)

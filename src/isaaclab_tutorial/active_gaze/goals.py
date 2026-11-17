@@ -1,4 +1,10 @@
-"""Numbered vial goals, target-aware stock rewards, and expanded reset bins."""
+"""Numbered vials: each vial carries a number from 1 to 4 and belongs in the rack opening with the same number.
+
+The vial's number is fixed per environment when the scene is cloned. :class:`NumberedResetFromDataset` owns it, and
+:func:`target_holes` reads it; without a numbered reset any opening is a goal.
+"""
+
+from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import fields
@@ -6,19 +12,20 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from isaaclab.managers import ObservationTermCfg
+
 from isaaclab.sim import MultiAssetSpawnerCfg
 from isaaclab.sim.utils import clone
 from isaaclab.utils import configclass
-from isaaclab.utils.math import quat_apply
 
-from isaaclab_tutorial.tasks.place_vial.mdp.events import (
-    ResetFromDataset,
-    phase_balanced_row_weights,
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import VialSpawnCfg
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
+    _spawn_usd_with_contact_material as spawn_usd_with_contact_material,
 )
+from isaaclab_tutorial.tasks.place_vial.mdp.events import ResetFromDataset, phase_balanced_row_weights
 from isaaclab_tutorial.tasks.place_vial.mdp.geometry import (
     RACK_HOLE_CENTERS,
     hole_relative_positions,
+    rack_local_position,
     symmetric_axial_keypoint_error,
 )
 from isaaclab_tutorial.tasks.place_vial.mdp.progress import placement_progress
@@ -31,18 +38,21 @@ from isaaclab_tutorial.tasks.place_vial.mdp.task import (
     vial_upright,
 )
 from isaaclab_tutorial.tasks.place_vial.mdp.terminations import placement_success
-from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
-    VialSpawnCfg,
-    spawn_usd_with_contact_material,
-)
 
 from .sampling import PHASE_NAMES
 
 NEAR_GOAL_DISTANCE = 0.045
+"""Distance [m] within which a reset vial counts as near an opening."""
 CAP_LABEL_POSITION = (0.0, 0.0, 0.1002)
+"""Center of the number label on the vial's cap, in the vial frame [m]."""
 CAP_LABEL_SIZE = 0.022
+"""Side of the cap label [m]."""
 RACK_LABEL_SIZE = 0.013
+"""Side of an opening's label [m]."""
 RACK_LABEL_OFFSETS = ((-0.023, -0.023), (0.023, -0.023), (0.023, 0.023), (-0.023, 0.023))
+"""Position of each opening's label relative to the opening, in the rack frame [m]."""
+VIAL_NUMBER_ATTRIBUTE = "tutorial:vialNumber"
+"""USD attribute that records a vial prototype's number."""
 
 
 def _attach_label(stage, path, asset_path, position, size, rotation=0.0):
@@ -57,12 +67,12 @@ def _attach_label(stage, path, asset_path, position, size, rotation=0.0):
 
 @clone
 def spawn_numbered(prim_path, cfg, translation=None, orientation=None, **kwargs):
-    """Add render-only decals; preserve every stock collision and contact parameter."""
+    """Add render-only number labels; keep every collision and contact parameter of the plain asset."""
     prim = spawn_usd_with_contact_material(prim_path, cfg, translation=translation, orientation=orientation, **kwargs)
     if cfg.numbered_kind == "vial":
         from pxr import Sdf
 
-        prim.CreateAttribute("isaaclab_fovi:vialNumber", Sdf.ValueTypeNames.Int).Set(cfg.vial_number)
+        prim.CreateAttribute(VIAL_NUMBER_ATTRIBUTE, Sdf.ValueTypeNames.Int).Set(cfg.vial_number)
         _attach_label(
             prim.GetStage(),
             f"{prim_path}/Number",
@@ -86,10 +96,29 @@ def spawn_numbered(prim_path, cfg, translation=None, orientation=None, **kwargs)
 
 @configclass
 class NumberedSpawnCfg(VialSpawnCfg):
+    """A vial or rack asset with number labels."""
+
     func = spawn_numbered
     numbered_kind: str = "vial"
+    """``"vial"`` for one label on the cap, ``"rack"`` for one label beside each opening."""
     number_label_assets: str = ""
+    """Directory of the ``number_<n>.usda`` label assets."""
     vial_number: int = 1
+    """Number on a vial's cap, from 1 to 4."""
+
+
+def numbered_spawn(spawn, kind: str, label_assets: str) -> NumberedSpawnCfg:
+    """The numbered version of a vial or rack spawn configuration, with the same physical fields."""
+    values = {field.name: deepcopy(getattr(spawn, field.name)) for field in fields(spawn) if field.init}
+    values.pop("func", None)
+    return NumberedSpawnCfg(**values, numbered_kind=kind, number_label_assets=label_assets)
+
+
+def numbered_vials(spawn, label_assets: str) -> MultiAssetSpawnerCfg:
+    """Four vial variants numbered 1 to 4, cloned in equal shares."""
+    vial = numbered_spawn(spawn, "vial", label_assets)
+    variants = [vial.replace(vial_number=number) for number in range(1, 5)]
+    return MultiAssetSpawnerCfg(assets_cfg=variants, activate_contact_sensors=vial.activate_contact_sensors)
 
 
 def balanced_shuffled_clones(weights, num_clones):
@@ -104,8 +133,8 @@ def balanced_shuffled_clones(weights, num_clones):
     return layout
 
 
-def scene_vial_numbers(env):
-    """Read immutable cap identities from the actual native clone plan."""
+def scene_vial_numbers(env) -> torch.Tensor:
+    """Read each environment's vial number from the scene's clone plan, shape (num_envs,)."""
     from isaaclab.cloner import path as cloner_path
 
     plan = env.scene.clone_plan
@@ -116,48 +145,13 @@ def scene_vial_numbers(env):
         start, end = topology.world_prototype_starts[world + 1 : world + 3]
         candidates = []
         for asset in topology.world_prototypes[start:end]:
-            prim = env.scene.stage.GetPrimAtPath(paths[asset])
-            number = prim.GetAttribute("isaaclab_fovi:vialNumber").Get()
+            number = env.scene.stage.GetPrimAtPath(paths[asset]).GetAttribute(VIAL_NUMBER_ATTRIBUTE).Get()
             if number is not None:
                 candidates.append(number)
         if len(candidates) != 1 or candidates[0] not in (1, 2, 3, 4):
             raise ValueError(f"Expected one numbered vial in world prototype {world}: {candidates}")
         numbers[world] = candidates[0]
-    return torch.tensor(
-        [numbers[world] for world in topology.world_prototype_layout],
-        device=env.device,
-        dtype=torch.long,
-    )
-
-
-def configure_numbered_scene(cfg):
-    """Clone four prebuilt cap variants with unchanged stock physical properties."""
-    for name in ("vial", "rack"):
-        asset = getattr(cfg.scene, name)
-        asset.spawn = NumberedSpawnCfg(
-            **{
-                field.name: deepcopy(getattr(asset.spawn, field.name))
-                for field in fields(asset.spawn)
-                if field.init and field.name != "func"
-            },
-            numbered_kind=name,
-            number_label_assets=cfg.number_label_assets,
-        )
-    original = cfg.scene.vial.spawn
-    variants = []
-    for number in range(1, 5):
-        variant = original.copy()
-        variant.vial_number = number
-        variants.append(variant)
-    cfg.scene.vial.spawn = MultiAssetSpawnerCfg(
-        assets_cfg=variants, activate_contact_sensors=original.activate_contact_sensors
-    )
-    cfg.scene.clone_cfg.clone_strategy = balanced_shuffled_clones
-    cfg.events.reset_from_dataset.func = NumberedResetFromDataset
-    cfg.terminations.success.func = TargetPlacementSuccess
-    cfg.rewards.held_goal.func = held_target_goal
-    cfg.observations.critic.placement.func = target_placement_features
-    cfg.observations.critic.numbered_goal = ObservationTermCfg(func=critic_goal_state)
+    return torch.tensor([numbers[world] for world in topology.world_prototype_layout], device=env.device)
 
 
 def expand_numbered_resets(states, rack_pose):
@@ -167,8 +161,6 @@ def expand_numbered_resets(states, rack_pose):
     rows and target numbers before SGS adapts the far/target/non-target bins.
     Physical joint targets and vial poses remain byte-for-byte stock states.
     """
-    from isaaclab_tutorial.tasks.place_vial.mdp.geometry import rack_local_position
-
     expanded = {k: v.repeat_interleave(4, dim=0) for k, v in states.items()}
     target = torch.arange(4, device=states["phase"].device).repeat(len(states["phase"]))
     rack = expanded["vial_pose"].new_tensor(rack_pose).expand(len(target), -1)
@@ -214,40 +206,35 @@ def sample_matching_rows(row_weights, targets):
 
 
 class NumberedResetFromDataset(ResetFromDataset):
+    """Reset to dataset rows that match each environment's vial number.
+
+    Every physical row is crossed with each target opening, and rows near an opening are binned by whether that
+    opening is the target, so the reset curriculum can balance them.
+    """
+
     def __init__(self, cfg, env):
         super().__init__(cfg, env)
         rack = env.cfg.scene.rack.init_state
-        self.states, self.bin_ids, self.bin_names, phases = expand_numbered_resets(self.states, (*rack.pos, *rack.rot))
-        self.bin_phase_ids = phases
+        self.states, self.bin_ids, self.bin_names, self.bin_phase_ids = expand_numbered_resets(
+            self.states, (*rack.pos, *rack.rot)
+        )
         self.row_weights = phase_balanced_row_weights(self.states["phase"], cfg.params["phase_weights"])
         self.sequential_rows = self.row_weights.nonzero().flatten()
         self.cursor = 0
-        env.vial_number = scene_vial_numbers(env)
-        env.numbered_target_hole = env.vial_number - 1
-        env.hole_numbers = torch.arange(1, 5, device=env.device).expand(env.num_envs, -1).clone()
-        self.target_fractions = torch.bincount(env.numbered_target_hole, minlength=4) / env.num_envs
+        self.vial_number = scene_vial_numbers(env)
+        """Number on each environment's vial, from 1 to 4, shape (num_envs,)."""
+        self.target_hole = self.vial_number - 1
+        """Index of the opening each environment's vial belongs in, shape (num_envs,)."""
+        self.target_fractions = torch.bincount(self.target_hole, minlength=4) / env.num_envs
 
     def sampling_row_probabilities(self):
         return conditional_row_probabilities(self.row_weights, self.target_fractions)
 
-    def __call__(
-        self,
-        env,
-        env_ids,
-        dataset_path,
-        phase_weights,
-        sequential=False,
-        home_position_noise=0.0,
-        home_heading_noise=0.0,
-        home_rack_clearance=0.0,
-        home_rack_position_noise=0.0,
-        home_rack_yaw_noise=0.0,
-        support_height_range=(0.0, 0.0),
-    ):
+    def __call__(self, env, env_ids, dataset_path, phase_weights, sequential=False, **kwargs):
         ids = torch.arange(env.num_envs, device=env.device)[slice(None) if env_ids is None else env_ids]
         if not len(ids):
             return
-        targets = env.numbered_target_hole[ids]
+        targets = self.target_hole[ids]
         saved_rows, saved_cursor = self.sequential_rows, self.cursor
         if sequential:
             rows = torch.empty_like(ids)
@@ -260,83 +247,43 @@ class NumberedResetFromDataset(ResetFromDataset):
                 rows[mask] = available[ranks % len(available)]
         else:
             rows = sample_matching_rows(self.row_weights, targets)
-        # Delegate all physical restoration to the stock task via its explicit-row path.
+        # The stock reset restores the chosen rows through its sequential path.
         self.sequential_rows, self.cursor = rows, 0
         try:
-            self._restore_rows(
-                env,
-                ids,
-                dataset_path,
-                phase_weights,
-                home_position_noise,
-                home_heading_noise,
-                home_rack_clearance,
-                home_rack_position_noise,
-                home_rack_yaw_noise,
-                support_height_range,
-            )
+            super().__call__(env, ids, dataset_path, phase_weights, True, **kwargs)
         finally:
             self.sequential_rows = saved_rows
             self.cursor = saved_cursor + len(ids) if sequential else saved_cursor
 
-    def _restore_rows(
-        self,
-        env,
-        ids,
-        dataset_path,
-        phase_weights,
-        home_position_noise,
-        home_heading_noise,
-        home_rack_clearance,
-        home_rack_position_noise,
-        home_rack_yaw_noise,
-        support_height_range,
-    ):
-        super().__call__(
-            env,
-            ids,
-            dataset_path,
-            phase_weights,
-            True,
-            home_position_noise,
-            home_heading_noise,
-            home_rack_clearance,
-            home_rack_position_noise,
-            home_rack_yaw_noise,
-            support_height_range,
-        )
+
+def target_holes(env) -> torch.Tensor | None:
+    """Index of each environment's target opening, shape (num_envs,), or None when any opening is a goal."""
+    reset = env.event_manager.get_term_cfg("reset_from_dataset").func
+    return reset.target_hole if isinstance(reset, NumberedResetFromDataset) else None
 
 
 def target_relative_position(env):
     position, axis, lowest = vial_in_rack(env)
-    center = position.new_tensor(RACK_HOLE_CENTERS)[env.numbered_target_hole]
+    center = position.new_tensor(RACK_HOLE_CENTERS)[target_holes(env)]
     return position - center, axis, lowest
 
 
-def selected_goal_center(env, label=False):
-    rack = env.scene["rack"].data
-    local = rack.root_pos_w.torch.new_tensor(RACK_HOLE_CENTERS)[env.numbered_target_hole].clone()
-    local[:, 2] = RACK_RIM_HEIGHT
-    if label:
-        local[:, :2] += local.new_tensor(RACK_LABEL_OFFSETS)[env.numbered_target_hole]
-        local[:, 2] += 0.0002
-    return rack.root_pos_w.torch + quat_apply(rack.root_quat_w.torch, local)
-
-
 def target_placement_features(env):
+    """Placement features against the target opening rather than the nearest one."""
     position, _, lowest = target_relative_position(env)
     speed = env.scene["vial"].data.root_lin_vel_w.torch.norm(dim=-1)
     return torch.stack((position[:, :2].norm(dim=-1), lowest, vial_upright(env), speed), dim=-1)
 
 
 def critic_goal_state(env):
-    """Privileged target position and identity, excluded from actor groups."""
-    local = env.scene["vial"].data.root_pos_w.torch.new_tensor(RACK_HOLE_CENTERS)[env.numbered_target_hole]
-    number = torch.nn.functional.one_hot(env.vial_number - 1, 4)
-    return torch.cat((local, number), dim=-1).float()
+    """Privileged target position and number, excluded from the actor's observations."""
+    holes = target_holes(env)
+    local = env.scene["vial"].data.root_pos_w.torch.new_tensor(RACK_HOLE_CENTERS)[holes]
+    return torch.cat((local, torch.nn.functional.one_hot(holes, 4)), dim=-1).float()
 
 
 def held_target_goal(env, std=0.10):
+    """The stock held-goal reward, measured against the target opening."""
     position, axis, _ = target_relative_position(env)
     error = symmetric_axial_keypoint_error(
         position,
@@ -359,9 +306,9 @@ class TargetPlacementSuccess(placement_success):
     """
 
     def __call__(self, env):
+        holes = target_holes(env)
         position, _, _ = vial_in_rack(env)
-        nearest = hole_relative_positions(position)[..., :2].square().sum(-1).argmin(-1)
-        wrong = nearest != env.numbered_target_hole
+        wrong = hole_relative_positions(position)[..., :2].square().sum(-1).argmin(-1) != holes
         inserted, success, time = (
             v.clone() for v in (self.progress.inserted, self.progress.success, self.progress.time_to_success)
         )
@@ -376,5 +323,5 @@ class TargetPlacementSuccess(placement_success):
         log["Metrics/success_rate"] = success.float().mean()
         env._so101_terminal_progress[:, 2] = self.progress.inserted
         env._so101_terminal_time_to_success_s = self.progress.time_to_success.float() * env.step_dt
-        env._so101_terminal_hole = torch.where(success, env.numbered_target_hole, -1)
+        env._so101_terminal_hole = torch.where(success, holes, -1)
         return success
