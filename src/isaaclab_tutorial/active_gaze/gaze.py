@@ -1,296 +1,253 @@
-"""Physical-row-aligned gaze resets and optional grasp-gated training labels."""
+"""Gaze action of the active-gaze task, its reset, and the teacher's gaze labels.
 
-import hashlib
-import json
+Gaze angles are (tilt, pan) [rad] from the scene camera's optical axis: positive tilt looks up and positive pan looks
+left, as for :meth:`isaaclab_fovi.sensors.FoveatedCamera.set_gaze_angles`. Camera-frame directions use the OpenCV
+convention: x right, y down, z forward.
+"""
+
+from __future__ import annotations
+
 import math
-from pathlib import Path
 
 import torch
-from fovi.sensing.projection import CameraModel
+from isaaclab_fovi.sensors.calibrated_geometry import resolve_camera_model, sampling_geometry
+
+from isaaclab.managers import ActionTerm, ActionTermCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.math import quat_apply, quat_apply_inverse
 
-from isaaclab_tutorial.active_gaze.fixation.actions import GazeAction, GazeActionCfg
-from isaaclab_tutorial.active_gaze.fixation.oracle import fixation_action_target
 from isaaclab_tutorial.tasks.place_vial.mdp.geometry import RACK_HOLE_CENTERS
 from isaaclab_tutorial.tasks.place_vial.mdp.progress import placement_progress
-from isaaclab_tutorial.tasks.place_vial.mdp.task import (
-    RACK_RIM_HEIGHT,
-    VIAL_AXIS_MAX,
-    VIAL_AXIS_MIN,
-)
-from isaaclab_tutorial.active_gaze.reset import load_reset_dataset
+from isaaclab_tutorial.tasks.place_vial.mdp.task import RACK_RIM_HEIGHT, VIAL_AXIS_MAX, VIAL_AXIS_MIN
+
+from .goals import CAP_LABEL_POSITION, RACK_LABEL_OFFSETS, target_holes
 
 RESET_MODES = ("random", "object", "goal", "near_object", "near_goal")
+"""Where the gaze starts an episode: anywhere in the camera's view, at the vial or the goal, or 2 to 5 degrees off
+either."""
 
 
-def oracle_target(env):
-    """Switch from vial center to opening after the stock confirmed grasp.
+def angles_to_direction(angles: torch.Tensor) -> torch.Tensor:
+    """Camera-frame unit directions of gaze angles, shape (..., 2) to (..., 3)."""
+    tilt, pan = angles.unbind(-1)
+    return torch.stack((-tilt.cos() * pan.sin(), -tilt.sin(), tilt.cos() * pan.cos()), -1)
 
-    The milestone is restored by stock resets and stays latched through release.
-    It is a training label only, never an actor input or an executed action.
+
+def direction_to_angles(direction: torch.Tensor) -> torch.Tensor:
+    """Gaze angles of camera-frame directions, shape (..., 3) to (..., 2)."""
+    x, y, z = direction.unbind(-1)
+    return torch.stack((-torch.atan2(y, torch.sqrt(x.square() + z.square())), -torch.atan2(x, z)), -1)
+
+
+def clamp_gaze(angles: torch.Tensor, limit: float) -> torch.Tensor:
+    """Scale gaze angles back onto the circle of radius ``limit`` [rad] when they leave it."""
+    return angles * (limit / angles.norm(dim=-1, keepdim=True).clamp_min(limit))
+
+
+def random_gaze(count: int, limit: float, device=None) -> torch.Tensor:
+    """Gaze angles drawn uniformly over the disc of radius ``limit`` [rad], shape (count, 2)."""
+    radius = limit * torch.rand(count, device=device).sqrt()
+    angle = 2 * math.pi * torch.rand(count, device=device)
+    return torch.stack((radius * angle.sin(), radius * angle.cos()), dim=-1)
+
+
+def camera_directions(points: torch.Tensor, position: torch.Tensor, rotation: torch.Tensor) -> torch.Tensor:
+    """Camera-frame unit directions to world points, for a camera at ``position`` with OpenGL ``rotation`` (xyzw)."""
+    directions = quat_apply_inverse(rotation.expand(len(points), -1), points - position)
+    return torch.nn.functional.normalize(directions * directions.new_tensor((1, -1, -1)), dim=-1)
+
+
+def nearby_directions(direction: torch.Tensor) -> torch.Tensor:
+    """Directions 2 to 5 degrees from each given direction, in a uniformly drawn azimuth."""
+    reference = direction.new_tensor((0, 1, 0)).expand_as(direction)
+    tangent = torch.nn.functional.normalize(torch.cross(direction, reference, dim=-1), dim=-1)
+    bitangent = torch.cross(direction, tangent, dim=-1)
+    theta = torch.empty(len(direction), 1, device=direction.device).uniform_(math.radians(2), math.radians(5))
+    phi = torch.rand_like(theta) * (2 * math.pi)
+    return theta.cos() * direction + theta.sin() * (phi.cos() * tangent + phi.sin() * bitangent)
+
+
+def target_centers(vial_pose, rack_pose, holes=None, object_offset=None, goal_offsets=None):
+    """World points of the vial and of the goal opening.
+
+    The goal is the given hole of each rack, or the opening nearest the vial. Offsets move the points from the vial's
+    center and the openings' rim centers, for example onto the number labels.
     """
-    poses = [
+    object_center = vial_pose[:, :3] + quat_apply(
+        vial_pose[:, 3:],
+        vial_pose.new_tensor(object_offset or (0, 0, (VIAL_AXIS_MIN + VIAL_AXIS_MAX) / 2)).expand(len(vial_pose), -1),
+    )
+    openings = vial_pose.new_tensor(RACK_HOLE_CENTERS).expand(len(vial_pose), -1, -1).clone()
+    openings[..., 2] = RACK_RIM_HEIGHT
+    if goal_offsets is not None:
+        openings[..., :2] += openings.new_tensor(goal_offsets)
+        openings[..., 2] += 0.0002
+    world = rack_pose[:, None, :3] + quat_apply(rack_pose[:, None, 3:].expand(-1, 4, -1), openings)
+    if holes is None:
+        holes = (world[..., :2] - vial_pose[:, None, :2]).square().sum(-1).argmin(-1)
+    return object_center, world[torch.arange(len(vial_pose), device=vial_pose.device), holes]
+
+
+def gaze_targets(env, vial_pose: torch.Tensor, rack_pose: torch.Tensor, env_ids=slice(None)):
+    """World points the gaze should find: the vial and the goal, on their number labels when the vial is numbered."""
+    holes = target_holes(env)
+    if holes is None:
+        return target_centers(vial_pose, rack_pose)
+    return target_centers(vial_pose, rack_pose, holes[env_ids], CAP_LABEL_POSITION, RACK_LABEL_OFFSETS)
+
+
+class GazeAction(ActionTerm):
+    """Moves the scene camera's gaze by bounded increments in (tilt, pan) order.
+
+    An action of 1 changes an angle by ``step_size`` field radii, and the gaze stays within ``gaze_limit`` field radii
+    of the optical axis. The field radius is half the retina's field of view. At reset the gaze starts at one of
+    :data:`RESET_MODES`, drawn uniformly, or on the optical axis when ``mixed_resets`` is off.
+    """
+
+    cfg: GazeActionCfg
+
+    def __init__(self, cfg: GazeActionCfg, env):
+        super().__init__(cfg, env)
+        self.camera = env.scene[cfg.camera_name]
+        self.camera_model = resolve_camera_model(self.camera.cfg)
+        self.field_radius = math.radians(sampling_geometry(self.camera.cfg)[0] / 2)
+        """Half the retina's field of view [rad]."""
+        self.max_step = cfg.step_size * self.field_radius
+        """Largest change of each gaze angle per step [rad]."""
+        self.limit = cfg.gaze_limit * self.field_radius
+        """Largest angle between the gaze and the optical axis [rad]."""
+        self.base_rotation = torch.tensor(self.camera.cfg.offset.rot, device=self.device)
+        self._raw = torch.zeros(self.num_envs, 2, device=self.device)
+        self._angles = torch.zeros_like(self._raw)
+        self._velocity = torch.zeros_like(self._raw)
+        self.reset_mode = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        """Index into :data:`RESET_MODES` of each environment's last reset."""
+
+    @property
+    def action_dim(self) -> int:
+        return 2
+
+    @property
+    def raw_actions(self) -> torch.Tensor:
+        return self._raw
+
+    @property
+    def processed_actions(self) -> torch.Tensor:
+        return self._angles
+
+    @property
+    def angles(self) -> torch.Tensor:
+        """Current gaze angles [rad], shape (num_envs, 2)."""
+        return self._angles
+
+    def process_actions(self, actions: torch.Tensor):
+        self._raw.copy_(actions)
+        previous = self._angles.clone()
+        self._angles.copy_(clamp_gaze(self._angles + actions.clamp(-1, 1) * self.max_step, self.limit))
+        self._velocity.copy_((self._angles - previous) / self._env.step_dt)
+        self.camera.set_gaze_angles(self._angles)
+
+    def apply_actions(self):
+        pass
+
+    def reset(self, env_ids=None):
+        ids = torch.arange(self.num_envs, device=self.device)[slice(None) if env_ids is None else env_ids]
+        self._raw[ids] = 0
+        self._velocity[ids] = 0
+        self.reset_mode[ids] = 0
+        self._angles[ids] = 0
+        if self.cfg.mixed_resets and len(ids):
+            self._reset_mixed(ids)
+        self.camera.set_gaze_angles(self._angles)
+
+    def _reset_mixed(self, ids: torch.Tensor):
+        """Start each gaze at one of :data:`RESET_MODES` for this episode's vial and rack."""
+        env = self._env
+        if not hasattr(env, "_so101_reset_vial_pose"):
+            return
+        origins = env.scene.env_origins[ids]
+        vial, rack = env._so101_reset_vial_pose[ids].clone(), env._so101_reset_rack_pose[ids].clone()
+        vial[:, :3] += origins
+        rack[:, :3] += origins
+        vial_point, goal_point = gaze_targets(env, vial, rack, ids)
+        modes = torch.randint(len(RESET_MODES), (len(ids),), device=self.device)
+        point = torch.where(((modes == 2) | (modes == 4))[:, None], goal_point, vial_point)
+        direction = self.directions(point, ids)
+        direction = torch.where((modes >= 3)[:, None], nearby_directions(direction), direction)
+        aligned = direction_to_angles(direction)
+        modes = torch.where(self.visible(direction) & (aligned.norm(dim=-1) <= self.limit), modes, 0)
+        # A random start lies inside the physical image too; the optical axis is the fallback.
+        random = random_gaze(len(ids), self.limit, self.device)
+        random = torch.where(self.visible(angles_to_direction(random))[:, None], random, 0)
+        self._angles[ids] = torch.where((modes == 0)[:, None], random, aligned)
+        self.reset_mode[ids] = modes
+
+    def directions(self, points: torch.Tensor, env_ids=slice(None)) -> torch.Tensor:
+        """Camera-frame unit directions from the camera to world points."""
+        return camera_directions(points, self.camera.data.pos_w.torch[env_ids], self.base_rotation)
+
+    def visible(self, direction: torch.Tensor) -> torch.Tensor:
+        """Whether camera-frame directions fall inside the physical camera's image."""
+        return self.camera_model.project(direction)[1]
+
+    def teacher_action(self, points: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """The action that moves the gaze toward world points, and whether each point is a valid target.
+
+        A point is valid when the physical camera sees it and the gaze can reach it within the limit.
+        """
+        direction = self.directions(points)
+        desired = direction_to_angles(direction)
+        valid = self.visible(direction) & (desired.norm(dim=-1) <= self.limit)
+        action = ((clamp_gaze(desired, self.limit) - self._angles) / self.max_step).clamp(-1, 1)
+        return torch.where(valid[:, None], action, 0.0), valid
+
+    def fixation_error(self, points: torch.Tensor) -> torch.Tensor:
+        """Angle [rad] between the gaze and the direction to world points."""
+        direction = self.directions(points)
+        gaze = angles_to_direction(self._angles)
+        # atan2 stays accurate near perfect alignment, unlike acos of the dot product.
+        return torch.atan2(torch.cross(gaze, direction, dim=-1).norm(dim=-1), (gaze * direction).sum(-1))
+
+    def proprioception(self) -> torch.Tensor:
+        """Gaze angles, their velocity and the command. The virtual gaze reaches its command at once."""
+        return torch.cat((self._angles, self._velocity, self._angles), dim=-1)
+
+
+@configclass
+class GazeActionCfg(ActionTermCfg):
+    """Configuration of :class:`GazeAction`."""
+
+    class_type: type = GazeAction
+    asset_name: str = "robot"
+    camera_name: str = "eye"
+    """Scene name of the foveated camera whose gaze the action moves."""
+    step_size: float = 0.17
+    """Change of each gaze angle per step at an action of 1, in field radii."""
+    gaze_limit: float = 0.975
+    """Largest angle between the gaze and the camera's optical axis, in field radii."""
+    mixed_resets: bool = True
+    """Start episodes at a gaze drawn from :data:`RESET_MODES`; otherwise on the optical axis."""
+
+
+def teacher_target(env) -> torch.Tensor:
+    """World point the teacher looks at: the vial until it is grasped, then the goal."""
+    vial, rack = (
         torch.cat((env.scene[name].data.root_pos_w.torch, env.scene[name].data.root_quat_w.torch), dim=-1)
         for name in ("vial", "rack")
-    ]
-    object_center, goal_center = target_centers(*poses)
-    if getattr(env.cfg, "goal_mode", "nearest") == "numbered":
-        from .goals import CAP_LABEL_POSITION, selected_goal_center
-
-        object_center = poses[0][:, :3] + quat_apply(
-            poses[0][:, 3:], poses[0].new_tensor(CAP_LABEL_POSITION).expand(env.num_envs, -1)
-        )
-        goal_center = selected_goal_center(env, label=True)
-    return torch.where(placement_progress(env).grasped[:, None], goal_center, object_center)
+    )
+    vial_point, goal_point = gaze_targets(env, vial, rack)
+    return torch.where(placement_progress(env).grasped[:, None], goal_point, vial_point)
 
 
-def oracle_labels(env):
-    gaze = env.action_manager.get_term("gaze")
-    position = oracle_target(env)
-    target, valid = gaze.oracle(position)
-    error = gaze.fixation_error(position).rad2deg()
+def oracle_labels(env) -> torch.Tensor:
+    """The teacher's gaze action and its validity, shape (num_envs, 3). A training label, never a policy input."""
+    gaze: GazeAction = env.action_manager.get_term("gaze")
+    point = teacher_target(env)
+    action, valid = gaze.teacher_action(point)
+    error = gaze.fixation_error(point).rad2deg()
     log = env.extras.setdefault("log", {})
     log["Gaze/target_error_deg"] = torch.where(valid, error, 0).sum() / valid.sum().clamp_min(1)
     log["Gaze/within_1deg"] = (valid & (error <= 1)).float().mean()
     log["Gaze/goal_target_fraction"] = placement_progress(env).grasped.float().mean()
     log["Gaze/valid_target_fraction"] = valid.float().mean()
-    return torch.cat((target, valid[:, None].float()), dim=-1)
-
-
-def calibrated_oracle(direction, commanded, calibration, *, max_delta, angle_limit):
-    """Convert ROS camera rays to executable actions with physical-frustum masking."""
-    _, visible = calibration.project(direction)
-    # Shared fixation geometry expects mount right/forward/up, not ROS right/down/forward.
-    mount = torch.stack((direction[:, 0], direction[:, 2], -direction[:, 1]), dim=-1)
-    return fixation_action_target(mount, commanded, max_delta=max_delta, angle_limit=angle_limit, visible=visible)
-
-
-def angles_to_direction(angles):
-    tilt, pan = angles.unbind(-1)
-    return torch.stack((-tilt.cos() * pan.sin(), -tilt.sin(), tilt.cos() * pan.cos()), -1)
-
-
-def direction_to_angles(direction):
-    x, y, z = direction.unbind(-1)
-    return torch.stack((-torch.atan2(y, torch.sqrt(x.square() + z.square())), -torch.atan2(x, z)), -1)
-
-
-def target_centers(vial_pose, rack_pose, target_holes=None, object_offset=None, goal_offsets=None):
-    """Vial geometric center and the closest admissible opening's rim center."""
-    object_center = vial_pose[:, :3] + quat_apply(
-        vial_pose[:, 3:],
-        vial_pose.new_tensor(object_offset or (0, 0, (VIAL_AXIS_MIN + VIAL_AXIS_MAX) / 2)).expand(len(vial_pose), -1),
-    )
-    holes = vial_pose.new_tensor(RACK_HOLE_CENTERS).expand(len(vial_pose), -1, -1).clone()
-    holes[..., 2] = RACK_RIM_HEIGHT
-    if goal_offsets is not None:
-        holes[..., :2] += holes.new_tensor(goal_offsets)
-        holes[..., 2] += 0.0002
-    world_holes = rack_pose[:, None, :3] + quat_apply(rack_pose[:, None, 3:].expand(-1, 4, -1), holes)
-    nearest = (world_holes[..., :2] - vial_pose[:, None, :2]).square().sum(-1).argmin(-1)
-    if target_holes is not None:
-        nearest = target_holes
-    return object_center, world_holes[torch.arange(len(vial_pose), device=vial_pose.device), nearest]
-
-
-def camera_directions(points, position, rotation):
-    directions = quat_apply_inverse(rotation.expand(len(points), -1), points - position)
-    directions = directions * directions.new_tensor((1, -1, -1))
-    return torch.nn.functional.normalize(directions, dim=-1)
-
-
-def near_directions(direction, generator, variants=16):
-    """Sample a true spherical annulus, two to five degrees from the center."""
-    direction = direction[:, None].expand(-1, variants, -1)
-    reference = direction.new_tensor((0, 1, 0)).expand_as(direction)
-    tangent = torch.nn.functional.normalize(torch.cross(direction, reference, dim=-1), dim=-1)
-    bitangent = torch.cross(direction, tangent, dim=-1)
-    theta = torch.empty(direction.shape[:2]).uniform_(math.radians(2), math.radians(5), generator=generator)
-    phi = torch.empty_like(theta).uniform_(0, 2 * math.pi, generator=generator)
-    return theta.cos()[..., None] * direction + theta.sin()[..., None] * (
-        phi.cos()[..., None] * tangent + phi.sin()[..., None] * bitangent
-    )
-
-
-def build_reset_cache(dataset_path, camera_cfg, rack_pose, angle_limit, seed=42, numbered=False):
-    """Keep stock physical rows intact and add diverse absolute gaze targets."""
-    artifact = load_reset_dataset(dataset_path)
-    states = artifact["states"]
-    if numbered:
-        from .goals import CAP_LABEL_POSITION, RACK_LABEL_OFFSETS, expand_numbered_resets
-
-        states, _, _, _ = expand_numbered_resets(states, rack_pose)
-    vial = states["vial_pose"]
-    rack = torch.tensor(rack_pose, dtype=vial.dtype).expand(len(vial), -1)
-    centers = target_centers(
-        vial,
-        rack,
-        states.get("target_hole"),
-        CAP_LABEL_POSITION if numbered else None,
-        RACK_LABEL_OFFSETS if numbered else None,
-    )
-    position, rotation = (
-        vial.new_tensor(camera_cfg.offset.pos),
-        vial.new_tensor(camera_cfg.offset.rot),
-    )
-    directions = [camera_directions(center, position, rotation) for center in centers]
-    generator = torch.Generator().manual_seed(seed)
-    variants = 16
-    random = torch.empty(len(vial), variants, 2).uniform_(-angle_limit, angle_limit, generator=generator)
-    object_angles, goal_angles = [direction_to_angles(d)[:, None].expand(-1, variants, -1) for d in directions]
-    near_object, near_goal = [direction_to_angles(near_directions(d, generator, variants)) for d in directions]
-    gaze = torch.stack((random, object_angles, goal_angles, near_object, near_goal), dim=1)
-    model = CameraModel(**camera_cfg.camera_calibration)
-    _, valid = model.project(angles_to_direction(gaze))
-    valid &= (gaze.abs() <= angle_limit).all(-1)
-    # Resample random entries against the physical frustum, never clip aligned targets.
-    for _ in range(100):
-        bad = ~valid[:, 0]
-        if not bad.any():
-            break
-        gaze[:, 0][bad] = torch.empty(int(bad.sum()), 2).uniform_(-angle_limit, angle_limit, generator=generator)
-        _, valid[:, 0] = model.project(angles_to_direction(gaze[:, 0]))
-    if not valid.all():
-        raise ValueError("Reset gaze targets exceed the physical camera frustum or gaze limits")
-    identity = dict(
-        version=1,
-        source_sha256=artifact["content_sha256"],
-        calibration=camera_cfg.camera_calibration,
-        position=camera_cfg.offset.pos,
-        rotation=camera_cfg.offset.rot,
-        rack_pose=rack_pose,
-        angle_limit=angle_limit,
-        seed=seed,
-        modes=RESET_MODES,
-        vision_action_units="absolute_tilt_pan_radians",
-        near_degrees=[2, 5],
-        goal_mode="numbered" if numbered else "nearest",
-    )
-    return dict(
-        identity=identity,
-        identity_sha256=hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest(),
-        states=states,
-        vision_action=gaze,
-        object_direction=directions[0],
-        goal_direction=directions[1],
-    )
-
-
-class CachedGazeAction(GazeAction):
-    def __init__(self, cfg, env):
-        super().__init__(cfg, env)
-        self.reset_mode = torch.zeros(env.num_envs, dtype=torch.long, device=self.device)
-        self.reset_variant = torch.zeros_like(self.reset_mode)
-        self.source_rotation = self._target.new_tensor(self.camera.cfg.offset.rot)
-        self.cache = None
-        if env.cfg.mixed_gaze_resets and getattr(env.cfg, "retinal_geometry", "spherical") != "planar":
-            params = env.event_manager.get_term_cfg("reset_from_dataset").params
-            rack = env.cfg.scene.rack.init_state
-            cache = build_reset_cache(
-                params["dataset_path"],
-                self.camera.cfg,
-                (*rack.pos, *rack.rot),
-                cfg.angle_limit,
-                numbered=getattr(env.cfg, "goal_mode", "nearest") == "numbered",
-            )
-            output = Path(env.cfg.log_dir or Path.home() / ".cache/isaaclab_fovi/so101")
-            output.mkdir(parents=True, exist_ok=True)
-            torch.save(cache, output / "gaze_reset_cache.pt")
-            self.cache = cache["vision_action"].to(self.device)
-
-    def oracle(self, position):
-        state = getattr(self._env, "so101_camera_randomization", None)
-        direction = camera_directions(
-            position, self.camera.get_world_positions(), self.source_rotation if state is None else state.rotation
-        )
-        if state is not None:
-            visible = state.visibility(direction)
-            direction = angles_to_direction(state.gaze_direction(direction))
-            mount = torch.stack((direction[:, 0], direction[:, 2], -direction[:, 1]), -1)
-            return fixation_action_target(
-                mount, self._target, max_delta=self.cfg.max_delta, angle_limit=self.cfg.angle_limit, visible=visible
-            )
-        return calibrated_oracle(
-            direction,
-            self._target,
-            self.calibration,
-            max_delta=self.cfg.max_delta,
-            angle_limit=self.cfg.angle_limit,
-        )
-
-    def fixation_error(self, position):
-        state = getattr(self._env, "so101_camera_randomization", None)
-        direction = camera_directions(
-            position, self.camera.get_world_positions(), self.source_rotation if state is None else state.rotation
-        )
-        if state is not None:
-            direction = angles_to_direction(state.gaze_direction(direction))
-        actual = angles_to_direction(self._target)
-        # atan2 remains accurate near perfect alignment, unlike acos(dot).
-        return torch.atan2(
-            torch.cross(actual, direction, dim=-1).norm(dim=-1),
-            (actual * direction).sum(-1),
-        )
-
-    def reset(self, env_ids=None):
-        super().reset(env_ids)
-        state = getattr(self._env, "so101_camera_randomization", None)
-        if state is not None and self._env.cfg.mixed_gaze_resets:
-            self._reset_randomized_camera(env_ids, state)
-            return
-        if self.cache is None or not hasattr(self._env, "_so101_reset_row"):
-            return
-        ids = slice(None) if env_ids is None else env_ids
-        rows = self._env._so101_reset_row[ids]
-        modes = torch.randint(5, rows.shape, device=self.device)
-        variants = torch.randint(self.cache.shape[2], rows.shape, device=self.device)
-        self._target[ids] = self.cache[rows, modes, variants]
-        self.reset_mode[ids], self.reset_variant[ids] = modes, variants
-        # The cache contains absolute gaze state. The last incremental action and
-        # velocity stay zero: reset is not a policy-generated camera movement.
-        self.camera.set_calibrated_angles(self._target)
-
-    def _reset_randomized_camera(self, env_ids, state):
-        """Retain the cached mixture, deriving angles from the actual reset geometry."""
-        from .goals import CAP_LABEL_POSITION, RACK_LABEL_OFFSETS
-
-        env = self._env
-        ids = torch.arange(env.num_envs, device=self.device)[slice(None) if env_ids is None else env_ids]
-        if not len(ids) or not hasattr(env, "_so101_reset_vial_pose"):
-            return
-        vial = env._so101_reset_vial_pose[ids].clone()
-        rack = env._so101_reset_rack_pose[ids].clone()
-        vial[:, :3] += env.scene.env_origins[ids]
-        rack[:, :3] += env.scene.env_origins[ids]
-        obj, goal = target_centers(vial, rack, env.numbered_target_hole[ids], CAP_LABEL_POSITION, RACK_LABEL_OFFSETS)
-        position = state.position[ids] + env.scene.env_origins[ids]
-        modes = torch.randint(5, (len(ids),), device=self.device)
-        target = torch.where(((modes == 2) | (modes == 4))[:, None], goal, obj)
-        direction = camera_directions(target, position, state.rotation[ids])
-        reference = direction.new_tensor((0, 1, 0)).expand_as(direction)
-        tangent = torch.nn.functional.normalize(torch.cross(direction, reference, dim=-1), dim=-1)
-        bitangent = torch.cross(direction, tangent, dim=-1)
-        theta = torch.empty(len(ids), 1, device=self.device).uniform_(math.radians(2), math.radians(5))
-        phi = torch.rand_like(theta) * (2 * math.pi)
-        nearby = theta.cos() * direction + theta.sin() * (phi.cos() * tangent + phi.sin() * bitangent)
-        direction = torch.where((modes >= 3)[:, None], nearby, direction)
-        aligned = state.gaze_direction(direction, ids)
-        random = torch.empty_like(aligned).uniform_(-self.cfg.angle_limit, self.cfg.angle_limit)
-        from .camera_geometry import lens_visibility
-
-        visible = lens_visibility(direction[:, None], state.intrinsics[ids], state.radial[ids], (640, 640)).squeeze(-1)
-        valid = visible & (aligned.abs() <= self.cfg.angle_limit).all(-1)
-        modes = torch.where(valid, modes, 0)
-        # Random starts are bounded by the real source sensor too; a neutral
-        # fallback prevents out-of-frame initialization at perturbed lens edges.
-        _, random_valid = self.calibration.project(angles_to_direction(random))
-        random = torch.where(random_valid[:, None], random, 0)
-        self._target[ids] = torch.where((modes == 0)[:, None], random, aligned)
-        self.reset_mode[ids], self.reset_variant[ids] = modes, 0
-        self.camera.set_calibrated_angles(self._target)
-
-
-@configclass
-class CachedGazeActionCfg(GazeActionCfg):
-    class_type: type = CachedGazeAction
+    return torch.cat((action, valid[:, None].float()), dim=-1)
