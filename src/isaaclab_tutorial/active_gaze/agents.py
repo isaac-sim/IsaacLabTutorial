@@ -102,14 +102,14 @@ class ExtrinsicsHeadCfg(PresetCfg):
 
 
 @configclass
-class SO101FoveatedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class ActiveGazePPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 42
     num_steps_per_env = RolloutLengthCfg()
     run_name = ""
     clip_actions = 1.0
     critic = RslRlMLPModelCfg(hidden_dims=[256, 256, 128], activation="elu", obs_normalization=True)
     finetune = FineTuneCfg()
-    experiment_name = "so101_vial_foveated"
+    experiment_name = "so101_vial_active_gaze"
     max_iterations = 5000
     save_interval = 100
     obs_groups = {"actor": ["scene_rgb", "proprioception", "gaze"], "critic": ["critic"]}
@@ -133,9 +133,9 @@ class SO101FoveatedPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 @configclass
-class SO101LanguageActorCfg(LanguageVisionActorCfg):
+class LanguageActorCfg(LanguageVisionActorCfg):
     instructions = INSTRUCTIONS
-    distribution_cfg = SO101FoveatedPPORunnerCfg().actor.distribution_cfg
+    distribution_cfg = ActiveGazePPORunnerCfg().actor.distribution_cfg
     extrinsics_head = ExtrinsicsHeadCfg()
 
 
@@ -159,23 +159,23 @@ class LanguageAlgorithmCfg(AlgorithmCfg):
 
 
 @configclass
-class SO101LanguagePPORunnerCfg(SO101FoveatedPPORunnerCfg):
-    actor = SO101LanguageActorCfg()
+class LanguagePPORunnerCfg(ActiveGazePPORunnerCfg):
+    actor = LanguageActorCfg()
     algorithm = LanguageAlgorithmCfg()
     obs_groups = {"actor": ["proprio", "vision", "instruction"], "critic": ["critic"]}
 
 
 @configclass
-class SO101Sim2RealPPORunnerCfg(SO101LanguagePPORunnerCfg):
-    actor = SO101LanguageActorCfg(extrinsics_head=True)
+class Sim2RealPPORunnerCfg(LanguagePPORunnerCfg):
+    actor = LanguageActorCfg(extrinsics_head=True)
     algorithm = ExtrinsicsPPOCfg(use_mixed_precision=True)
 
 
 @configclass
-class SO101AgentCfg(PresetCfg):
-    nearest = SO101FoveatedPPORunnerCfg()
+class ActiveGazeAgentCfg(PresetCfg):
+    """Agents of the task variants in :class:`~.env_cfg.ActiveGazeEnvCfg`, selected by the same names."""
+
+    nearest = ActiveGazePPORunnerCfg()
     numbered = nearest
-    dino_language = SO101LanguagePPORunnerCfg()
-    planar = dino_language
-    sim2real = SO101Sim2RealPPORunnerCfg()
+    dino_language = LanguagePPORunnerCfg()
     default = numbered

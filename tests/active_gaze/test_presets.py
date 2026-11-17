@@ -27,7 +27,7 @@ def test_default_recipe_matches_explicit_presets_and_native_registry():
 
 
 def test_native_scalar_overrides_and_resume_preserve_typed_variants():
-    from isaaclab_tutorial.active_gaze.agents import SO101Sim2RealPPORunnerCfg
+    from isaaclab_tutorial.active_gaze.agents import Sim2RealPPORunnerCfg
     from isaaclab_tutorial.active_gaze.env_cfg import SO101Sim2RealEnvCfg
     from isaaclab_tutorial.active_gaze.configuration import checkpoint_configuration, compose, metadata
     from isaaclab_tutorial.active_gaze.transfer_options import CameraRandomizationCfg
@@ -44,7 +44,7 @@ def test_native_scalar_overrides_and_resume_preserve_typed_variants():
     before = deepcopy(saved)
     restored, restored_agent, _ = compose(saved=saved)
     assert isinstance(restored, SO101Sim2RealEnvCfg)
-    assert isinstance(restored_agent, SO101Sim2RealPPORunnerCfg)
+    assert isinstance(restored_agent, Sim2RealPPORunnerCfg)
     assert isinstance(restored.sim2real, CameraRandomizationCfg)
     assert restored.to_dict() == env.to_dict()
     assert not restored_agent.finetune

@@ -243,7 +243,7 @@ def test_auxiliary_updates_shared_vision_without_leaking_labels(tmp_path):
 
 
 def test_finetune_permits_only_new_head_and_preserves_normalization(tmp_path):
-    from isaaclab_tutorial.active_gaze.runner import SO101Runner
+    from isaaclab_tutorial.active_gaze.runner import ResetSamplingRunner
 
     old, obs = make_actor(tmp_path, False)
     old.obs_normalizer.update(obs["proprio"])
@@ -257,14 +257,14 @@ def test_finetune_permits_only_new_head_and_preserves_normalization(tmp_path):
     path = tmp_path / "model.pt"
     torch.save(checkpoint, path)
     runner = SimpleNamespace(alg=SimpleNamespace(_raw_actor=new, _raw_critic=deepcopy(critic)))
-    initialized = SO101Runner.finetune(runner, path)
+    initialized = ResetSamplingRunner.finetune(runner, path)
     assert initialized and all(key.startswith("extrinsics_head.") for key in initialized)
     assert runner.current_learning_iteration == 4999
     torch.testing.assert_close(old(obs), new(obs))
     checkpoint["actor_state_dict"].pop("mlp.0.weight")
     torch.save(checkpoint, path)
     with pytest.raises(ValueError, match="Unexpected missing"):
-        SO101Runner.finetune(runner, path)
+        ResetSamplingRunner.finetune(runner, path)
 
 
 def test_planar_virtual_gaze_preserves_physical_camera_and_partial_resets(monkeypatch):

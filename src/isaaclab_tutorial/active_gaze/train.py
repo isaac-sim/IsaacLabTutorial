@@ -228,7 +228,7 @@ def main():
         from isaaclab.utils.io import dump_yaml
         from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
-        from .runner import SO101Runner
+        from .runner import ResetSamplingRunner
 
         env = RslRlVecEnvWrapper(ManagerBasedRLEnv(cfg), clip_actions=1.0)
         if chunk_size > 1:
@@ -248,7 +248,7 @@ def main():
                 print(f"Static cap counts (1 through 4): {counts}", flush=True)
             dump_yaml(str(args.output / "env.yaml"), cfg)
             (args.output / "agent.json").write_text(json.dumps(agent, indent=2))
-            runner = SO101Runner(env, agent, log_dir=str(args.output), device=cfg.sim.device)
+            runner = ResetSamplingRunner(env, agent, log_dir=str(args.output), device=cfg.sim.device)
             if args.checkpoint:
                 initialized = []
                 if args.finetune:
