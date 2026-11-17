@@ -5,7 +5,7 @@ from isaaclab_tutorial.active_gaze.learning.runner import DistributedOnPolicyRun
 from .sampling import iteration_metrics
 
 
-class SO101Runner(DistributedOnPolicyRunner):
+class ResetSamplingRunner(DistributedOnPolicyRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.sampler = self.env.unwrapped.reset_sampling

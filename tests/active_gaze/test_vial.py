@@ -11,9 +11,9 @@ from tensordict import TensorDict
 def test_encoder_and_gaze_receive_gradients(resolution):
     from rsl_rl.models import CNNModel
 
-    from isaaclab_tutorial.active_gaze.agents import SO101FoveatedPPORunnerCfg
+    from isaaclab_tutorial.active_gaze.agents import ActiveGazePPORunnerCfg
 
-    cfg = SO101FoveatedPPORunnerCfg().to_dict()
+    cfg = ActiveGazePPORunnerCfg().to_dict()
     actor_cfg = cfg["actor"].copy()
     actor_cfg.pop("class_name")
     obs = TensorDict(
