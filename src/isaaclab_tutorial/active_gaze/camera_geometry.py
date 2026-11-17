@@ -1,25 +1,12 @@
-"""Batched pinhole lens visibility and camera-pose auxiliary targets."""
+"""Labels and loss of the camera mount's move, for the actor's extrinsics head."""
 
 import torch
 from torch.nn import functional as F
 
 TRANSLATION_SCALE = 0.03
+"""Translation [m] that maps to a label of 1."""
 ROTATION_SCALE = 0.1
-
-
-def lens_visibility(rays, intrinsics, radial, image_size):
-    """OpenCV rays against the nominal physical raster (shared fixed optics)."""
-    xy = rays[..., :2] / rays[..., 2:].clamp_min(1e-7)
-    xy = xy * (1 + radial[:, None, None] * xy.square().sum(-1, keepdim=True))
-    pixels = xy * intrinsics[:, None, :2] + intrinsics[:, None, 2:]
-    h, w = image_size
-    return (
-        (rays[..., 2] > 0)
-        & (pixels[..., 0] >= -0.5)
-        & (pixels[..., 0] < w - 0.5)
-        & (pixels[..., 1] >= -0.5)
-        & (pixels[..., 1] < h - 0.5)
-    )
+"""Rotation-matrix entry change that maps to a label of 1."""
 
 
 def pose_targets(translation_delta, rotation_delta):
