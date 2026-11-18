@@ -15,8 +15,6 @@ def install():
         return
     if version('isaaclab') != '3.0.0':
         raise RuntimeError('This compatibility implementation requires Isaac Lab 3.0.0 GA.')
-    from ..reference.config import install_config_resolution
     from .integration import install_hooks
     install_hooks()
-    install_config_resolution()
     _installed = True
