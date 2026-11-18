@@ -76,19 +76,42 @@ def load_backbone(reference: str, checksum: str | None) -> nn.Module:
     return backbone.requires_grad_(False).eval()
 
 
+def keep_layers(backbone: nn.Module, num_layers: int | None) -> nn.Module:
+    """Exit after the first ``num_layers`` transformer layers; None keeps them all.
+
+    The final normalization still applies, as for DINO's intermediate-layer features.
+    """
+    if num_layers is None:
+        return backbone
+    # Transformers keeps the layers at "layer" or "model.layer", depending on its release.
+    layers = next(
+        module
+        for name, module in backbone.named_modules()
+        if name.rpartition(".")[2] == "layer" and isinstance(module, nn.ModuleList)
+    )
+    if not 1 <= num_layers <= len(layers):
+        raise ValueError(f"DINO num_layers must be in [1, {len(layers)}], got {num_layers}.")
+    del layers[num_layers:]
+    return backbone
+
+
 class FrozenDino(nn.Module):
-    """Encode upright uint8 BHWC retinal images into unpooled patch tokens."""
+    """Encode upright uint8 BHWC retinal images into unpooled patch tokens.
+
+    ``num_layers`` exits early, after that many transformer layers, to cut the cost of perception.
+    """
 
     def __init__(
         self,
         reference: str = DEFAULT_CHECKPOINT,
         checksum: str | None = DEFAULT_MD5,
         batch_size: int = 128,
+        num_layers: int | None = None,
     ):
         super().__init__()
         if batch_size <= 0:
             raise ValueError("DINO batch size must be positive.")
-        self.backbone = load_backbone(reference, checksum)
+        self.backbone = keep_layers(load_backbone(reference, checksum), num_layers)
         self.batch_size = batch_size
         self.register_buffer("mean", torch.tensor((0.485, 0.456, 0.406))[None, :, None, None])
         self.register_buffer("std", torch.tensor((0.229, 0.224, 0.225))[None, :, None, None])
