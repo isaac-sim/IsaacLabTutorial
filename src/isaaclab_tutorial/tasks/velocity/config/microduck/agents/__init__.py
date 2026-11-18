@@ -1,0 +1,1 @@
+"""Training configurations for MicroDuck."""

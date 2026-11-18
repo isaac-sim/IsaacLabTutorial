@@ -19,3 +19,8 @@ GA adaptations:
   DOF/group selection and backlash binding derive from upstream actuator_control.py.
 - bam.py gathers external load before computing torque, then publishes friction.
   The upstream motor, voltage, delay and friction equations are preserved.
+
+Lesson 03 source mapping at the same pinned revision:
+managers.py <- contrib/microduck/flat_env_cfg.py (observations, events and terminations)
+../../mdp/{events,observations,terminations}.py <- contrib/microduck/mdp/
+agents/rsl_rl_ppo_cfg.py <- contrib/microduck/agents/rsl_rl_ppo_cfg.py
