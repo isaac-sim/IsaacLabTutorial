@@ -1,0 +1,31 @@
+Project-owned compatibility implementation for the released Isaac Lab 3.0.0 package.
+Framework tag v3.0.0: e3f7d9ff1f5d7f8280de3ece9000b7117f66bcf4.
+No installed framework source files are replaced.
+
+BAM and Microduck reference source:
+https://github.com/isaac-sim/IsaacLab/tree/2742c2d5e6b950d0150781e384bcd8388c29e3ee
+License: BSD-3-Clause; see LICENSE and retained file headers.
+
+Source mapping:
+bam_cfg.py <- source/isaaclab/isaaclab/actuators/actuator_bam_cfg.py
+bam.py, bam_kernels.py <- source/isaaclab_newton/isaaclab_newton/actuators/
+mjwarp_actuator_bridge*.py <- source/isaaclab_newton/isaaclab_newton/physics/
+robot.py <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
+reference/ <- source/isaaclab_tasks/isaaclab_tasks/contrib/microduck/
+
+GA adaptations:
+- integration.py authors BAM USD definitions, reactivates replaced prims, samples
+  startup voltage, binds native actuators and connects the MJWarp solver channels.
+  DOF/group selection and backlash binding derive from upstream actuator_control.py.
+- bam.py gathers external load before computing torque, then publishes friction.
+  The upstream motor, voltage, delay and friction equations are preserved.
+- Imports use this project's namespace. Reference task IDs start with CourseReference.
+- The reference uses GA's default_visualizer_cfg, OmegaConf resolver registration,
+  and the GA actuator parameter API's controller component name.
+
+These components came after GA and are maintained by this course. They are not
+claimed to be included in Isaac Lab 3.0.0. The USD robot assets retain the upstream
+asset URLs in robot.py. The learner builds tasks/ progressively through lessons.
+
+config.py resolves the reference recipe's microduck_scale expressions after GA
+preset/scalar overrides; GA otherwise skips interpolation on its fast path.
