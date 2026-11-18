@@ -18,10 +18,10 @@ import math
 import torch
 from isaaclab_fovi.sensors import FoveatedCameraCfg
 
-from isaaclab.assets import AssetBaseCfg, VisualMaterialCfg
+from isaaclab.assets import VisualMaterialCfg
 from isaaclab.managers import CurriculumTermCfg, EventTermCfg, ManagerTermBase, ObservationGroupCfg, ObservationTermCfg
 from isaaclab.sensors import CameraCfg
-from isaaclab.sim import DistantLightCfg, DomeLightCfg, PinholeCameraCfg
+from isaaclab.sim import PinholeCameraCfg
 from isaaclab.utils import configclass
 
 from isaaclab_tasks.utils import PresetCfg, preset
@@ -121,10 +121,6 @@ class RobotSpawnCfg(PresetCfg):
 class SceneCfg(SO101SceneCfg):
     robot = SO101SceneCfg().robot.replace(spawn=RobotSpawnCfg())
     eye = NEAREST_CAMERA
-    # A dim dome fills the shadows that a sharp key light casts. The tutorial's key light shines along (-1, 1, -1),
-    # the direction of the Newton renderer's own light, so both renderers cast the same shadows.
-    light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=150))
-    key_light = SO101SceneCfg().key_light.replace(spawn=DistantLightCfg(intensity=2000, angle=1.0))
 
     # Materials that the sim2real colour events vary; the Newton renderer only reads material colour.
     robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
