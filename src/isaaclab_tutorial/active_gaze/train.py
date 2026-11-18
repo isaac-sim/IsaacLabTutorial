@@ -261,7 +261,7 @@ def record(env, runner, args):
     import torch
     from PIL import Image, ImageDraw
 
-    from .gaze import RESET_MODES
+    from .gaze import RESET_MODES, angles_to_direction
     from .goals import target_holes
     from .sim2real import mount_randomization
 
@@ -286,9 +286,7 @@ def record(env, runner, args):
         )
         reset_checks = {name: bool(torch.equal(before[name], after[name])) for name in before}
         # The reset gaze lies inside the physical camera's image.
-        reset_checks["reset_gaze_visible"] = bool(
-            gaze.visible(gaze.directions(gaze_points(gaze)[:1], slice(0, 1))).all()
-        )
+        reset_checks["reset_gaze_visible"] = bool(gaze.visible(angles_to_direction(gaze.angles_deg[:1])).all())
         if not all(reset_checks.values()):
             raise AssertionError(f"Single-environment reset changed other environments: {reset_checks}")
     policy = runner.get_inference_policy(device=env.device)

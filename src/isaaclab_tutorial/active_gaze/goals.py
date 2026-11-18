@@ -230,7 +230,29 @@ class NumberedResetFromDataset(ResetFromDataset):
     def sampling_row_probabilities(self):
         return conditional_row_probabilities(self.row_weights, self.target_fractions)
 
-    def __call__(self, env, env_ids, dataset_path, phase_weights, sequential=False, **kwargs):
+    def __call__(
+        self,
+        env,
+        env_ids,
+        dataset_path,
+        phase_weights,
+        sequential=False,
+        home_position_noise=0.0,
+        home_heading_noise=0.0,
+        home_rack_clearance=0.0,
+        home_rack_position_noise=0.0,
+        home_rack_yaw_noise=0.0,
+        support_height_range=(0.0, 0.0),
+    ):
+        # The base term's parameters, spelled out so the event manager can check the configuration against them.
+        perturbation = dict(
+            home_position_noise=home_position_noise,
+            home_heading_noise=home_heading_noise,
+            home_rack_clearance=home_rack_clearance,
+            home_rack_position_noise=home_rack_position_noise,
+            home_rack_yaw_noise=home_rack_yaw_noise,
+            support_height_range=support_height_range,
+        )
         ids = torch.arange(env.num_envs, device=env.device)[slice(None) if env_ids is None else env_ids]
         if not len(ids):
             return
@@ -250,7 +272,7 @@ class NumberedResetFromDataset(ResetFromDataset):
         # The stock reset restores the chosen rows through its sequential path.
         self.sequential_rows, self.cursor = rows, 0
         try:
-            super().__call__(env, ids, dataset_path, phase_weights, True, **kwargs)
+            super().__call__(env, ids, dataset_path, phase_weights, True, **perturbation)
         finally:
             self.sequential_rows = saved_rows
             self.cursor = saved_cursor + len(ids) if sequential else saved_cursor
