@@ -60,6 +60,7 @@ class CameraRenderSettingsCfg(PresetCfg):
 
 @configclass
 class FoviRendererCfg(PresetCfg):
-    newton_renderer = NewtonWarpRendererCfg(render_order="pixel_priority")
+    # Newton ignores USD lights and lights the scene with its own directional light; shadow rays are opt-in.
+    newton_renderer = NewtonWarpRendererCfg(render_order="pixel_priority", enable_shadows=True)
     ovrtx = OVRTXRendererCfg(enable_shadows=ShadowsCfg())
     default = ovrtx
