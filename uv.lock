@@ -1113,6 +1113,7 @@ dependencies = [
 
 [package.optional-dependencies]
 fovi = [
+    { name = "imageio-ffmpeg", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "isaaclab", extra = ["fovi"], marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "transformers", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
 ]
@@ -1144,6 +1145,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "imageio-ffmpeg", marker = "extra == 'fovi'", specifier = ">=0.5" },
     { name = "isaaclab", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=refs%2Fpull%2F9074%2Fhead" },
     { name = "isaaclab", extras = ["fovi"], marker = "extra == 'fovi'", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=refs%2Fpull%2F9074%2Fhead" },
     { name = "isaaclab", extras = ["video"], marker = "extra == 'video'", git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=refs%2Fpull%2F9074%2Fhead" },
