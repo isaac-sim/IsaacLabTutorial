@@ -6,18 +6,11 @@ from isaaclab_ov.renderers import OVRTXRendererCfg
 
 from isaaclab_tasks.utils import PresetCfg
 
-RENDER_MODES = {
-    "rtpt": ("rgb", False),
-    "minimal_diffuse_mdl": ("simple_shading_diffuse_mdl", False),
-    "minimal_diffuse_mdl_shadows": ("simple_shading_diffuse_mdl", True),
-    "minimal_full_mdl": ("simple_shading_full_mdl", False),
-    "minimal_full_mdl_shadows": ("simple_shading_full_mdl", True),
-}
-
 
 @configclass
 class CameraOutputCfg(PresetCfg):
-    default = ["simple_shading_full_mdl"]
+    # Path-traced RGB by default: RTX Minimal mode draws no background or dome light.
+    default = ["rgb"]
     newton_renderer = ["rgb"]
     rtpt = ["rgb"]
     minimal_diffuse_mdl = ["simple_shading_diffuse_mdl"]
@@ -28,7 +21,7 @@ class CameraOutputCfg(PresetCfg):
 
 @configclass
 class CameraOutputNameCfg(PresetCfg):
-    default = "simple_shading_full_mdl"
+    default = "rgb"
     newton_renderer = "rgb"
     rtpt = "rgb"
     minimal_diffuse_mdl = "simple_shading_diffuse_mdl"
@@ -39,7 +32,8 @@ class CameraOutputNameCfg(PresetCfg):
 
 @configclass
 class ShadowsCfg(PresetCfg):
-    default = True
+    # Only Minimal mode reads this switch; path tracing always traces shadows.
+    default = False
     rtpt = False
     minimal_diffuse_mdl = False
     minimal_diffuse_mdl_shadows = True
@@ -61,7 +55,7 @@ class CameraRenderSettingsCfg(PresetCfg):
     minimal_diffuse_mdl_shadows = _minimal
     minimal_full_mdl = _minimal
     minimal_full_mdl_shadows = _minimal
-    default = minimal_full_mdl_shadows
+    default = rtpt
 
 
 @configclass
