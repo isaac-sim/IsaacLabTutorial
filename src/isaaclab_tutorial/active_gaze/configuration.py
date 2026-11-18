@@ -1,24 +1,33 @@
-"""Compose saved recipes with Isaac Lab's task registry and preset resolver."""
+"""Compose a run's configuration and describe what it trained, for resuming and for robot deployment."""
 
+from __future__ import annotations
+
+import dataclasses
 from collections.abc import Sequence
+
+from isaaclab_fovi.sensors.calibrated_geometry import resolve_camera_model, sampling_geometry
 
 from isaaclab_tasks.utils import resolve_task_config
 
+from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import ARM_JOINTS
+
 from . import TASK_ID
+from .goals import NumberedResetFromDataset
+from .language import INSTRUCTIONS
+
+RUN_FILE = "run.json"
+"""Name of the file, next to a run's checkpoints, that describes what the run trained."""
 
 
 def compose(overrides: Sequence[str] = (), saved: dict | None = None):
-    """Resolve the same env/agent classes used by the standard Isaac Lab CLI.
+    """Resolve the environment and agent the standard Isaac Lab CLI would build.
 
-    A new value replaces the saved value at the same override path. An explicit
-    ``presets=`` replaces the saved preset list, matching native selector semantics.
+    A resumed run starts from its saved overrides; a new value replaces the saved value at the same path, and an
+    explicit ``presets=`` replaces the saved preset list.
     """
     saved = saved or {}
-    if saved and "configuration" not in saved:
-        raise ValueError("Checkpoint requires a native configuration recipe")
-    previous = saved.get("configuration", [])
     merged = {}
-    for override in [*previous, *overrides]:
+    for override in [*saved.get("overrides", []), *overrides]:
         key, separator, value = override.partition("=")
         if not separator:
             raise ValueError(f"Expected an Isaac Lab configuration override, got {override!r}")
@@ -27,21 +36,20 @@ def compose(overrides: Sequence[str] = (), saved: dict | None = None):
     env, agent = resolve_task_config(TASK_ID, "rsl_rl_cfg_entry_point", overrides=recipe)
     env.validate()
     agent.validate()
-    if saved and saved.get("policy", {}).get("name", "cnn") != env.policy:
-        raise ValueError("Changing policy architecture requires a fresh run")
-    chunk_size = getattr(agent.algorithm, "action_chunk_size", 1)
-    if type(chunk_size) is not int or chunk_size < 1:
-        raise ValueError("Action chunk size must be a positive integer")
-    if saved and saved.get("action_chunk_size", 1) != chunk_size:
-        raise ValueError("Changing action chunk size requires a fresh run")
+    if saved:
+        current = describe(env, agent)
+        for name in ("policy", "action_chunk_size"):
+            if saved[name] != current[name]:
+                raise ValueError(f"Changing {name} requires a fresh run")
+        if saved.get("dino", {}).get("num_layers") != current.get("dino", {}).get("num_layers"):
+            raise ValueError("Changing the DINO exit layer requires a fresh run")
     return env, agent, recipe
 
 
-def checkpoint_configuration(overrides: Sequence[str], agent) -> list[str]:
-    """Save task settings without repeating a one-time fine-tune on resume.
+def resume_overrides(overrides: Sequence[str], agent) -> list[str]:
+    """The overrides to save for resuming, without a one-time fine-tune.
 
-    Preserve the selected fine-tune learning rate as a native scalar override.
-    A subsequent fine-tune can select its rate explicitly in the new run.
+    A fine-tuned run resumes at the fine-tuning learning rate, as an explicit value.
     """
     recipe = []
     for override in overrides:
@@ -60,38 +68,56 @@ def checkpoint_configuration(overrides: Sequence[str], agent) -> list[str]:
     return recipe
 
 
-def metadata(env, agent):
-    """Keep the deployment/checkpoint metadata derived from the resolved config."""
+def describe(env, agent) -> dict:
+    """What a run trains: task, policy, retina, gaze and control, read from its resolved configuration."""
+    eye = env.scene.eye
+    fov_deg, cmf_a_deg = sampling_geometry(eye)
+    gaze = env.actions.gaze
     algorithm = agent.algorithm
+    language = getattr(env.observations, "vision", None) is not None
+    scale = env.actions.arm_action.scale
+    chunk = algorithm.action_chunk_size
+    control_hz = 1.0 / (env.sim.dt * env.decimation)
     result = dict(
-        action_chunk_size=getattr(algorithm, "action_chunk_size", 1),
-        goal_mode=env.goal_mode,
-        renderer=env.renderer_backend(),
-        render_mode=env.render_mode(),
-        resolution=env.resolution(),
-        retinal_geometry=env.retinal_geometry(),
-        camera=dict(
-            camera_position=env.camera_position(),
-            camera_hfov=env.camera_hfov(),
-            gaze_limit=env.gaze_limit(),
-            gaze_max_delta=env.gaze_max_delta(),
-            mixed_gaze_resets=env.mixed_gaze_resets,
-            cmf_a=env.cmf_a(),
+        task=TASK_ID,
+        goal="numbered" if env.events.reset_from_dataset.func is NumberedResetFromDataset else "nearest",
+        policy="dino_language" if language else "cnn",
+        sim2real="camera_mount" in vars(env.events),
+        retina=dict(
+            fov_deg=fov_deg,
+            cmf_a_deg=cmf_a_deg,
+            resolution=eye.foveated_res,
+            camera_model=dataclasses.asdict(resolve_camera_model(eye)),
+            mount_position=eye.offset.pos,
+            mount_rotation=eye.offset.rot,
         ),
-        robot=dict(wrist_camera=env.wrist_camera()),
-        gaze_supervision=dict(
-            mode="grasp_gated" if env.observations.oracle is not None else "none",
-            weight=getattr(algorithm, "oracle_weight", 0.0),
-            std=getattr(algorithm, "oracle_std", 1e-4),
+        gaze=dict(
+            step_size=gaze.step_size,
+            limit=gaze.gaze_limit,
+            field_radius_deg=fov_deg / 2,
+            mixed_resets=gaze.mixed_resets,
         ),
-        reset_sampling=dict(env.curriculum.reset_sampling.params),
-        sim2real=env.sim2real.to_dict() if env.sim2real is not None else None,
+        control=dict(
+            action_scale=[scale[name] if isinstance(scale, dict) else scale for name in ARM_JOINTS]
+            + [env.actions.gripper_action.scale],
+            physics_hz=1.0 / env.sim.dt,
+            control_hz=control_hz,
+            policy_hz=control_hz / chunk,
+        ),
+        action_chunk_size=chunk,
+        gaze_supervision_weight=algorithm.oracle_weight,
         extrinsics_weight=getattr(algorithm, "extrinsics_weight", 0.0),
-        policy=dict(name=env.policy, extrinsics_head=env.extrinsics_head()),
+        reset_sampling=dict(env.curriculum.reset_sampling.params),
     )
-    if env.policy == "dino_language":
+    if language:
         tokens = env.observations.vision.tokens.params
-        result["policy"].update(
-            dino_checkpoint=tokens["reference"], dino_checksum=tokens["checksum"], dino_batch_size=tokens["batch_size"]
+        result.update(
+            dino=dict(
+                reference=tokens["reference"],
+                checksum=tokens["checksum"],
+                batch_size=tokens["batch_size"],
+                num_layers=tokens["num_layers"],
+            ),
+            instructions=list(INSTRUCTIONS),
         )
     return result

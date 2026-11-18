@@ -1,14 +1,22 @@
-"""Native PPO runner with checkpointed reset statistics and episode-weighted logs."""
+"""PPO runner that checkpoints the reset sampler and the control-step count, and logs episode-weighted reset metrics."""
 
-from isaaclab_tutorial.active_gaze.learning.runner import DistributedOnPolicyRunner
+import torch
 
+from .learning.runner import DistributedOnPolicyRunner
 from .sampling import iteration_metrics
 
 
 class ResetSamplingRunner(DistributedOnPolicyRunner):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sampler = self.env.unwrapped.reset_sampling
+    """Gaze-supervised PPO with the curriculum's reset sampler saved in every checkpoint.
+
+    Args:
+        restore_sampler: Restore the checkpoint's reset statistics on load. Playback and inspection keep their own.
+    """
+
+    def __init__(self, env, train_cfg, log_dir=None, device="cpu", restore_sampler: bool = True):
+        super().__init__(env, train_cfg, log_dir, device)
+        self.sampler = env.unwrapped.curriculum_manager.get_term_cfg("reset_sampling").func
+        self.restore_sampler = restore_sampler
         self._previous_counts = None
         original_log = self.logger.log
 
@@ -24,42 +32,32 @@ class ResetSamplingRunner(DistributedOnPolicyRunner):
         self.logger.log = log
 
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
-        import torch
-
-        self._previous_counts = torch.stack(
-            (
-                self.sampler.history.episodes,
-                self.sampler.history.successes,
-                self.sampler.sampled,
-            )
-        ).clone()
+        history = self.sampler.history
+        self._previous_counts = torch.stack((history.episodes, history.successes, self.sampler.sampled)).clone()
         if init_at_random_ep_len:
             # The staggered first episodes have shortened horizons; exclude their outcomes.
             self.sampler.eligible.zero_()
         return super().learn(num_learning_iterations, init_at_random_ep_len)
 
     def save(self, path, infos=None):
-        infos = dict(infos or {}, reset_sampling=self.sampler.state_dict())
-        infos["sim2real_control_steps"] = self.env.unwrapped.common_step_counter
+        env = self.env.unwrapped
+        # The control-step count drives step-based ramps, such as the camera mount's randomization.
+        infos = dict(infos or {}, reset_sampling=self.sampler.state_dict(), control_steps=env.common_step_counter)
         super().save(path, infos)
 
     def load(self, path, load_cfg=None, strict=True, map_location=None):
-        infos = super().load(path, load_cfg, strict, map_location)
-        if infos and "sim2real_control_steps" in infos:
-            self.env.unwrapped.common_step_counter = infos["sim2real_control_steps"]
-        # Playback uses canonical home starts and must not restore/adapt training sampling.
-        if not self.env.unwrapped.cfg.reset_sampling_evaluation and infos and "reset_sampling" in infos:
+        infos = super().load(path, load_cfg, strict, map_location) or {}
+        if "control_steps" in infos:
+            self.env.unwrapped.common_step_counter = infos["control_steps"]
+        if self.restore_sampler and "reset_sampling" in infos:
             self.sampler.load_state_dict(infos["reset_sampling"])
         return infos
 
     def finetune(self, path, map_location=None):
-        """Warm-start all learned state, permitting only a new camera-pose head.
+        """Warm-start the actor and critic, allowing only a new extrinsics head.
 
-        The changed environment starts fresh optimizer and SGS histories. Shape
-        mismatches or unrelated missing weights still fail strictly.
+        The optimizer and the reset statistics start fresh. Shape mismatches or other missing weights fail.
         """
-        import torch
-
         packed = torch.load(path, map_location=map_location, weights_only=False)
         actor = self.alg._raw_actor
         target = actor.state_dict()
