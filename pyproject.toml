@@ -30,6 +30,7 @@ leapp = ["leapp==0.7.2"]
 ovphysx = ["ovphysx"]
 ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
 video = ["isaaclab[video]"]
+viser = ["isaaclab[viser]"]
 # Temporary compatibility pin: Isaac Lab's logger calls wandb.util.generate_id,
 # which W&B 0.31.0 no longer provides. Remove after that logger is updated.
 wandb = ["isaaclab[wandb]", "wandb==0.26.1"]
