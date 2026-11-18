@@ -90,6 +90,8 @@ def test_scene_camera_is_an_ideal_square_pinhole_that_the_retina_spans(field_of_
     add_diagnostic_camera(cfg)
     assert cfg.scene.diagnostic_camera.spawn.to_dict() == cfg.scene.eye.spawn.to_dict()
     assert cfg.scene.diagnostic_camera.offset.to_dict() == cfg.scene.eye.offset.to_dict()
+    # Both renderers draw the same white background.
+    assert cfg.scene.eye.background_color == cfg.scene.diagnostic_camera.background_color == (1.0, 1.0, 1.0)
 
 
 def test_stronger_foveation_increases_central_density_at_fixed_camera():

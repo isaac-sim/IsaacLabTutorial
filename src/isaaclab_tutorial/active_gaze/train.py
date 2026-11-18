@@ -250,6 +250,7 @@ def add_diagnostic_camera(cfg):
         height=640,
         renderer_cfg=eye.renderer_cfg.copy(),
         render_settings=eye.render_settings.copy(),
+        background_color=eye.background_color,
         spawn=eye.spawn.copy(),
         offset=eye.offset.copy(),
     )

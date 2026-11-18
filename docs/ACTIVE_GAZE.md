@@ -48,7 +48,8 @@ uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train train --output
 Every argument that is not a script option is an Isaac Lab configuration override, as with `isaaclab train`.
 Useful presets and overrides:
 
-- `newton_renderer` renders with Newton; the default is OVRTX (`--extra ovrtx`).
+- `newton_renderer` renders with Newton; the default is OVRTX path-traced RGB (`--extra ovrtx`). The faster
+  OVRTX Minimal modes (`minimal_full_mdl`, `minimal_diffuse_mdl`, with `_shadows` variants) draw no background.
 - `sim2real` adds the tutorial's physical randomization, scene colours, a camera mount that moves each episode,
   and photometric variation of the retina. On `dino_language`, the actor also learns to predict the mount's move.
 - `chunking` makes each policy decision a plan of three control steps.

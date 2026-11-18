@@ -21,7 +21,7 @@ from isaaclab_fovi.sensors import FoveatedCameraCfg
 from isaaclab.assets import AssetBaseCfg, VisualMaterialCfg
 from isaaclab.managers import CurriculumTermCfg, EventTermCfg, ManagerTermBase, ObservationGroupCfg, ObservationTermCfg
 from isaaclab.sensors import CameraCfg
-from isaaclab.sim import DomeLightCfg, PinholeCameraCfg
+from isaaclab.sim import DistantLightCfg, DomeLightCfg, PinholeCameraCfg
 from isaaclab.utils import configclass
 
 from isaaclab_tasks.utils import PresetCfg, preset
@@ -80,7 +80,8 @@ def camera_rotation(position, target) -> tuple[float, float, float, float]:
 def scene_camera(position, target, field_of_view_deg: float, resolution: int = 64) -> FoveatedCameraCfg:
     """A fixed foveated camera at ``position`` looking at ``target``.
 
-    The physical camera is an ideal square pinhole with the given field of view, and the retina spans it.
+    The physical camera is an ideal square pinhole with the given field of view, and the retina spans it. Pixels that
+    miss the scene are white on every renderer.
     """
     aperture = 48.0 * math.tan(math.radians(field_of_view_deg / 2))
     return FoveatedCameraCfg(
@@ -96,6 +97,7 @@ def scene_camera(position, target, field_of_view_deg: float, resolution: int = 6
         ),
         offset=CameraCfg.OffsetCfg(pos=position, rot=camera_rotation(position, target), convention="opengl"),
         foveated_res=resolution,
+        background_color=(1.0, 1.0, 1.0),
         mask_to_sensor_fov=True,
         update_period=0.0,
     )
@@ -119,7 +121,14 @@ class RobotSpawnCfg(PresetCfg):
 class SceneCfg(SO101SceneCfg):
     robot = SO101SceneCfg().robot.replace(spawn=RobotSpawnCfg())
     eye = NEAREST_CAMERA
-    light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=2000))
+    # A dim dome fills the shadows that a key light from above casts. The key light leans 25 degrees toward +y, so
+    # the shadows fall sideways in the scene camera's view.
+    light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=250))
+    key_light = AssetBaseCfg(
+        prim_path="/World/KeyLight",
+        spawn=DistantLightCfg(intensity=1500, angle=5.0),
+        init_state=AssetBaseCfg.InitialStateCfg(rot=(0.2164396, 0.0, 0.0, 0.9762960)),
+    )
 
     # Materials that the sim2real colour events vary; the Newton renderer only reads material colour.
     robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
