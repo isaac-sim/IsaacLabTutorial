@@ -5,11 +5,18 @@
 
 """MicroDuck manager-based environments."""
 
+import math
+
 from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.envs.mdp import action_rate_l2
+from isaaclab.managers import RewardTermCfg as Reward
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg, NewtonShapeCfg
+
+from isaaclab_tutorial.tasks.velocity.mdp import rewards
 
 from .managers import EventsCfg, ObservationsCfg, TerminationsCfg
 
@@ -95,3 +102,53 @@ class InspectEnvCfg(BaseEnvCfg):
         self.events.randomize_head_com = None
         self.events.randomize_joint_friction = None
         self.events.randomize_armature = None
+
+
+@configclass
+class BalanceRewardsCfg:
+    # A spirit level: a vertical trunk earns more than a tilted trunk.
+    upright = Reward(
+        func=rewards.upright,
+        weight=2.0,
+        params={"std": math.sqrt(0.05), "asset_cfg": SceneEntityCfg("robot", body_names=["trunk_base"])},
+    )
+    # A speedometer near zero: discourage horizontal motion at the current location.
+    still_xy = Reward(
+        func=rewards.track_linear_velocity_heading, weight=1.0, params={"command_name": "base_velocity", "std": 0.15}
+    )
+    still_yaw = Reward(
+        func=rewards.track_angular_velocity_world, weight=1.0, params={"command_name": "base_velocity", "std": 0.35}
+    )
+    # A movement budget: discourage abrupt target changes, not all movement.
+    action_rate = Reward(func=action_rate_l2, weight=-0.1)
+    joint_limits = Reward(func=rewards.joint_pos_limits_finite, weight=-1.0)
+
+
+@configclass
+class BalanceEnvCfg(BaseEnvCfg):
+    """Learn balance with a free base; zero commands do not constrain physics."""
+
+    rewards = BalanceRewardsCfg()
+
+
+@configclass
+class BalanceHeadRewardsCfg(BalanceRewardsCfg):
+    # Four centering springs: return each neck/head joint to its neutral target.
+    head_pose = Reward(
+        func=rewards.head_pose_tracking,
+        weight=2.0,
+        params={
+            "command_name": "head_pose",
+            "std": 0.5,
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=["neck_pitch", "head_pitch", "head_yaw", "head_roll"], preserve_order=True
+            ),
+        },
+    )
+
+
+@configclass
+class BalanceHeadEnvCfg(BalanceEnvCfg):
+    """Keep the balance objective and add a neutral neck/head pose."""
+
+    rewards = BalanceHeadRewardsCfg()

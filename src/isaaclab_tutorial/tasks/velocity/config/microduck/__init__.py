@@ -18,3 +18,7 @@ def register_task(name, env_cfg, agent_cfg):
 
 register_task("Inspect", "InspectEnvCfg", "BalancePPORunnerCfg")
 register_task("Passive", "BaseEnvCfg", "BalancePPORunnerCfg")
+
+register_task("Balance", "BalanceEnvCfg", "BalancePPORunnerCfg")
+
+register_task("BalanceHead", "BalanceHeadEnvCfg", "BalanceHeadPPORunnerCfg")
