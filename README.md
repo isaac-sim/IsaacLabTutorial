@@ -93,6 +93,7 @@ uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --
 | --- | --- | --- |
 | `IsaacTutorial-Place-Vial-SO101` | Full state | PPO |
 | `IsaacTutorial-Place-Vial-SO101-Camera` | Wrist RGB (2 frames, 64×48) + proprioception | Distillation from a state teacher, or PPO from scratch |
+| `IsaacTutorial-Place-Vial-SO101-ActiveGaze` | Foveated scene camera whose gaze the policy moves + proprioception | PPO with a gaze teacher; see [docs/ACTIVE_GAZE.md](docs/ACTIVE_GAZE.md) |
 
 Add `presets=sim2real` to either task to enable robot-transfer randomization. The physical randomization is
 identical in both tasks, so a teacher and its student train under the same physics. See
@@ -201,9 +202,11 @@ src/isaaclab_tutorial/
   tasks/velocity/config/microduck/                   Microduck environment, controls, and training configs
   tasks/velocity/mdp/                               walking commands, rewards, and task terms
   utils/                                            evaluation, LEAPP export, real-robot scripts
+  active_gaze/                                      ActiveGaze task, training script and deployment (fovi extra)
 checkpoints/microduck/                              pretrained balance and walking policies
 scripts/                                           Microduck evaluation and inspection tools
 docs/SIM2REAL.md                                    training for and deploying to the real robot
+docs/ACTIVE_GAZE.md                                 the ActiveGaze task, from install to the real robot
 ```
 
 PhysX and OVRTX are available for sim-to-sim checks: install them with `uv sync --extra ovphysx --extra ovrtx`
