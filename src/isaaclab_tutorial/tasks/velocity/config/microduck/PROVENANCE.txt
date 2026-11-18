@@ -10,8 +10,8 @@ Source mapping:
 bam/bam_cfg.py <- source/isaaclab/isaaclab/actuators/actuator_bam_cfg.py
 bam/bam.py, bam/bam_kernels.py <- source/isaaclab_newton/isaaclab_newton/actuators/
 bam/mjwarp_actuator_bridge*.py <- source/isaaclab_newton/isaaclab_newton/physics/
-reference/robot.py <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
-reference/ <- source/isaaclab_tasks/isaaclab_tasks/contrib/microduck/
+bam/xl330.py (fitted motor coefficients) <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
+../../mdp/actions.py and ../../mdp/commands.py <- source/isaaclab_tasks/isaaclab_tasks/contrib/microduck/mdp/
 
 GA adaptations:
 - integration.py authors BAM USD definitions, reactivates replaced prims, samples
@@ -19,13 +19,3 @@ GA adaptations:
   DOF/group selection and backlash binding derive from upstream actuator_control.py.
 - bam.py gathers external load before computing torque, then publishes friction.
   The upstream motor, voltage, delay and friction equations are preserved.
-- Imports use this project's namespace. Reference task IDs start with CourseReference.
-- The reference uses GA's default_visualizer_cfg, OmegaConf resolver registration,
-  and the GA actuator parameter API's controller component name.
-
-These components came after GA and are maintained by this course. They are not
-claimed to be included in Isaac Lab 3.0.0. The USD robot assets retain the upstream
-asset URLs in robot.py. The learner builds tasks/ progressively through lessons.
-
-reference/config.py resolves the reference recipe's microduck_scale expressions after GA
-preset/scalar overrides; GA otherwise skips interpolation on its fast path.

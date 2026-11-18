@@ -11,7 +11,7 @@ from isaaclab_newton.sim.schemas import NewtonArticulationCfg
 
 from isaaclab_tutorial.tasks.velocity.config.microduck.bam import install
 from isaaclab_tutorial.tasks.velocity.config.microduck.bam.bam_cfg import BamActuatorCfg
-from isaaclab_tutorial.tasks.velocity.config.microduck.reference.robot import MICRODUCK_CFG as REFERENCE_ROBOT_CFG
+from isaaclab_tutorial.tasks.velocity.config.microduck.bam.xl330 import XL330_MOTOR_CFG
 
 install()
 
@@ -56,7 +56,7 @@ STANDING_JOINT_POS = {
 # BEGIN robot-servos
 SERVOS_CFG = BamActuatorCfg(
     joint_names_expr=["^(?!passive_).*"],
-    motor=REFERENCE_ROBOT_CFG.actuators["servos"].motor,
+    motor=XL330_MOTOR_CFG,
     kp_fw=200.0,
     vin=7.4,
     vin_range=(6.5, 8.2),
