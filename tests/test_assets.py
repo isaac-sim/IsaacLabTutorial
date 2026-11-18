@@ -32,7 +32,9 @@ def test_text_usd_dependencies_resolve():
     for usd in ASSET_ROOT.rglob("*.usda"):
         text = usd.read_text(errors="ignore")
         for reference in re.findall(r"@([^@\n]+)@", text):
-            if "://" not in reference and not (usd.parent / reference).resolve().exists():
+            # A bare MDL name, such as OmniPBR.mdl, is a core material the renderer resolves from its search path.
+            builtin_mdl = reference.endswith(".mdl") and "/" not in reference
+            if "://" not in reference and not builtin_mdl and not (usd.parent / reference).resolve().exists():
                 missing.append(f"{usd}: {reference}")
     assert missing == []
 
