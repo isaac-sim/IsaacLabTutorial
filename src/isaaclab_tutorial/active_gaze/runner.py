@@ -15,7 +15,8 @@ class ResetSamplingRunner(DistributedOnPolicyRunner):
 
     def __init__(self, env, train_cfg, log_dir=None, device="cpu", restore_sampler: bool = True):
         super().__init__(env, train_cfg, log_dir, device)
-        self.sampler = env.unwrapped.curriculum_manager.get_term_cfg("reset_sampling").func
+        # The curriculum manager resolves its own copy of the configuration, where the term is an instance.
+        self.sampler = env.unwrapped.curriculum_manager.cfg.reset_sampling.func
         self.restore_sampler = restore_sampler
         self._previous_counts = None
         original_log = self.logger.log
