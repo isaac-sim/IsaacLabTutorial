@@ -261,6 +261,8 @@ class VisionCfg(ObservationGroupCfg):
             reference=DEFAULT_CHECKPOINT,
             checksum=DEFAULT_MD5,
             batch_size=128,
+            # Transformer layers to run before exiting; None runs all of them.
+            num_layers=None,
             data_type=CameraOutputNameCfg(),
             photometric=PHOTOMETRIC,
         ),

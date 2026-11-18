@@ -8,6 +8,28 @@ import torch
 from tensordict import TensorDict
 
 
+def test_dino_early_exit_keeps_the_pretrained_layers():
+    from transformers import DINOv3ViTConfig, DINOv3ViTModel
+
+    from isaaclab_tutorial.active_gaze.learning.dino import keep_layers
+
+    def config(layers):
+        return DINOv3ViTConfig(
+            hidden_size=32, intermediate_size=64, num_attention_heads=2, num_hidden_layers=layers, image_size=32
+        )
+
+    torch.manual_seed(0)
+    full = DINOv3ViTModel(config(4)).eval()
+    short = DINOv3ViTModel(config(2)).eval()
+    short.load_state_dict(full.state_dict(), strict=False)
+    pixels = torch.randn(2, 3, 32, 32)
+    with torch.no_grad():
+        expected = short(pixel_values=pixels).last_hidden_state
+        assert torch.equal(keep_layers(full, 2)(pixel_values=pixels).last_hidden_state, expected)
+    with pytest.raises(ValueError, match="num_layers"):
+        keep_layers(full, 3)
+
+
 def test_language_configuration_keeps_numbered_task_and_critic():
     from isaaclab_tutorial.active_gaze.configuration import compose
     from isaaclab_tutorial.active_gaze.language import instruction_index

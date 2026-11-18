@@ -29,7 +29,14 @@ class DinoTokens(ManagerTermBase):
             self.photometric.reset(env_ids)
 
     def __call__(
-        self, env, reference: str, checksum: str | None, batch_size: int, data_type: str = "rgb", photometric=None
+        self,
+        env,
+        reference: str,
+        checksum: str | None,
+        batch_size: int,
+        num_layers: int | None = None,
+        data_type: str = "rgb",
+        photometric=None,
     ):
         if not getattr(env, "refresh_policy_vision", True) and self.cached is not None:
             return self.cached
