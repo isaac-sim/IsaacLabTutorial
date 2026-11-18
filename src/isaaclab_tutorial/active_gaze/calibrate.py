@@ -184,9 +184,9 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--checkpoint", type=Path)
     args, recipe = parser.parse_known_args()
-    from .configuration import compose
+    from .configuration import RUN_FILE, compose
 
-    saved = json.loads(args.checkpoint.with_name("example.json").read_text()) if args.checkpoint else None
+    saved = json.loads(args.checkpoint.with_name(RUN_FILE).read_text()) if args.checkpoint else None
     try:
         _, agent, recipe = compose(recipe, saved)
     except ValueError as exc:

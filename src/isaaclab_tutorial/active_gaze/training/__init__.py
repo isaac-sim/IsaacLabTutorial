@@ -1,1 +1,1 @@
-"""Training evaluation, recording, and memory calibration utilities."""
+"""Training logging, recording, and memory calibration utilities."""
