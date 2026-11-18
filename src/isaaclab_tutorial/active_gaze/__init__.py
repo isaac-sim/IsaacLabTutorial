@@ -6,3 +6,6 @@ Lab's ``isaaclab_fovi`` camera and the policy libraries.
 """
 
 TASK_ID = "IsaacTutorial-Place-Vial-SO101-ActiveGaze"
+
+RUN_FILE = "run.json"
+"""Name of the file, next to a run's checkpoints, that describes what the run trained."""

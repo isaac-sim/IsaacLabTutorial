@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .control import JOINTS, PolicyState, advance_policy_deadline
+from .control import JOINTS, POLICY_HZ, TARGET_HZ, PolicyState, advance_policy_deadline
 from .hardware import (
     JointMap,
     finish_motor_control,
@@ -25,19 +25,18 @@ from .runtime import InferenceWorker, PolicyRuntime
 
 
 class SceneCamera:
-    """Capture the latest frame using the calibrated raster size."""
+    """Capture the latest frame at the camera model's raster size."""
 
-    def __init__(self, device, image_size, planar=False):
+    def __init__(self, device, image_size):
         import cv2
 
         self.capture = cv2.VideoCapture(device, cv2.CAP_V4L2)
         if not self.capture.isOpened():
             raise RuntimeError(f"Cannot open camera {device}")
         h, w = image_size
-        self.planar = planar
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-        self.capture.set(cv2.CAP_PROP_FPS, 30)
+        self.capture.set(cv2.CAP_PROP_FPS, POLICY_HZ)
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.latest, self.error = None, None
         self.stop = threading.Event()
@@ -50,15 +49,7 @@ class SceneCamera:
         latest = self.latest
         if latest is None or time.monotonic() - latest[0] > 0.1:
             raise RuntimeError("No fresh camera frame")
-        stamp, rgb = latest
-        if self.planar:
-            import cv2
-
-            h, w = rgb.shape[:2]
-            side = min(h, w)
-            top, left = (h - side) // 2, (w - side) // 2
-            rgb = cv2.resize(rgb[top : top + side, left : left + side], (640, 640), interpolation=cv2.INTER_AREA)
-        return stamp, rgb
+        return latest
 
     def _read(self):
         import cv2
@@ -116,12 +107,11 @@ def main():
 
     torch.set_num_threads(1)
     runtime = PolicyRuntime(args.bundle, args.device)
-    planar = runtime.contract.get("retinal_geometry") == "planar"
-    if args.execute and not planar and not runtime.contract["calibrated_capture"]:
-        parser.error("Export with the actual camera --calibration before hardware execution")
+    if args.execute and not runtime.contract["calibrated_capture"]:
+        parser.error("Export with the real camera's --camera_model before hardware execution")
     state = PolicyState(runtime.contract)
     robot = SO101Follower(SO101FollowerConfig(port=args.port, id=args.id, use_degrees=True))
-    camera = SceneCamera(args.camera, runtime.contract["camera_calibration"]["image_size"], planar)
+    camera = SceneCamera(args.camera, runtime.contract["camera_model"]["image_size"])
     worker = InferenceWorker(runtime)
     configured = False
     traces, inputs, actions, images, timings = [], [], [], [], []
@@ -200,7 +190,7 @@ def main():
             previous, previous_time = measured, sample_time
             if args.trace:
                 traces.append(np.concatenate(([tick - start], measured, target, state.action)))
-            next_tick += 1 / 120
+            next_tick += 1 / TARGET_HZ
             remaining = next_tick - time.monotonic()
             if remaining > 0:
                 time.sleep(remaining)

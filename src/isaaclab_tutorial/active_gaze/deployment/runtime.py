@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .control import validate_contract
+from .control import PROPRIOCEPTION_SIZE, validate_contract
 
 
 class PolicyRuntime:
@@ -29,7 +29,8 @@ class PolicyRuntime:
             raise ValueError("Use cuda:0 and select the physical GPU with CUDA_VISIBLE_DEVICES")
         self.retinal = retinal
         self.image_key = "retinal_rgb" if retinal else "rgb"
-        size = [128, 128] if retinal else self.contract["camera_calibration"]["image_size"]
+        resolution = self.contract["retina"]["resolution"]
+        size = [resolution, resolution] if retinal else self.contract["camera_model"]["image_size"]
         self.image_shape = (1, *size, 3)
         graph = self.bundle / self.contract["retinal_graph" if retinal else "camera_graph"]
         if self.device.type == "cuda":
@@ -44,8 +45,8 @@ class PolicyRuntime:
             image = image.unsqueeze(0)
         if image.shape != self.image_shape or image.dtype != torch.uint8:
             raise ValueError(f"Expected uint8 RGB {self.image_shape}; never resize an uncalibrated image")
-        if proprio.shape != (1, 32) or not torch.isfinite(proprio).all():
-            raise ValueError("Expected 32 finite proprioceptive values")
+        if proprio.shape != (1, PROPRIOCEPTION_SIZE) or not torch.isfinite(proprio).all():
+            raise ValueError(f"Expected {PROPRIOCEPTION_SIZE} finite proprioceptive values")
         # The profiling executor misoptimizes the traced BF16 DINO graph after
         # warmup on PyTorch 2.11. Preserve the validated eager-trace numerics.
         with torch.jit.optimized_execution(False):
