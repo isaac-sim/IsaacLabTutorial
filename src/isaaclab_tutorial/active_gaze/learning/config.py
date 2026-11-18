@@ -1,6 +1,7 @@
 """Configuration for language-conditioned visual actors."""
 
 from isaaclab.utils import configclass
+
 from isaaclab_rl.rsl_rl import RslRlMLPModelCfg
 
 
