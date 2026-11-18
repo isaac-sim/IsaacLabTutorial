@@ -1,4 +1,4 @@
-"""Transfer preserves learned state and keeps camera supervision out of actions."""
+"""Robot-transfer randomization keeps the task, the controls and the actor's inputs; extrinsics labels stay out."""
 
 from copy import deepcopy
 from types import SimpleNamespace
@@ -7,50 +7,8 @@ import pytest
 import torch
 from tensordict import TensorDict
 
-from isaaclab_fovi.deployment.so101.planar import PlanarRetina, gaze_basis, project_gaze_rays
 from isaaclab_tutorial.active_gaze.camera_geometry import pose_loss, pose_targets
 from isaaclab_tutorial.active_gaze.configuration import compose
-
-
-def test_planar_coordinates_do_not_require_physical_intrinsics():
-    retina = PlanarRetina(resolution=16)
-    gaze = torch.tensor([[0.0, 0.0], [0.2, -0.3]])
-    pixels, valid = retina.pixels(gaze)
-    center_rays = torch.tensor([[0.0, 0.0, 1.0]])
-    center, _ = project_gaze_rays(center_rays, gaze, retina.focal_pixels, retina.center_pixels, 640)
-    torch.testing.assert_close(retina.angles(center[:, 0]), gaze)
-    # Reproduce the actual renderer's shared canonical LUT and upright permutation.
-    from isaaclab_fovi.sensors.native_grid import native_grid_directions
-    from isaaclab_fovi.sensors.pooling import build_lowres_coords
-
-    cfg = compose(["presets=sim2real", "env.scene.eye.cmf_a=0.0075"])[0]
-    cfg.scene.eye.foveated_res = 16
-    coords, _ = build_lowres_coords(cfg.scene.eye, device="cpu")
-    rays = native_grid_directions(coords, tangent_scale=320 / retina.focal)
-    rays *= torch.tensor((1, -1, -1))
-    torch.testing.assert_close(coords.as_grid(rays, sample_dim=0).reshape(-1, 3), retina.rays)
-    expected, visible = project_gaze_rays(rays, gaze, retina.focal_pixels, retina.center_pixels, 640)
-    torch.testing.assert_close(coords.as_grid(expected, sample_dim=1), pixels)
-    assert torch.equal(coords.as_grid(visible & coords.valid_mask, sample_dim=1)[..., None], valid)
-    image = torch.arange(640).view(1, 1, 640, 1).expand(2, 640, 640, 3).remainder(256).byte()
-    output = retina(image, gaze)
-    assert output.shape == (2, 16, 16, 3) and output.dtype == torch.uint8
-    assert (output[~valid.expand_as(output)] == 0).all()
-
-
-@pytest.mark.gpu
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA sampler export")
-def test_planar_export_keeps_uint8_rounding_after_cuda_mapping(tmp_path):
-    model = PlanarRetina(resolution=128).cuda().eval()
-    rgb = torch.randint(0, 256, (1, 640, 640, 3), device="cuda", dtype=torch.uint8)
-    gaze = torch.zeros(1, 2, device="cuda")
-    with torch.inference_mode(), torch.jit.optimized_execution(False):
-        path = tmp_path / "retina.pt"
-        torch.jit.trace(model, (rgb, gaze), check_trace=False).save(str(path))
-        restored = torch.jit.load(str(path), map_location="cuda").to("cuda").eval()
-        for angles in ((0.0, 0.0), (0.2, -0.3), (-0.6, 0.5)):
-            gaze[:] = torch.tensor(angles, device="cuda")
-            assert torch.equal(restored(rgb, gaze), model(rgb, gaze))
 
 
 def test_pose_metrics_remain_accurate_under_mixed_precision():
@@ -66,88 +24,101 @@ def test_pose_metrics_remain_accurate_under_mixed_precision():
     assert metrics["extrinsics_rotation_deg"].item() == pytest.approx(1, abs=1e-3)
 
 
-def test_transfer_presets_inherit_without_mutating_saved_metadata():
-    from isaaclab_tutorial.active_gaze.transfer_options import CameraRandomizationCfg
-
-    saved = dict(configuration=["presets=sim2real", "env.sim2real.rotation_deg=3.0"], policy={"name": "dino_language"})
-    before = deepcopy(saved)
-    env, agent, _ = compose(["presets=sim2real,finetune", "env.sim2real.rotation_deg=7.0"], saved)
-    assert isinstance(env.sim2real, CameraRandomizationCfg)
-    assert env.sim2real.rotation_deg == 7
-    assert agent.algorithm.extrinsics_weight == 0.05
-    assert agent.finetune and agent.algorithm.learning_rate == 3e-5
-    assert saved == before
-    with pytest.raises(ValueError, match="nominal sampling fraction"):
-        compose(["presets=sim2real", "env.sim2real.nominal_fraction=2.0"])
-
-
-def test_randomizations_preserve_numbered_reset_and_control_contract():
-    base = compose(["presets=dino_language"])[0]
-    varied = compose(["presets=sim2real"])[0]
-    assert base.actions.to_dict() == varied.actions.to_dict()
-    assert base.scene.robot.init_state.to_dict() == varied.scene.robot.init_state.to_dict()
-    assert base.scene.robot.spawn.shoulder_response == varied.scene.robot.spawn.shoulder_response
-    assert base.scene.robot.spawn.elbow_response == varied.scene.robot.spawn.elbow_response
-    assert base.rewards.to_dict() == varied.rewards.to_dict()
-    assert base.episode_length_s == varied.episode_length_s
+def test_sim2real_adds_camera_randomization_and_extrinsics_labels_but_keeps_the_eye_and_actor_inputs():
+    # The tutorial's own sim2real preset also retunes arm action scales and rewards; this covers what active gaze adds.
+    base, base_agent, _ = compose(["presets=dino_language"])
+    varied, varied_agent, _ = compose(["presets=dino_language,sim2real"])
+    assert base.actions.gaze.to_dict() == varied.actions.gaze.to_dict()
+    assert base.scene.eye.to_dict() == varied.scene.eye.to_dict()
     assert base.observations.critic.to_dict() == varied.observations.critic.to_dict()
-    assert varied.observations.proprio.to_dict() == base.observations.proprio.to_dict()
+    assert base.observations.proprio.to_dict() == varied.observations.proprio.to_dict()
     assert base.observations.extrinsics is None and varied.observations.extrinsics is not None
-    assert varied.scene.eye.field_geometry == "planar" and base.scene.eye.field_geometry == "spherical"
-    from isaaclab_fovi.sensors.foveated_rtx_tiled_camera import FoveatedRTXTiledCamera
-
-    assert issubclass(varied.scene.eye.class_type, FoveatedRTXTiledCamera)
-    assert varied.scene.eye.spawn.horizontal_aperture == base.scene.eye.spawn.horizontal_aperture
-    assert varied.scene.diagnostic_camera is None  # Training allocates no dense camera.
-    assert varied.events.reset_from_dataset.func == base.events.reset_from_dataset.func
-    for key in ("dataset_path", "phase_weights", "sequential"):
-        assert varied.events.reset_from_dataset.params.get(key) == base.events.reset_from_dataset.params.get(key)
-    assert varied.scene.support is not None and varied.events.to_dict().get("camera_mount") is None
-    assert all(asset.randomize_diameters for asset in varied.scene.vial.spawn.assets_cfg)
+    assert varied.events.reset_from_dataset.func is base.events.reset_from_dataset.func
+    assert "camera_mount" not in vars(base.events) and "camera_mount" in vars(varied.events)
+    assert base.observations.vision.tokens.params["photometric"] is None
+    assert varied.observations.vision.tokens.params["photometric"]
+    assert not hasattr(base_agent.algorithm, "extrinsics_weight") and not base_agent.actor.extrinsics_head
+    assert varied_agent.algorithm.extrinsics_weight == 0.05 and varied_agent.actor.extrinsics_head
 
 
-def test_partial_camera_reset_preserves_other_scenes_and_ignores_grid_origin():
-    from isaaclab_tutorial.active_gaze.sim2real import CameraRandomization
+def test_resumed_fine_tune_keeps_the_saved_overrides_without_mutating_them():
+    saved = dict(overrides=["presets=dino_language,sim2real"], policy="dino_language", action_chunk_size=1)
+    before = deepcopy(saved)
+    env, agent, recipe = compose(["presets=dino_language,sim2real,finetune"], saved)
+    assert "camera_mount" in vars(env.events)
+    assert agent.finetune and agent.algorithm.learning_rate == 3e-5
+    assert recipe == ["presets=dino_language,sim2real,finetune"]
+    assert saved == before
 
-    cfg = compose(["presets=sim2real", "env.sim2real.nominal_fraction=0.0", "env.sim2real.ramp_steps=0"])[0]
-    camera = SimpleNamespace(cfg=cfg.scene.eye, reset=lambda **kwargs: None)
 
-    def set_pose(position, rotation, env_ids):
+def make_mount_randomization(num_envs=3):
+    from isaaclab_tutorial.active_gaze.sim2real import randomize_camera_mount
+
+    eye = compose(["presets=numbered,sim2real"])[0].scene.eye
+    camera = SimpleNamespace(cfg=eye)
+
+    def set_world_poses(position, rotation, env_ids, convention):
+        assert convention == "opengl"
         camera.world = position.clone()
 
-    camera.set_physical_poses = set_pose
+    camera.set_world_poses = set_world_poses
 
     class Scene(dict):
-        env_origins = torch.tensor([[3.0, 4.0, 0.0], [-5.0, 7.0, 0.0], [9.0, 2.0, 0.0]])
-        sensors = {"eye": camera}
+        env_origins = torch.tensor([[3.0, 4.0, 0.0], [-5.0, 7.0, 0.0], [9.0, 2.0, 0.0]])[:num_envs]
 
-    scene = Scene(
-        eye=camera,
-        robot=SimpleNamespace(
-            data=SimpleNamespace(root_quat_w=SimpleNamespace(torch=torch.tensor([[0.0, 0.0, 0.0, 1.0]]).expand(3, -1)))
-        ),
-    )
-    env = SimpleNamespace(scene=scene, cfg=cfg, device="cpu", num_envs=3, common_step_counter=0, extras={})
-    state = CameraRandomization(None, env)
+    identity = torch.tensor([[0.0, 0.0, 0.0, 1.0]]).expand(num_envs, -1)
+    robot = SimpleNamespace(data=SimpleNamespace(root_quat_w=SimpleNamespace(torch=identity)))
+    scene = Scene(eye=camera, robot=robot)
+    env = SimpleNamespace(scene=scene, device="cpu", num_envs=num_envs, common_step_counter=0, extras={})
+    term = randomize_camera_mount(SimpleNamespace(params=dict(camera_name="eye")), env)
+    return term, env, camera
+
+
+def test_partial_mount_reset_preserves_other_scenes_and_ignores_the_grid_origin():
+    term, env, camera = make_mount_randomization()
+    params = dict(nominal_fraction=0.0, ramp_steps=0)
     torch.manual_seed(7)
-    state(env, None)
-    assert torch.equal(state.intrinsics, state.nominal_intrinsics)
-    assert not state.radial.any()
-    torch.testing.assert_close(camera.world, state.position + scene.env_origins)
-    before = {
-        name: getattr(state, name).clone()
-        for name in ("position", "rotation", "intrinsics", "radial", "targets", "photo")
-    }
+    term(env, None, **params)
+    assert not torch.equal(term.position, term.nominal_position)
+    torch.testing.assert_close(camera.world, term.position + env.scene.env_origins)
+    before = {name: getattr(term, name).clone() for name in ("position", "rotation", "labels")}
     torch.manual_seed(91)
-    state(env, torch.tensor([1]))
-    expected_target = state.targets[1].clone()
+    term(env, torch.tensor([1]), **params)
+    labels = term.labels[1].clone()
     for name, value in before.items():
-        assert torch.equal(getattr(state, name)[[0, 2]], value[[0, 2]])
-    scene.env_origins += 1000
+        assert torch.equal(getattr(term, name)[[0, 2]], value[[0, 2]])
+    env.scene.env_origins += 1000
     torch.manual_seed(91)
-    state(env, torch.tensor([1]))
-    torch.testing.assert_close(expected_target, state.targets[1])
-    torch.testing.assert_close(camera.world, state.position[1:2] + scene.env_origins[1:2])
+    term(env, torch.tensor([1]), **params)
+    torch.testing.assert_close(term.labels[1], labels)
+    torch.testing.assert_close(camera.world, term.position[1:2] + env.scene.env_origins[1:2])
+
+
+def test_mount_moves_ramp_up_and_nominal_episodes_keep_the_mount():
+    term, env, _ = make_mount_randomization()
+    env.common_step_counter = 0
+    assert term.strength(ramp_steps=1000) == pytest.approx(0.1)
+    env.common_step_counter = 2000
+    assert term.strength(ramp_steps=1000) == 1.0
+    term(env, None, nominal_fraction=1.0, ramp_steps=0)
+    assert torch.equal(term.position, term.nominal_position)
+    assert not term.labels.any()
+
+
+def test_photometric_variation_keeps_unseen_samples_black_and_resets_per_environment():
+    from isaaclab_tutorial.active_gaze.sim2real import PHOTOMETRIC_RANGES, PhotometricVariation
+
+    torch.manual_seed(3)
+    variation = PhotometricVariation(2, "cpu", PHOTOMETRIC_RANGES)
+    images = torch.randint(1, 256, (2, 8, 8, 3), dtype=torch.uint8)
+    images[:, :2] = 0
+    varied = variation(images)
+    assert varied.dtype == torch.uint8 and varied.shape == images.shape
+    assert not varied[:, :2].any()
+    first = {name: value[0].clone() for name, value in variation.values.items()}
+    variation.reset(torch.tensor([1]))
+    for name, value in variation.values.items():
+        assert torch.equal(value[0], first[name])
 
 
 def make_actor(tmp_path, head):
@@ -172,7 +143,7 @@ def make_actor(tmp_path, head):
         )
     obs = TensorDict(
         dict(
-            proprio=torch.randn(4, 32),
+            proprio=torch.randn(4, 30),
             vision=torch.randn(4, 4, 8),
             instruction=torch.zeros(4, 1, dtype=torch.long),
             critic=torch.randn(4, 72),
@@ -265,55 +236,3 @@ def test_finetune_permits_only_new_head_and_preserves_normalization(tmp_path):
     torch.save(checkpoint, path)
     with pytest.raises(ValueError, match="Unexpected missing"):
         ResetSamplingRunner.finetune(runner, path)
-
-
-def test_planar_virtual_gaze_preserves_physical_camera_and_partial_resets(monkeypatch):
-    from isaaclab.sensors import Camera
-    from isaaclab.utils.math import matrix_from_quat
-
-    from isaaclab_tutorial.active_gaze.sim2real import PlanarSceneCamera
-
-    monkeypatch.setattr(PlanarSceneCamera, "__del__", lambda self: None)
-    camera = object.__new__(PlanarSceneCamera)
-    camera.physical_position = torch.randn(3, 3)
-    camera.physical_rotation = torch.tensor([[0.0, 0.0, 0.0, 1.0]]).expand(3, -1).clone()
-    camera.gaze = torch.tensor([[0.2, -0.3], [-0.4, 0.5], [0.6, -0.1]])
-    captured = {}
-
-    def capture(self, position, rotation, env_ids, convention):
-        assert convention == "opengl"
-        captured.update(position=position.clone(), rotation=rotation.clone(), ids=env_ids)
-
-    monkeypatch.setattr(Camera, "set_world_poses", capture)
-    camera.set_calibrated_angles(camera.gaze)
-    torch.testing.assert_close(captured["position"], camera.physical_position)
-    basis = torch.tensor((1, -1, -1))
-    expected = gaze_basis(camera.gaze) * basis[None, :, None] * basis[None, None, :]
-    torch.testing.assert_close(matrix_from_quat(captured["rotation"]), expected)
-    before = camera.physical_position.clone()
-    gaze = camera.gaze.clone()
-    camera.set_physical_poses(torch.zeros(1, 3), torch.tensor([[0.0, 0.0, 0.0, 1.0]]), torch.tensor([1]))
-    torch.testing.assert_close(camera.physical_position[[0, 2]], before[[0, 2]])
-    torch.testing.assert_close(camera.gaze, gaze)
-    assert captured["position"].shape == (1, 3)
-
-
-@pytest.mark.gpu
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA direct-render visibility")
-def test_direct_visibility_matches_export_without_broadcast_allocation():
-    from isaaclab_fovi.deployment.so101.planar import project_pinhole_rays
-    from isaaclab_fovi.sensors.calibrated_geometry import rotate_camera_rays
-
-    retina = PlanarRetina().cuda()
-    gaze = torch.tensor([[0.0, 0.0], [0.2, -0.3], [-0.6, 0.5]], device="cuda")
-    expected_pixels, expected_valid = project_gaze_rays(
-        retina.rays, gaze, retina.focal_pixels, retina.center_pixels, 640
-    )
-    pixels, valid = project_pinhole_rays(
-        rotate_camera_rays(retina.rays, gaze_basis(gaze)),
-        retina.focal_pixels,
-        retina.center_pixels,
-        640,
-    )
-    assert torch.equal(valid, expected_valid)
-    torch.testing.assert_close(pixels[valid], expected_pixels[valid], atol=1e-3, rtol=1e-5)

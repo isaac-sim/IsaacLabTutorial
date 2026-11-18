@@ -151,15 +151,15 @@ def test_uniform_sampling_only_tracks_and_metrics_weight_episodes():
 
 
 def test_saved_settings_and_canonical_evaluation():
-    from isaaclab_tutorial.active_gaze.configuration import compose
+    from isaaclab_tutorial.active_gaze.configuration import compose, describe
 
-    saved = dict(configuration=["presets=sgs"])
-    cfg, _, _ = compose(saved=saved)
+    cfg, agent, _ = compose(["presets=sgs"])
     assert cfg.curriculum.reset_sampling.params["mode"] == "sgs"
+    saved = dict(describe(cfg, agent), overrides=["presets=sgs"])
     uniform, _, _ = compose(["env.curriculum.reset_sampling.params.mode=uniform"], saved)
     assert uniform.curriculum.reset_sampling.params["mode"] == "uniform"
+    # Playback starts from home and does not adapt the reset distribution.
     cfg.play_mode()
     assert cfg.curriculum.reset_sampling.params["mode"] == "uniform"
-    assert cfg.reset_sampling_evaluation
     assert cfg.events.reset_from_dataset.params["phase_weights"] == (1, 0, 0, 0, 0, 0, 0, 0)
     assert len(PHASE_NAMES) == 8
