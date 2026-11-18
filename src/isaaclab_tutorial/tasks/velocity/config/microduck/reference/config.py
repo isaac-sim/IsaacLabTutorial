@@ -19,7 +19,7 @@ def register_task(*args, **kwargs):
     env, agent, hydra_args = _original_register(*args, **kwargs)
     if not type(env).__module__.startswith("isaaclab_tutorial.tasks.velocity.config.microduck."):
         return env, agent, hydra_args
-    from .reference.flat_env_cfg import _scale_multi_gpu
+    from .flat_env_cfg import _scale_multi_gpu
 
     def resolve(value):
         match = _SCALE.fullmatch(value) if isinstance(value, str) else None

@@ -7,6 +7,7 @@ import_packages(
     __name__,
     [
         "isaaclab_tutorial.tasks.place_vial.mdp",
-        "isaaclab_tutorial.tasks.velocity.config.microduck.compat",
+        "isaaclab_tutorial.tasks.velocity.config.microduck.bam",
+        "isaaclab_tutorial.tasks.velocity.config.microduck.reference",
     ],
 )

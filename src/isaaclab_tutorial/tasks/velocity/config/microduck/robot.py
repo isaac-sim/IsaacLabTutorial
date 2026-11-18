@@ -9,9 +9,9 @@ from isaaclab.assets import ArticulationCfg
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 from isaaclab_newton.sim.schemas import NewtonArticulationCfg
 
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat import install
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat.bam_cfg import BamActuatorCfg
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat.robot import MICRODUCK_CFG as REFERENCE_ROBOT_CFG
+from isaaclab_tutorial.tasks.velocity.config.microduck.bam import install
+from isaaclab_tutorial.tasks.velocity.config.microduck.bam.bam_cfg import BamActuatorCfg
+from isaaclab_tutorial.tasks.velocity.config.microduck.reference.robot import MICRODUCK_CFG as REFERENCE_ROBOT_CFG
 
 install()
 

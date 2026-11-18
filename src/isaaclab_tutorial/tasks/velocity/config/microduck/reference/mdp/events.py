@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat.bam_cfg import BamActuatorCfg
+from isaaclab_tutorial.tasks.velocity.config.microduck.bam.bam_cfg import BamActuatorCfg
 from isaaclab.actuators.newton import read_group_parameter, write_group_parameter
 from isaaclab.managers import SceneEntityCfg
 

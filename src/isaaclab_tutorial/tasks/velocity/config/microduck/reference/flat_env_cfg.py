@@ -32,7 +32,7 @@ from isaaclab.visualizers import VisualizerCfg
 
 from isaaclab_tasks.utils import preset
 
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat.robot import (
+from isaaclab_tutorial.tasks.velocity.config.microduck.reference.robot import (
     MICRODUCK_BACKLASH_CFG,
     MICRODUCK_CFG,
     MICRODUCK_HEAD_JOINT_NAMES,

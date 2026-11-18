@@ -6,7 +6,7 @@
 # BEGIN actions
 from isaaclab.utils.configclass import configclass
 
-from isaaclab_tutorial.tasks.velocity.config.microduck.compat.reference import mdp
+from isaaclab_tutorial.tasks.velocity.config.microduck.reference import mdp
 
 from isaaclab_tutorial.tasks.velocity.config.microduck.robot import MICRODUCK_JOINT_NAMES
 

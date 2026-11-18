@@ -7,10 +7,10 @@ https://github.com/isaac-sim/IsaacLab/tree/2742c2d5e6b950d0150781e384bcd8388c29e
 License: BSD-3-Clause; see LICENSE and retained file headers.
 
 Source mapping:
-bam_cfg.py <- source/isaaclab/isaaclab/actuators/actuator_bam_cfg.py
-bam.py, bam_kernels.py <- source/isaaclab_newton/isaaclab_newton/actuators/
-mjwarp_actuator_bridge*.py <- source/isaaclab_newton/isaaclab_newton/physics/
-robot.py <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
+bam/bam_cfg.py <- source/isaaclab/isaaclab/actuators/actuator_bam_cfg.py
+bam/bam.py, bam/bam_kernels.py <- source/isaaclab_newton/isaaclab_newton/actuators/
+bam/mjwarp_actuator_bridge*.py <- source/isaaclab_newton/isaaclab_newton/physics/
+reference/robot.py <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
 reference/ <- source/isaaclab_tasks/isaaclab_tasks/contrib/microduck/
 
 GA adaptations:
@@ -27,5 +27,5 @@ These components came after GA and are maintained by this course. They are not
 claimed to be included in Isaac Lab 3.0.0. The USD robot assets retain the upstream
 asset URLs in robot.py. The learner builds tasks/ progressively through lessons.
 
-config.py resolves the reference recipe's microduck_scale expressions after GA
+reference/config.py resolves the reference recipe's microduck_scale expressions after GA
 preset/scalar overrides; GA otherwise skips interpolation on its fast path.

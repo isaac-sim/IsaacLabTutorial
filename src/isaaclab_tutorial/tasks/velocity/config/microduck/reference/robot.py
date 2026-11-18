@@ -18,7 +18,7 @@ Reference: https://github.com/pollen-robotics/microduck_rl
 from isaaclab_newton.sim.schemas import NewtonArticulationCfg
 
 import isaaclab.sim as sim_utils
-from .bam_cfg import BamActuatorCfg, BamMotorCfg
+from ..bam.bam_cfg import BamActuatorCfg, BamMotorCfg
 from isaaclab.assets import ArticulationCfg
 from isaaclab.utils import clone, replace
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
