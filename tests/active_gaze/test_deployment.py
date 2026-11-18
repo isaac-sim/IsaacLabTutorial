@@ -1,5 +1,6 @@
 """Deployment geometry, action-state transitions, and delayed-result handling."""
 
+import math
 import time
 
 import numpy as np
@@ -7,49 +8,64 @@ import pytest
 import torch
 
 from isaaclab_tutorial.active_gaze.deployment.control import (
+    FORMAT,
+    GAZE,
     JOINTS,
     PROPRIOCEPTION,
+    PROPRIOCEPTION_SIZE,
     PolicyState,
     advance_policy_deadline,
 )
-from isaaclab_tutorial.active_gaze.deployment.retina import SoftwareRetina, nominal_calibration
+from isaaclab_tutorial.active_gaze.deployment.retina import SoftwareRetina
 from isaaclab_tutorial.active_gaze.deployment.runtime import InferenceWorker
 
 
 def contract():
     return dict(
-        format="isaaclab_fovi.so101.leapp.v1",
+        format=FORMAT,
         joint_order=list(JOINTS),
         joint_units="radians",
         proprioception=list(PROPRIOCEPTION),
         policy_hz=30,
         relative_target_hz=120,
         action_scale=[0.033] * 5 + [0.02],
-        gaze_limit=0.66,
-        gaze_max_delta=0.12,
+        gaze=dict(step_size=0.1, limit=1.0, field_radius_deg=39.0),
     )
 
 
-def test_state_matches_motor_and_gaze_timing_and_reset():
+def pinhole(fov_deg=78.0, size=640):
+    """An ideal square pinhole camera's model."""
+    focal = size / 2 / math.tan(math.radians(fov_deg / 2))
+    center = (size - 1) / 2
+    return dict(model="pinhole", image_size=(size, size), intrinsics=(focal, focal, center, center))
+
+
+def test_state_moves_the_gaze_in_field_radii_within_the_simulators_radial_limit():
     state = PolicyState(contract())
-    state.reset([0.65, -0.65])
+    state.reset([0.7, -0.7])
     state.commit([2, 0, 0, 0, 0, -2, 1, -1])
-    np.testing.assert_allclose(state.gaze, [0.66, -0.66])
-    np.testing.assert_allclose(state.gaze_velocity, [0.3, -0.3], atol=1e-5)
+    # The step leaves the unit circle, so the gaze is scaled back onto it, as in simulation.
+    np.testing.assert_allclose(state.gaze, [0.5**0.5, -(0.5**0.5)], atol=1e-6)
+    np.testing.assert_allclose(state.gaze_velocity, (state.gaze - [0.7, -0.7]) * 30, atol=1e-5)
+    np.testing.assert_allclose(state.angles_deg, state.gaze * 39.0)
     observed = state.observation(np.ones(6), np.ones(6) * 13, np.ones(6) * 2)
+    assert observed.shape == (PROPRIOCEPTION_SIZE,)
     np.testing.assert_array_equal(observed[6:12], [13] * 6)
     np.testing.assert_array_equal(observed[18:26], state.action)
-    np.testing.assert_array_equal(observed[26:28], observed[30:32])
+    np.testing.assert_array_equal(observed[GAZE], state.gaze)
+    np.testing.assert_array_equal(observed[28:30], state.gaze_velocity)
     limits = np.array([[-4, 4]] * 6)
     first = state.target(np.zeros(6), limits)
     second = state.target(np.ones(6), limits)
     np.testing.assert_allclose(second - first, np.ones(6))
     state.reset()
-    np.testing.assert_array_equal(state.observation(np.zeros(6), np.zeros(6), np.zeros(6)), np.zeros(32))
+    np.testing.assert_array_equal(
+        state.observation(np.zeros(6), np.zeros(6), np.zeros(6)), np.zeros(PROPRIOCEPTION_SIZE)
+    )
     with pytest.raises(ValueError):
         state.commit([float("nan")] * 8)
     with pytest.raises(ValueError):
-        state.reset([0.8, 0])
+        state.reset([0.8, 0.8])
 
 
 def test_policy_clock_preserves_rate_with_bus_jitter_and_skips_missed_periods():
@@ -67,28 +83,26 @@ def test_policy_clock_preserves_rate_with_bus_jitter_and_skips_missed_periods():
     assert missed == 3
 
 
-def test_dense_sampling_orientation_calibration_and_visibility_match_sensor():
-    from fovi.sensing.projection import gaze_rotation
-
-    from isaaclab_fovi.sensors.calibrated_geometry import calibrated_visibility
-
-    retina = SoftwareRetina(nominal_calibration(78), 78, 0.0075)
+def test_software_retina_is_upright_follows_the_gaze_and_blanks_what_the_camera_misses():
+    retina = SoftwareRetina(pinhole(), 78.0, 0.591, 128)
     yy, xx = torch.meshgrid(torch.arange(640), torch.arange(640), indexing="ij")
     rgb = torch.stack((xx / 3, yy / 3, torch.full_like(xx, 100)), -1).to(torch.uint8)[None]
-    gaze = torch.tensor([[0.0, 0.0], [0.3, -0.4]])
+    # Gaze (tilt, pan) [deg]: positive tilt looks up, positive pan looks left.
+    gaze = torch.tensor([[0.0, 0.0], [17.0, -23.0]])
     grid, valid = retina.grid(gaze)
     image = retina(rgb.expand(2, -1, -1, -1), gaze)
     assert image.shape == (2, 128, 128, 3)
     # Upright public raster: right means larger source x, down means larger source y.
     assert image[0, 64, 80, 0] > image[0, 64, 48, 0]
     assert image[0, 80, 64, 1] > image[0, 48, 64, 1]
+    # Looking up and right moves the fixation to smaller source y and larger source x.
     assert image[1, 64, 64, 0] > image[0, 64, 64, 0]
     assert image[1, 64, 64, 1] < image[0, 64, 64, 1]
+    # Looking straight ahead, the square 78 degree camera sees the whole circular 78 degree retina; looking away, it
+    # cuts part of it off.
+    assert torch.equal(valid[0], retina.valid[0])
+    assert valid[1].sum() < valid[0].sum()
     assert (image[~valid.expand_as(image)] == 0).all()
-    tilt, pan = gaze.unbind(-1)
-    direction = torch.stack((-tilt.cos() * pan.sin(), -tilt.sin(), tilt.cos() * pan.cos()), -1)
-    reference = calibrated_visibility(retina.camera, retina.rays, gaze_rotation(direction, "pan_tilt"))
-    assert torch.equal(valid, reference.reshape_as(valid) & retina.valid)
     assert torch.isfinite(grid).all()
 
 
@@ -99,9 +113,9 @@ def test_worker_does_not_accept_stale_or_overlapping_results():
 
     worker = InferenceWorker(Runtime())
     try:
-        worker.submit(np.zeros(32), np.zeros((2, 2, 3)), time.monotonic() - 1)
+        worker.submit(np.zeros(PROPRIOCEPTION_SIZE), np.zeros((2, 2, 3)), time.monotonic() - 1)
         with pytest.raises(RuntimeError, match="already"):
-            worker.submit(np.zeros(32), np.zeros((2, 2, 3)), time.monotonic())
+            worker.submit(np.zeros(PROPRIOCEPTION_SIZE), np.zeros((2, 2, 3)), time.monotonic())
         with pytest.raises(RuntimeError, match="stale"):
             worker.poll()
     finally:
@@ -109,8 +123,7 @@ def test_worker_does_not_accept_stale_or_overlapping_results():
 
 
 @pytest.mark.parametrize("execute,fail", [(False, False), (True, False), (True, True)])
-@pytest.mark.parametrize("planar", [False, True])
-def test_hardware_adapter_read_only_startup_and_error_shutdown(tmp_path, monkeypatch, execute, fail, planar):
+def test_hardware_adapter_read_only_startup_and_error_shutdown(tmp_path, monkeypatch, execute, fail):
     import hashlib
     import json
     import sys
@@ -167,12 +180,7 @@ def test_hardware_adapter_read_only_startup_and_error_shutdown(tmp_path, monkeyp
 
     class Runtime:
         def __init__(self, *args):
-            self.contract = dict(
-                contract(),
-                camera_calibration={"image_size": [2, 2]},
-                calibrated_capture=not planar,
-                retinal_geometry="planar" if planar else "spherical",
-            )
+            self.contract = dict(contract(), camera_model={"image_size": [2, 2]}, calibrated_capture=True)
 
         def infer(self, *args):
             clock.now += 2  # Long warmup while someone moves the arm.
@@ -266,14 +274,8 @@ def test_export_rejects_chunked_actor_before_loading_weights(tmp_path):
 
     from isaaclab_tutorial.active_gaze.deployment.model import load_policy
 
-    (tmp_path / "example.json").write_text(json.dumps({"policy": {"name": "dino_language"}, "resolution": 128}))
-    (tmp_path / "agent.json").write_text(
-        json.dumps(
-            {
-                "obs_groups": {"actor": ["proprio", "vision", "instruction"]},
-                "algorithm": {"action_chunk_size": 4},
-            }
-        )
-    )
+    run = dict(policy="dino_language", retina=dict(resolution=128), action_chunk_size=3)
+    (tmp_path / "run.json").write_text(json.dumps(run))
+    (tmp_path / "agent.json").write_text(json.dumps({"obs_groups": {"actor": ["proprio", "vision", "instruction"]}}))
     with pytest.raises(ValueError, match="single-step actions"):
-        load_policy(tmp_path / "model.pt", "unused", {}, "cpu")
+        load_policy(tmp_path / "model.pt", pinhole(), "cpu")

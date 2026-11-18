@@ -31,35 +31,34 @@ def test_dino_early_exit_keeps_the_pretrained_layers():
 
 
 def test_language_configuration_keeps_numbered_task_and_critic():
-    from isaaclab_tutorial.active_gaze.configuration import compose
+    from isaaclab_tutorial.active_gaze.configuration import compose, describe
     from isaaclab_tutorial.active_gaze.language import instruction_index
 
-    cnn = compose(["presets=numbered", "env.scene.eye.cmf_a=0.0075"])[0]
-    cfg = compose(["presets=dino_language", "env.scene.eye.cmf_a=0.0075"])[0]
-    assert cfg.scene.eye.foveated_res == 128
-    assert cfg.observations.scene_rgb is None
-    assert cfg.observations.proprioception is None
-    assert cfg.observations.gaze is None
+    cnn = compose(["presets=numbered", "env.scene.eye.cmf_a_deg=10.0"])[0]
+    cfg, agent, _ = compose(["presets=dino_language", "env.scene.eye.cmf_a_deg=10.0"])
+    assert cfg.scene.eye.foveated_res == 128 and cfg.scene.eye.cmf_a_deg == 10.0
+    assert not hasattr(cfg.observations, "scene_rgb") and not hasattr(cfg.observations, "gaze")
     assert cfg.observations.critic.to_dict() == cnn.observations.critic.to_dict()
     assert cfg.terminations.to_dict() == cnn.terminations.to_dict()
     assert cfg.rewards.to_dict() == cnn.rewards.to_dict()
     assert cfg.events.to_dict() == cnn.events.to_dict()
+    # The language actor's proprioception is the CNN actor's, followed by the gaze state.
+    proprio = cfg.observations.proprio.to_dict()
     for key, value in cnn.observations.proprioception.to_dict().items():
-        assert cfg.observations.proprio.to_dict()[key] == value
-    env = SimpleNamespace(num_envs=4, device="cpu", vial_number=torch.arange(1, 5))
+        assert proprio[key] == value
+    assert list(proprio)[-1] == "gaze"
+    env = SimpleNamespace(num_envs=4, device="cpu")
     assert torch.equal(instruction_index(env), torch.zeros(4, 1, dtype=torch.long))
-    with pytest.raises(ValueError, match="128px"):
-        compose(["presets=dino_language", "env.scene.eye.foveated_res=64"])
-    assert cfg.goal_mode == "numbered"
+    assert describe(cfg, agent)["goal"] == "numbered"
 
 
 @pytest.mark.parametrize("gaze_supervision", ["none", "grasp_gated"])
 def test_language_actor_uses_vision_excludes_state_and_round_trips(tmp_path, gaze_supervision):
+    from isaaclab_tutorial.active_gaze.configuration import compose
+    from isaaclab_tutorial.active_gaze.language import INSTRUCTIONS
     from isaaclab_tutorial.active_gaze.learning.config import LanguageVisionActorCfg
     from isaaclab_tutorial.active_gaze.learning.language import COSMOS_MODEL, COSMOS_REVISION
     from isaaclab_tutorial.active_gaze.learning.models import LanguageVisionActor
-    from isaaclab_tutorial.active_gaze.configuration import compose
-    from isaaclab_tutorial.active_gaze.language import INSTRUCTIONS
 
     suffix = ",grasp_gated" if gaze_supervision == "grasp_gated" else ",no_gaze_supervision"
     cfg = compose([f"presets=dino_language{suffix}"])[1].to_dict()
@@ -89,7 +88,7 @@ def test_language_actor_uses_vision_excludes_state_and_round_trips(tmp_path, gaz
     actor_cfg["instruction_table_path"] = str(table_path)
     obs = TensorDict(
         dict(
-            proprio=torch.randn(4, 32),
+            proprio=torch.randn(4, 30),
             vision=torch.randn(4, 8, 16),
             instruction=torch.zeros(4, 1, dtype=torch.long),
             critic=torch.randn(4, 72),

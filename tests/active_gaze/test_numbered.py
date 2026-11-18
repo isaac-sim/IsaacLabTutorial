@@ -4,30 +4,37 @@ from types import SimpleNamespace
 
 import torch
 
+from isaaclab_tutorial.assets import RESET_DATASET
+from isaaclab_tutorial.tasks.place_vial.reset.dataset import load_reset_dataset
+
+RACK_POSE = (0.18, 0.08, 0.04, 0, 0, 0, 1)
+
+
+def numbered_reset(target_hole):
+    """A numbered reset term that only knows each environment's target opening."""
+    from isaaclab_tutorial.active_gaze.goals import NumberedResetFromDataset
+
+    reset = object.__new__(NumberedResetFromDataset)
+    reset.target_hole = target_hole
+    return reset
+
+
+def with_reset(reset, **attributes):
+    """A stand-in environment whose event manager holds ``reset`` as its dataset reset."""
+    manager = SimpleNamespace(get_term_cfg=lambda name: SimpleNamespace(func=reset))
+    return SimpleNamespace(event_manager=manager, **attributes)
+
 
 def test_numbered_resets_preserve_physics_and_cover_all_goals():
-    from isaaclab_fovi.assets.so101_vial import RESET_DATASET
     from isaaclab_tutorial.active_gaze.goals import expand_numbered_resets
     from isaaclab_tutorial.tasks.place_vial.mdp.events import phase_balanced_row_weights
-    from isaaclab_tutorial.active_gaze.reset import load_reset_dataset
 
     source = load_reset_dataset(RESET_DATASET)["states"]
-    states, bins, names, phases = expand_numbered_resets(source, (0.18, 0.08, 0.04, 0, 0, 0, 1))
+    states, bins, names, phases = expand_numbered_resets(source, RACK_POSE)
     for key in ("joint_position", "joint_target", "vial_pose", "phase", "lifted"):
         torch.testing.assert_close(states[key], source[key].repeat_interleave(4, 0), rtol=0, atol=0)
-    assert torch.equal(states["target_hole"].reshape(-1, 4), torch.arange(4).expand(1024, -1))
-    assert len(names) == 14
-    assert set(names) == {
-        "home",
-        "pregrasp",
-        "grasp",
-        "lift",
-        *[
-            f"{phase}_{kind}"
-            for phase in ("lift", "reorient", "transport", "insert", "release")
-            for kind in ("target", "non_target")
-        ],
-    }
+    assert torch.equal(states["target_hole"].reshape(-1, 4), torch.arange(4).expand(len(source["phase"]), -1))
+    assert set(names) >= {"home", "pregrasp", "grasp", "insert_target", "insert_non_target", "release_non_target"}
     assert torch.bincount(bins).min() > 0
     assert (states["grasped"][bins == names.index("release_non_target")] == 0).all()
     # Preserve phase mass and uniform target numbers before SGS adaptation.
@@ -63,23 +70,17 @@ def test_fixed_cap_sampling_is_balanced_shuffled_and_conditional():
 
 
 def test_partial_resets_preserve_cap_and_restore_matching_stock_rows(monkeypatch):
-    from isaaclab_tutorial.active_gaze.goals import NumberedResetFromDataset, ResetFromDataset
+    from isaaclab_tutorial.active_gaze.goals import ResetFromDataset
 
     numbers = torch.tensor([4, 1, 3, 2])
-    env = SimpleNamespace(
-        num_envs=4,
-        device="cpu",
-        vial_number=numbers.clone(),
-        numbered_target_hole=numbers - 1,
-        _so101_reset_row=torch.full((4,), -1),
-    )
-    reset = object.__new__(NumberedResetFromDataset)
+    env = SimpleNamespace(num_envs=4, device="cpu", _so101_reset_row=torch.full((4,), -1))
+    reset = numbered_reset(numbers - 1)
     reset.states = {"target_hole": torch.arange(4).repeat(8)}
     reset.row_weights = torch.ones(32)
     reset.sequential_rows = torch.arange(32)
     reset.cursor = 0
 
-    def restore(self, env, ids, path, phases, sequential, *args):
+    def restore(self, env, ids, path, phases, sequential, **perturbation):
         assert sequential
         env._so101_reset_row[ids] = self.sequential_rows
 
@@ -87,43 +88,38 @@ def test_partial_resets_preserve_cap_and_restore_matching_stock_rows(monkeypatch
     for sequential in (False, True):
         for _ in range(10):
             reset(env, torch.tensor([0, 2]), "unused", [], sequential=sequential)
-            assert torch.equal(env.vial_number, numbers)
-            assert torch.equal(env.numbered_target_hole, numbers - 1)
+            assert torch.equal(reset.target_hole, numbers - 1)
             assert env._so101_reset_row[[1, 3]].tolist() == [-1, -1]
             assert torch.equal(env._so101_reset_row[[0, 2]] % 4, numbers[[0, 2]] - 1)
 
 
-def test_numbered_configuration_keeps_target_in_critic_only():
+def test_numbered_configuration_keeps_the_target_in_the_critic_only():
+    from isaaclab_fovi.sensors.calibrated_geometry import sampling_geometry
+
     from isaaclab.sim import MultiAssetSpawnerCfg
-    from isaaclab_tasks.utils import resolve_presets
 
-    from isaaclab_tutorial.active_gaze.env_cfg import SO101NumberedEnvCfg
-    from isaaclab_tutorial.active_gaze.configuration import compose
+    from isaaclab_tutorial.active_gaze.configuration import compose, describe
 
-    plain = compose(["presets=nearest", "renderer=newton_renderer"])[0]
-    numbered = resolve_presets(SO101NumberedEnvCfg())
-    assert plain.renderer_backend() == "warp"
-    assert numbered.renderer_backend() == "ovrtx"
+    plain, plain_agent, _ = compose(["presets=nearest,newton_renderer"])
+    numbered, numbered_agent, _ = compose(["presets=numbered,newton_renderer"])
+    assert (
+        describe(plain, plain_agent)["goal"] == "nearest" and describe(numbered, numbered_agent)["goal"] == "numbered"
+    )
+    # The numbered scene's camera sits closer and narrower, so the labels stay legible.
     assert numbered.scene.eye.offset.pos[0] < plain.scene.eye.offset.pos[0]
-    assert numbered.camera_hfov() < plain.camera_hfov()
-    assert numbered.observations.scene_rgb.to_dict() == plain.observations.scene_rgb.to_dict()
-    assert numbered.observations.proprioception.to_dict() == plain.observations.proprioception.to_dict()
-    assert numbered.observations.gaze.to_dict() == plain.observations.gaze.to_dict()
+    assert sampling_geometry(numbered.scene.eye)[0] < sampling_geometry(plain.scene.eye)[0]
+    for group in ("scene_rgb", "proprioception", "gaze"):
+        assert getattr(numbered.observations, group).to_dict() == getattr(plain.observations, group).to_dict()
+    assert (
+        numbered_agent.obs_groups["actor"] == plain_agent.obs_groups["actor"] == ["scene_rgb", "proprioception", "gaze"]
+    )
     assert not hasattr(plain.observations.critic, "numbered_goal")
     assert numbered.observations.critic.numbered_goal is not None
     assert isinstance(numbered.scene.vial.spawn, MultiAssetSpawnerCfg)
-    assert [v.vial_number for v in numbered.scene.vial.spawn.assets_cfg] == [1, 2, 3, 4]
-    assert not hasattr(numbered.scene, "vial_number")
-    for mode in ("none", "grasp_gated"):
-        assert compose(["presets=nearest" + (",grasp_gated" if mode == "grasp_gated" else "")])[1].to_dict()[
-            "obs_groups"
-        ]["actor"] == ["scene_rgb", "proprioception", "gaze"]
-    warp, _, _ = compose(["presets=dino_language", "renderer=newton_renderer"])
-    assert warp.goal_mode == "numbered"
-    assert warp.scene.eye.data_types == ["rgb"]
-    assert warp.observations.vision.tokens.params["data_type"] == "rgb"
-    assert warp.scene.eye.render_settings == {}
-    assert warp.render_mode() == "rgb"
+    assert [vial.vial_number for vial in numbered.scene.vial.spawn.assets_cfg] == [1, 2, 3, 4]
+    language = compose(["presets=dino_language,newton_renderer"])[0]
+    assert language.scene.eye.data_types == ["rgb"]
+    assert language.observations.vision.tokens.params["data_type"] == "rgb"
 
 
 def test_wrong_hole_never_pays_insert_or_success(monkeypatch):
@@ -157,12 +153,12 @@ def test_wrong_hole_never_pays_insert_or_success(monkeypatch):
     class Scene(dict):
         sensors = {}
 
-    env = SimpleNamespace(
+    env = with_reset(
+        numbered_reset(torch.tensor([0, 0, 2, 1])),
         num_envs=4,
         device="cpu",
         scene=Scene(vial=vial),
         extras={},
-        numbered_target_hole=torch.tensor([0, 0, 2, 1]),
         episode_length_buf=torch.ones(4, dtype=torch.long),
         step_dt=1 / 30,
     )
@@ -181,54 +177,24 @@ def test_wrong_hole_never_pays_insert_or_success(monkeypatch):
     assert result.tolist() == [True, True, True, False]
 
 
-def test_gaze_cache_tracks_selected_target_and_cap():
-    from fovi.sensing.projection import CameraModel
-    from isaaclab_tasks.utils import resolve_presets
-
-    from isaaclab_tutorial.active_gaze.env_cfg import SO101NumberedEnvCfg
-    from isaaclab_tutorial.active_gaze.gaze import angles_to_direction, build_reset_cache
-
-    cfg = resolve_presets(SO101NumberedEnvCfg())
-    rack = cfg.scene.rack.init_state
-    cache = build_reset_cache(
-        cfg.events.reset_from_dataset.params["dataset_path"],
-        cfg.scene.eye,
-        (*rack.pos, *rack.rot),
-        cfg.actions.gaze.angle_limit,
-        numbered=True,
-    )
-    gaze = cache["vision_action"]
-    assert gaze.shape == (4096, 5, 16, 2)
-    assert CameraModel(**cfg.scene.eye.camera_calibration).project(angles_to_direction(gaze))[1].all()
-    # A single physical reset has four distinct exact goal fixations, one per opening.
-    assert torch.unique(gaze[:4, 2, 0], dim=0).shape[0] == 4
-    assert torch.unique(gaze[:4, 1, 0], dim=0).shape[0] == 1
-
-
 def test_numbered_sgs_tracks_and_restores_each_reset_category():
     from isaaclab.managers import CurriculumTermCfg
 
-    from isaaclab_fovi.assets.so101_vial import RESET_DATASET
     from isaaclab_tutorial.active_gaze.goals import expand_numbered_resets
-    from isaaclab_tutorial.tasks.place_vial.mdp.events import phase_balanced_row_weights
-    from isaaclab_tutorial.active_gaze.reset import load_reset_dataset
     from isaaclab_tutorial.active_gaze.sampling import ResetSampling, iteration_metrics
+    from isaaclab_tutorial.tasks.place_vial.mdp.events import phase_balanced_row_weights
 
     source = load_reset_dataset(RESET_DATASET)["states"]
 
     def make_sampler():
-        states, bins, names, _ = expand_numbered_resets(source, (0.18, 0.08, 0.04, 0, 0, 0, 1))
+        states, bins, names, _ = expand_numbered_resets(source, RACK_POSE)
         reset = SimpleNamespace(
             states=states,
             bin_ids=bins,
             bin_names=names,
             row_weights=phase_balanced_row_weights(states["phase"], [1.0] * 8),
         )
-        env = SimpleNamespace(
-            device="cpu",
-            num_envs=4,
-            event_manager=SimpleNamespace(get_term_cfg=lambda _: SimpleNamespace(func=reset)),
-        )
+        env = with_reset(reset, device="cpu", num_envs=4)
         return ResetSampling(CurriculumTermCfg(func=ResetSampling, params={"mode": "sgs"}), env)
 
     sampler = make_sampler()

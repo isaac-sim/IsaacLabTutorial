@@ -17,30 +17,30 @@ MODES = [
 @pytest.mark.parametrize("mode, output, shadows", MODES)
 @pytest.mark.parametrize("policy", ["cnn", "dino_language"])
 def test_mode_reaches_policy_and_diagnostic_cameras(mode, output, shadows, policy):
-    from isaaclab_tutorial.active_gaze.env_cfg import SceneRGB
     from isaaclab_tutorial.active_gaze.configuration import compose
+    from isaaclab_tutorial.active_gaze.env_cfg import SceneRGB
+    from isaaclab_tutorial.active_gaze.train import add_diagnostic_camera
 
     variant = "dino_language" if policy == "dino_language" else "numbered"
     baseline, _, _ = compose([f"presets={variant}"])
     cfg, _, _ = compose([f"presets={variant},{mode}"])
-    cfg.enable_diagnostics()
-    assert cfg.render_mode() == mode
+    add_diagnostic_camera(cfg)
     assert cfg.scene.eye.data_types == cfg.scene.diagnostic_camera.data_types == [output]
     assert cfg.scene.eye.renderer_cfg.enable_shadows is shadows
     assert cfg.scene.diagnostic_camera.renderer_cfg.enable_shadows is shadows
     assert cfg.sim.physics.to_dict() == baseline.sim.physics.to_dict()
-    assert cfg.scene.eye.camera_calibration == baseline.scene.eye.camera_calibration
-    assert cfg.scene.eye.cmf_a == baseline.scene.eye.cmf_a
+    assert cfg.scene.eye.spawn.to_dict() == baseline.scene.eye.spawn.to_dict()
+    assert cfg.scene.eye.cmf_a_deg == baseline.scene.eye.cmf_a_deg
     image = torch.full((2, cfg.scene.eye.foveated_res, cfg.scene.eye.foveated_res, 3), 127, dtype=torch.uint8)
-    camera = SimpleNamespace(cfg=cfg.scene.eye, data=SimpleNamespace(output={output: image}))
-    env = SimpleNamespace(scene={"eye": camera})
-    actual = SceneRGB(SimpleNamespace(), env)(env)
+    camera = SimpleNamespace(cfg=cfg.scene.eye, data=SimpleNamespace(output={output: SimpleNamespace(torch=image)}))
+    env = SimpleNamespace(scene={"eye": camera}, num_envs=2, device="cpu")
+    actual = SceneRGB(SimpleNamespace(params={}), env)(env)
     torch.testing.assert_close(actual, image.float().permute(0, 3, 1, 2) / 255)
     if policy == "dino_language":
         assert cfg.observations.vision.tokens.params["data_type"] == output
 
 
-def test_dino_consumes_selected_minimal_output_without_changing_encoder_arguments(monkeypatch):
+def test_dino_consumes_the_selected_output_and_receives_only_encoder_arguments(monkeypatch):
     from isaaclab_tutorial.active_gaze.learning import observations
 
     image = torch.full((2, 128, 128, 3), 127, dtype=torch.uint8)
@@ -62,11 +62,12 @@ def test_dino_consumes_selected_minimal_output_without_changing_encoder_argument
 
     monkeypatch.setattr(observations, "FrozenDino", Encoder)
     output = "simple_shading_full_mdl"
-    cfg = SimpleNamespace(params=dict(reference="local", checksum=None, batch_size=8, data_type=output))
-    env = SimpleNamespace(device="cpu", scene={"eye": SimpleNamespace(data=SimpleNamespace(output={output: image}))})
-    term = observations.DinoTokens(cfg, env)
-    assert "data_type" not in received
-    assert term(env, **cfg.params) is image
+    params = dict(reference="local", checksum=None, batch_size=8, num_layers=6, data_type=output, photometric=None)
+    eye = SimpleNamespace(data=SimpleNamespace(output={output: SimpleNamespace(torch=image)}))
+    env = SimpleNamespace(device="cpu", num_envs=2, scene={"eye": eye})
+    term = observations.DinoTokens(SimpleNamespace(params=params), env)
+    assert received == dict(reference="local", checksum=None, batch_size=8, num_layers=6)
+    assert term(env, **params) is image
 
 
 def test_minimal_requires_ovrtx():
@@ -78,10 +79,11 @@ def test_minimal_requires_ovrtx():
 
 @pytest.mark.parametrize("mode, output, shadows", [MODES[0], MODES[-1]])
 def test_numbered_products_request_denoising_without_aa(mode, output, shadows):
+    from pxr import Usd
+
     from isaaclab.renderers import CameraRenderSpec
     from isaaclab_ov.renderers.ovrtx_renderer import OVRTXCameraRenderData
     from isaaclab_ov.renderers.ovrtx_usd import build_render_product_as_string
-    from pxr import Usd
 
     from isaaclab_tutorial.active_gaze.configuration import compose
 
@@ -107,11 +109,11 @@ def test_numbered_products_request_denoising_without_aa(mode, output, shadows):
         assert samples.Get() == 4
 
 
-@pytest.mark.parametrize("kind", ["cnn", "dino", "randomized_dino"])
+@pytest.mark.parametrize("kind", ["cnn", "dino", "varied_dino"])
 def test_visual_observations_refresh_only_at_policy_boundaries(monkeypatch, kind):
-    from isaaclab_tutorial.active_gaze.learning import observations
     from isaaclab_tutorial.active_gaze.env_cfg import SceneRGB
-    from isaaclab_tutorial.active_gaze.sim2real import RandomizedDinoTokens
+    from isaaclab_tutorial.active_gaze.learning import observations
+    from isaaclab_tutorial.active_gaze.sim2real import PHOTOMETRIC_RANGES
 
     reads = []
     encodes = []
@@ -123,7 +125,7 @@ def test_visual_observations_refresh_only_at_policy_boundaries(monkeypatch, kind
         @property
         def data(self):
             reads.append(True)
-            return SimpleNamespace(output={"rgb": image})
+            return SimpleNamespace(output={"rgb": SimpleNamespace(torch=image)})
 
     class Encoder:
         def __init__(self, **kwargs):
@@ -140,14 +142,11 @@ def test_visual_observations_refresh_only_at_policy_boundaries(monkeypatch, kind
             return image.float().mean(dim=(1, 2))
 
     monkeypatch.setattr(observations, "FrozenDino", Encoder)
-    env = SimpleNamespace(
-        device="cpu",
-        scene={"eye": Camera()},
-        refresh_policy_vision=False,
-        so101_camera_randomization=SimpleNamespace(image=lambda value: value),
-    )
+    env = SimpleNamespace(device="cpu", num_envs=2, scene={"eye": Camera()}, refresh_policy_vision=False)
     params = {} if kind == "cnn" else dict(reference="local", checksum=None, batch_size=2)
-    term_type = {"cnn": SceneRGB, "dino": observations.DinoTokens, "randomized_dino": RandomizedDinoTokens}[kind]
+    if kind == "varied_dino":
+        params["photometric"] = PHOTOMETRIC_RANGES
+    term_type = SceneRGB if kind == "cnn" else observations.DinoTokens
     term = term_type(SimpleNamespace(params=params), env)
     first = term(env, **params).clone()  # Empty cache must populate even during a chunk.
     image.fill_(255)
