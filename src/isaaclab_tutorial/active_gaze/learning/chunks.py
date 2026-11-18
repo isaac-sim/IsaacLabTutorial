@@ -121,7 +121,7 @@ class ActionChunkWrapper(VecEnv):
                 timed_out &= ~terminated
                 timeout_discount += timed_out * self.control_gamma ** (index + 1)
                 if "final_obs" in extras:
-                    for key in timeout_obs.keys():
+                    for key in list(timeout_obs.keys()):
                         mask = timed_out.reshape(-1, *([1] * (timeout_obs[key].ndim - 1)))
                         timeout_obs[key] = torch.where(mask, extras["final_obs"][key], timeout_obs[key])
                 active &= ~done.bool()

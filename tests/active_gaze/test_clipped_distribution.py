@@ -9,7 +9,10 @@ from scipy.integrate import quad
 from scipy.stats import norm
 
 from isaaclab_tutorial.active_gaze.learning.chunks import chunk_gaussian_statistics
-from isaaclab_tutorial.active_gaze.learning.distributions import ClippedGaussianDistribution, clipped_gaussian_statistics
+from isaaclab_tutorial.active_gaze.learning.distributions import (
+    ClippedGaussianDistribution,
+    clipped_gaussian_statistics,
+)
 
 
 @pytest.mark.parametrize("mean,std", [(0, 0.5), (0.9, 0.3), (-2, 0.4), (0, 1000)])
