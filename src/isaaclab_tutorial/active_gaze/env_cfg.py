@@ -121,14 +121,10 @@ class RobotSpawnCfg(PresetCfg):
 class SceneCfg(SO101SceneCfg):
     robot = SO101SceneCfg().robot.replace(spawn=RobotSpawnCfg())
     eye = NEAREST_CAMERA
-    # A dim dome fills the shadows that a key light from above casts. The key light leans 25 degrees toward +y, so
-    # the shadows fall sideways in the scene camera's view.
-    light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=250))
-    key_light = AssetBaseCfg(
-        prim_path="/World/KeyLight",
-        spawn=DistantLightCfg(intensity=1500, angle=5.0),
-        init_state=AssetBaseCfg.InitialStateCfg(rot=(0.2164396, 0.0, 0.0, 0.9762960)),
-    )
+    # A dim dome fills the shadows that a sharp key light casts. The tutorial's key light shines along (-1, 1, -1),
+    # the direction of the Newton renderer's own light, so both renderers cast the same shadows.
+    light = AssetBaseCfg(prim_path="/World/Light", spawn=DomeLightCfg(intensity=150))
+    key_light = SO101SceneCfg().key_light.replace(spawn=DistantLightCfg(intensity=2000, angle=1.0))
 
     # Materials that the sim2real colour events vary; the Newton renderer only reads material colour.
     robot_visual = VisualMaterialCfg(prim_path="{ENV_REGEX_NS}/Robot/Looks/material_a_d_printed", spawn=None)
