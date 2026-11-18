@@ -8,9 +8,10 @@ from pathlib import Path
 
 import torch
 
-from .control import JOINTS, PROPRIOCEPTION, validate_contract
+from isaaclab_tutorial.active_gaze import RUN_FILE
+
+from .control import FORMAT, GAZE, JOINTS, POLICY_HZ, PROPRIOCEPTION, PROPRIOCEPTION_SIZE, TARGET_HZ, validate_contract
 from .model import load_policy
-from .retina import nominal_calibration
 
 
 def export_node(model, inputs: dict, output: Path):
@@ -46,56 +47,50 @@ def export_node(model, inputs: dict, output: Path):
     return leapp.InferenceManager(str(yaml)), yaml
 
 
-def export(checkpoint: Path, dino: str, output: Path, calibration=None, device="cuda:0"):
+def export(checkpoint: Path, output: Path, camera_model: dict | None = None, dino: str | None = None, device="cuda:0"):
+    """Export a checkpoint for the real camera ``camera_model``; without one, for the simulated camera."""
     if device != "cuda:0":
         raise ValueError("Export on cuda:0; select the physical GPU with CUDA_VISIBLE_DEVICES")
     if output.exists():
         raise FileExistsError(f"Use a new export directory: {output}")
-    settings = json.loads(checkpoint.with_name("example.json").read_text())
-    planar = settings.get("retinal_geometry") == "planar"
-    if planar and calibration is not None:
-        raise ValueError("Planar deployment uses an uncalibrated square crop; omit --calibration")
-    calibrated = calibration is not None
-    calibration = calibration or nominal_calibration(settings["camera"]["camera_hfov"])
-    dense, original, settings = load_policy(checkpoint, dino, calibration, device)
+    run = json.loads(checkpoint.with_name(RUN_FILE).read_text())
+    control = run["control"]
+    if (control["policy_hz"], control["physics_hz"]) != (POLICY_HZ, TARGET_HZ):
+        raise ValueError(f"Deployment runs the policy at {POLICY_HZ} Hz and motor targets at {TARGET_HZ} Hz")
+    calibrated = camera_model is not None
+    camera_model = camera_model or run["retina"]["camera_model"]
+    dense, original, run = load_policy(checkpoint, camera_model, device, dino)
     output.mkdir(parents=True)
-    camera = settings["camera"]
-    scale = settings.get("control", {}).get("action_scale")
-    if scale is None:
-        raise ValueError("Checkpoint must record control.action_scale")
+    retina = run["retina"]
+    gaze = run["gaze"]
     contract = dict(
-        format="isaaclab_fovi.so101.leapp.v1",
+        format=FORMAT,
         joint_order=list(JOINTS),
         joint_units="radians",
         proprioception=list(PROPRIOCEPTION),
-        policy_hz=30,
-        relative_target_hz=120,
-        action_scale=scale,
-        gaze_limit=camera["gaze_limit"],
-        gaze_max_delta=camera["gaze_max_delta"],
-        camera_calibration=calibration,
+        policy_hz=POLICY_HZ,
+        relative_target_hz=TARGET_HZ,
+        action_scale=control["action_scale"],
+        gaze=dict(step_size=gaze["step_size"], limit=gaze["limit"], field_radius_deg=gaze["field_radius_deg"]),
+        camera_model=camera_model,
         calibrated_capture=calibrated,
-        retinal_geometry="planar" if planar else "spherical",
-        capture_preprocessing="center_square_resize_640" if planar else "calibrated_raster",
-        retinal_resolution=128,
-        camera_hfov=camera["camera_hfov"],
-        cmf_a=camera["cmf_a"],
-        instruction=settings["policy"]["instructions"][0],
+        retina=dict(fov_deg=retina["fov_deg"], cmf_a_deg=retina["cmf_a_deg"], resolution=retina["resolution"]),
+        instruction=run["instructions"][0],
         source_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
         source_checkpoint=checkpoint.name,
-        dino_checksum=settings["policy"]["dino_checksum"],
+        dino=dict(checksum=run["dino"]["checksum"], num_layers=run["dino"]["num_layers"]),
         versions={name: importlib.metadata.version(name) for name in ("torch", "fovi", "leapp")},
         rgb_layout="BHWC_uint8",
         retinal_sampling="bilinear_border_mask_round_uint8",
-        initial_gaze="neutral",
+        initial_gaze="optical_axis",
         output="eight_unclipped_normalized_actions",
     )
     validate_contract(contract)
     generator = torch.Generator(device=device).manual_seed(71)
-    h, w = calibration["image_size"]
-    proprio = torch.zeros(1, 32, device=device)
+    h, w = camera_model["image_size"]
+    proprio = torch.zeros(1, PROPRIOCEPTION_SIZE, device=device)
     rgb = torch.randint(0, 256, (1, h, w, 3), dtype=torch.uint8, device=device, generator=generator)
-    retina = dense.retina(rgb, proprio[:, 26:28])
+    retina = dense.retina(rgb, proprio[:, GAZE] * dense.field_radius_deg)
     camera_runtime, camera_yaml = export_node(dense, dict(proprio=proprio, rgb=rgb), output / "camera")
     retinal_runtime, retinal_yaml = export_node(
         dense.policy, dict(proprio=proprio, retinal_rgb=retina), output / "retinal"
@@ -105,10 +100,12 @@ def export(checkpoint: Path, dino: str, output: Path, calibration=None, device="
     # BF16 encoder's numerics after its first invocation in PyTorch 2.11.
     with torch.inference_mode(), torch.jit.optimized_execution(False):
         for _ in range(8):
-            proprio = torch.randn(1, 32, device=device, generator=generator)
-            proprio[:, 26:28].clamp_(-camera["gaze_limit"], camera["gaze_limit"])
+            proprio = torch.randn(1, PROPRIOCEPTION_SIZE, device=device, generator=generator)
+            # Keep the gaze inside the trained limit, as the controller does.
+            norm = proprio[:, GAZE].norm(dim=-1, keepdim=True).clamp_min(gaze["limit"])
+            proprio[:, GAZE] *= gaze["limit"] / norm
             rgb.random_(0, 256, generator=generator)
-            retina = dense.retina(rgb, proprio[:, 26:28])
+            retina = dense.retina(rgb, proprio[:, GAZE] * dense.field_radius_deg)
             tokens = dense.policy.encoder(retina)
             expected = original(
                 dict(
@@ -145,21 +142,21 @@ def export(checkpoint: Path, dino: str, output: Path, calibration=None, device="
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--dino", required=True, help="Local Fovi bundle or pinned model URI")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
-        "--calibration",
+        "--camera_model",
         type=Path,
-        help="Actual capture CameraModel JSON for spherical policies; omit for planar policies",
+        help="The real camera's CameraModel fields as JSON. Required on hardware; defaults to the simulated camera.",
     )
+    parser.add_argument("--dino", help="Local Fovi bundle of the run's DINO checkpoint; defaults to the run's.")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     torch.set_num_threads(4)
     export(
         args.checkpoint.resolve(),
-        args.dino,
         args.output.resolve(),
-        json.loads(args.calibration.read_text()) if args.calibration else None,
+        json.loads(args.camera_model.read_text()) if args.camera_model else None,
+        args.dino,
         args.device,
     )
 

@@ -11,12 +11,11 @@ from isaaclab_tasks.utils import resolve_task_config
 
 from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import ARM_JOINTS
 
-from . import TASK_ID
+from . import RUN_FILE, TASK_ID
 from .goals import NumberedResetFromDataset
 from .language import INSTRUCTIONS
 
-RUN_FILE = "run.json"
-"""Name of the file, next to a run's checkpoints, that describes what the run trained."""
+__all__ = ["RUN_FILE", "compose", "describe", "resume_overrides"]
 
 
 def compose(overrides: Sequence[str] = (), saved: dict | None = None):
