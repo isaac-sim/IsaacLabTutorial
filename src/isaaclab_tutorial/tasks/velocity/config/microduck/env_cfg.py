@@ -12,6 +12,9 @@ from isaaclab.managers import CurriculumTermCfg as Curriculum
 
 from isaaclab_tutorial.tasks.velocity.mdp.curriculums import staged_value
 
+from isaaclab_tutorial.tasks.velocity.mdp.commands import MicroDuckRoughVelocityCommand, MicroDuckVelocityCommand
+
+from .rough import MicroDuckRoughCurriculumCfg, MicroDuckRoughSceneCfg, MicroDuckTerrainImporter, rough_terrain_generator
 from .walking import CurriculumCfg, RewardsCfg, WalkingSceneCfg
 
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -245,3 +248,37 @@ class LessSlipEnvCfg(WalkEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.rewards.foot_slip.weight = -0.5
+
+
+@configclass
+class RoughEnvCfg(WalkEnvCfg):
+    """MicroDuck rough velocity walking with the flat task's policy interface and BAM servos."""
+
+    scene: MicroDuckRoughSceneCfg = MicroDuckRoughSceneCfg(num_envs=16384, env_spacing=2.0)
+    curriculum: MicroDuckRoughCurriculumCfg = MicroDuckRoughCurriculumCfg()
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.commands.base_velocity.class_type = MicroDuckRoughVelocityCommand
+        self.rewards.track_ang_vel.params["std"] = 0.5
+        self.scene.terrain.terrain_type = "generator"
+        self.scene.terrain.class_type = MicroDuckTerrainImporter
+        self.scene.terrain.max_init_terrain_level = 5
+        self.scene.terrain.terrain_generator = rough_terrain_generator()
+        height_sensor_names = ("left_foot_height", "right_foot_height")
+        self.observations.critic.foot_height.params["height_sensor_names"] = height_sensor_names
+        self.rewards.foot_clearance.params["height_sensor_names"] = height_sensor_names
+        self.rewards.foot_swing_height.params["height_sensor_names"] = height_sensor_names
+        self.scene.left_foot_height.update_period = self.sim.dt * self.decimation
+        self.scene.right_foot_height.update_period = self.sim.dt * self.decimation
+        self.sim.physics.solver_cfg.nconmax = 200
+        self.sim.physics.solver_cfg.njmax = 1024
+
+    def play_mode(self):
+        """Use a smaller terrain map with randomly sampled difficulty for playback."""
+        super().play_mode()
+        self.commands.base_velocity.class_type = MicroDuckVelocityCommand
+        self.scene.terrain.terrain_generator.curriculum = False
+        self.scene.terrain.terrain_generator.num_rows = 5
+        self.scene.terrain.terrain_generator.num_cols = 5
+        self.curriculum.terrain_levels = None

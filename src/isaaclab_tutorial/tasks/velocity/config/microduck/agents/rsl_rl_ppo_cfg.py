@@ -80,3 +80,8 @@ class LessSlipPPORunnerCfg(WalkPPORunnerCfg):
 @configclass
 class SymmetricLessSlipPPORunnerCfg(SymmetricWalkPPORunnerCfg):
     experiment_name = "course_microduck_less_slip_symmetry"
+
+
+@configclass
+class RoughPPORunnerCfg(SymmetricWalkPPORunnerCfg):
+    experiment_name = preset(default="course_microduck_rough", backlash="course_microduck_rough_backlash")

@@ -46,3 +46,10 @@ register_task(
     "LessSlipPPORunnerCfg",
     symmetry_agent_cfg="SymmetricLessSlipPPORunnerCfg",
 )
+
+register_task(
+    "Rough",
+    "RoughEnvCfg",
+    "RoughPPORunnerCfg",
+    symmetry_agent_cfg="RoughPPORunnerCfg",
+)
