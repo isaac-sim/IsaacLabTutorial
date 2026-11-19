@@ -169,16 +169,16 @@ class Metrics(RecorderTerm):
         self.contacts, _ = env.scene["contact_forces"].find_bodies(["ankle_left", "ankle_right"], preserve_order=True)
 
     def record_post_step(self):
-        e = self._env
-        r = e.scene["robot"]
+        simulation = self._env
+        r = simulation.scene["robot"]
         actual = quat_apply_inverse(yaw_quat(r.data.root_link_quat_w.torch), r.data.root_link_lin_vel_w.torch)
-        command = e.command_manager.get_command("base_velocity")
+        command = simulation.command_manager.get_command("base_velocity")
         xy = (actual[:, :2] - command[:, :2]).norm(dim=-1)
         yaw = (r.data.root_link_ang_vel_w.torch[:, 2] - command[:, 2]).abs()
-        contact = e.scene["contact_forces"].data.current_contact_time.torch[:, self.contacts] > 0
+        contact = simulation.scene["contact_forces"].data.current_contact_time.torch[:, self.contacts] > 0
         slip = r.data.body_link_lin_vel_w.torch[:, self.feet, :2].square().sum(-1)
-        change = (e.action_manager.action - e.action_manager.prev_action).square().sum(-1)
-        gravity = torch.zeros((e.num_envs, 3), device=e.device)
+        change = (simulation.action_manager.action - simulation.action_manager.prev_action).square().sum(-1)
+        gravity = torch.zeros((simulation.num_envs, 3), device=simulation.device)
         gravity[:, 2] = -1.0
         head_gravity = quat_apply_inverse(r.data.body_link_quat_w.torch[:, self.head[0]], gravity)
         head_tilt = torch.rad2deg(torch.acos((-head_gravity[:, 2]).clamp(-1.0, 1.0)))
@@ -217,14 +217,14 @@ class Metrics(RecorderTerm):
         self.sample_phases.append(self.phase)
         self.foot_samples.append(torch.where(valid[:, None], foot_values, torch.nan))
         self.invalid_state |= invalid
-        self.failed |= (e.reset_terminated & self.active) | invalid
-        self.timed_out |= e.reset_time_outs & self.active & ~e.reset_terminated & finite
+        self.failed |= (simulation.reset_terminated & self.active) | invalid
+        self.timed_out |= simulation.reset_time_outs & self.active & ~simulation.reset_terminated & finite
         if self.record_trace:
             count = int(valid.sum())
             mean = values[valid].mean(0).cpu().tolist() if count else None
             self.trace.append(
                 {
-                    "time_s": len(self.head_tilt_samples) * e.step_dt,
+                    "time_s": len(self.head_tilt_samples) * simulation.step_dt,
                     "phase": self.phase,
                     "valid_trials": count,
                     "mean_actual_velocity": [mean[6], mean[7], mean[8]] if mean else None,
@@ -232,7 +232,7 @@ class Metrics(RecorderTerm):
                     "mean_contact_ankle_squared_speed": mean[3] if mean else None,
                 }
             )
-        self.active &= ~(e.reset_buf | invalid)
+        self.active &= ~(simulation.reset_buf | invalid)
         return None, None
 
 
@@ -344,64 +344,64 @@ def main():
         raw = gym.make(args.task, cfg=cfg)
         env = RslRlVecEnvWrapper(raw, clip_actions=agent_cfg.clip_actions)
         try:
-            e = raw.unwrapped
-            commands = torch.tensor(list(cases.values()), device=e.device).repeat_interleave(args.trials, dim=0)
-            term = e.command_manager.get_term("base_velocity")
+            simulation = raw.unwrapped
+            commands = torch.tensor(list(cases.values()), device=simulation.device).repeat_interleave(args.trials, dim=0)
+            term = simulation.command_manager.get_term("base_velocity")
             term.vel_command_b[:] = commands
             term.is_standing_env[:] = False
             # Recompute after assigning commands: the first action must see the test command.
-            e.obs_buf = e.observation_manager.compute(update_history=False)
+            simulation.obs_buf = simulation.observation_manager.compute(update_history=False)
             obs = env.get_observations()
             if args.agent == "policy":
                 runner = OnPolicyRunner(
                     env,
                     to_dict(handle_deprecated_rsl_rl_cfg(agent_cfg, version("rsl-rl-lib"))),
                     log_dir=None,
-                    device=e.device,
+                    device=simulation.device,
                 )
                 runner.load(str(args.checkpoint))
-                policy = runner.get_inference_policy(device=e.device)
+                policy = runner.get_inference_policy(device=simulation.device)
             if args.start_delay > 0:
                 print(f"Open the viewer now; stepping begins in {args.start_delay:g} seconds.", flush=True)
                 time.sleep(args.start_delay)
-            m = e.course_metrics
-            m.record_trace = args.case == "sequence"
+            metrics = simulation.course_metrics
+            metrics.record_trace = args.case == "sequence"
             with torch.inference_mode():
-                for step in range(e.max_episode_length + 1):
+                for step in range(simulation.max_episode_length + 1):
                     if args.case == "sequence":
-                        phase = min(3, 4 * step // e.max_episode_length)
-                        if phase != m.phase:
-                            m.phase = phase
-                            term.vel_command_b[:] = torch.tensor(CASES[SEQUENCE[phase]], device=e.device)
-                            e.obs_buf = e.observation_manager.compute(update_history=False)
+                        phase = min(3, 4 * step // simulation.max_episode_length)
+                        if phase != metrics.phase:
+                            metrics.phase = phase
+                            term.vel_command_b[:] = torch.tensor(CASES[SEQUENCE[phase]], device=simulation.device)
+                            simulation.obs_buf = simulation.observation_manager.compute(update_history=False)
                             obs = env.get_observations()
                     started = time.perf_counter()
                     if args.agent == "policy":
                         actions = policy(obs)
                     elif args.agent == "zero":
-                        actions = torch.zeros((e.num_envs, 14), device=e.device)
+                        actions = torch.zeros((simulation.num_envs, 14), device=simulation.device)
                     else:
-                        actions = 2 * torch.rand((e.num_envs, 14), device=e.device) - 1
+                        actions = 2 * torch.rand((simulation.num_envs, 14), device=simulation.device) - 1
                     obs, _, dones, _ = env.step(actions)
                     if args.agent == "policy":
                         policy.reset(dones)
                     if args.real_time:
-                        time.sleep(max(0.0, e.step_dt - (time.perf_counter() - started)))
-                    if not e.course_metrics.active.any():
+                        time.sleep(max(0.0, simulation.step_dt - (time.perf_counter() - started)))
+                    if not simulation.course_metrics.active.any():
                         break
-            m = e.course_metrics
+            metrics = simulation.course_metrics
             rows, trials = [], []
             for i, name in enumerate(cases):
                 group = slice(i * args.trials, (i + 1) * args.trials)
                 target = None if name == "sequence" else cases[name]
-                rows.append({"command": name, "target": target, **summarize(m, group, e.step_dt)})
+                rows.append({"command": name, "target": target, **summarize(metrics, group, simulation.step_dt)})
                 for trial in range(args.trials):
                     index = i * args.trials + trial
                     trials.append(
                         {
                             "command": name,
                             "trial": trial,
-                            **summarize(m, slice(index, index + 1), e.step_dt),
+                            **summarize(metrics, slice(index, index + 1), simulation.step_dt),
                         }
                     )
             result = {
@@ -443,19 +443,19 @@ def main():
                         "target": CASES[name],
                         "start_s": i * args.seconds / 4,
                         "end_s": (i + 1) * args.seconds / 4,
-                        **summarize(m, slice(None), e.step_dt, phase=i),
+                        **summarize(metrics, slice(None), simulation.step_dt, phase=i),
                     }
                     for i, name in enumerate(SEQUENCE)
                 ]
-                result["trace"] = m.trace
+                result["trace"] = metrics.trace
             if args.check_gait:
                 result["gait_acceptance"] = check_walking_gait(rows)
             if args.gait_trace:
                 traces = {}
                 for i, name in enumerate(cases):
-                    data = m.foot_trace_cpu[:, i * args.trials]
+                    data = metrics.foot_trace_cpu[:, i * args.trials]
                     traces[name] = [
-                        [round((j + 1) * e.step_dt, 6)]
+                        [round((j + 1) * simulation.step_dt, 6)]
                         + [round(float(v), 6) if torch.isfinite(v) else None for v in sample]
                         for j, sample in enumerate(data)
                     ]

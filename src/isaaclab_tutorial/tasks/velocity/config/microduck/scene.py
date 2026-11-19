@@ -13,7 +13,6 @@ from isaaclab.utils.configclass import configclass
 from isaaclab_tutorial.tasks.velocity.config.microduck.robot import MICRODUCK_CFG
 
 
-# BEGIN scene
 @configclass
 class DuckSceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
@@ -37,6 +36,3 @@ class DuckSceneCfg(InteractiveSceneCfg):
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(intensity=750.0, color=(0.9, 0.9, 0.9)),
     )
-
-
-# END scene

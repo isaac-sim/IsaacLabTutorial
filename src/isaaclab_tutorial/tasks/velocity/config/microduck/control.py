@@ -1,9 +1,9 @@
-# Copyright (c) 2022-2026, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
+#
 # SPDX-License-Identifier: BSD-3-Clause
 """Action and command configurations assembled before introducing upstream imports."""
 
-# BEGIN actions
 from isaaclab.utils.configclass import configclass
 
 from isaaclab_tutorial.tasks.velocity.mdp.actions import BiasedJointPositionActionCfg
@@ -21,10 +21,6 @@ class ActionsCfg:
     )
 
 
-# END actions
-
-
-# BEGIN commands
 @configclass
 class CommandsCfg:
     """Command specifications for the MDP."""
@@ -48,6 +44,3 @@ class CommandsCfg:
         resampling_time_range=(2.0, 5.0),
         ranges=((-0.005, 0.005), (-0.005, 0.005), (-0.005, 0.005), (-0.05, 0.05), (-0.05, 0.05), (-0.05, 0.05)),
     )
-
-
-# END commands

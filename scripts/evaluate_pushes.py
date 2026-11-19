@@ -46,20 +46,20 @@ class PushMetrics(Metrics):
         self.trace = []
 
     def record_post_step(self):
-        e = self._env
+        simulation = self._env
         active = self.active.clone()
-        r = e.scene["robot"]
+        r = simulation.scene["robot"]
         speed = r.data.root_link_lin_vel_w.torch[:, :2].norm(dim=-1)
-        gravity = torch.zeros((e.num_envs, 3), device=e.device)
+        gravity = torch.zeros((simulation.num_envs, 3), device=simulation.device)
         gravity[:, 2] = -1
         projected = quat_apply_inverse(r.data.body_link_quat_w.torch[:, self.trunk[0]], gravity)
         tilt = torch.rad2deg(torch.acos((-projected[:, 2]).clamp(-1, 1)))
-        elapsed = (len(self.trace) + 1) * e.step_dt
-        if elapsed > e.course_push_time:
-            stable = active & ~e.reset_terminated & (speed < 0.03) & (tilt < 10)
+        elapsed = (len(self.trace) + 1) * simulation.step_dt
+        if elapsed > simulation.course_push_time:
+            stable = active & ~simulation.reset_terminated & (speed < 0.03) & (tilt < 10)
             self.streak = torch.where(stable, self.streak + 1, 0)
-            recovered = (self.streak >= round(1 / e.step_dt)) & torch.isnan(self.recovery)
-            self.recovery[recovered] = elapsed - e.course_push_time
+            recovered = (self.streak >= round(1 / simulation.step_dt)) & torch.isnan(self.recovery)
+            self.recovery[recovered] = elapsed - simulation.course_push_time
             self.peak_tilt = torch.where(
                 active & torch.isfinite(tilt), torch.fmax(self.peak_tilt, tilt), self.peak_tilt
             )
@@ -68,9 +68,9 @@ class PushMetrics(Metrics):
                 "time_s": elapsed,
                 "speed_m_s": float(speed[0]) if active[0] and torch.isfinite(speed[0]) else None,
                 "trunk_tilt_deg": float(tilt[0]) if active[0] and torch.isfinite(tilt[0]) else None,
-                "actions_rad": [v if math.isfinite(v) else None for v in e.action_manager.action[0].cpu().tolist()],
+                "actions_rad": [v if math.isfinite(v) else None for v in simulation.action_manager.action[0].cpu().tolist()],
                 "first_episode_active": bool(active[0]),
-                "terminated": bool(e.reset_terminated[0]),
+                "terminated": bool(simulation.reset_terminated[0]),
             }
         )
         return super().record_post_step()
@@ -151,18 +151,18 @@ def main():
     with launch_simulation(cfg):
         raw = gym.make(args.task, cfg=cfg)
         env = RslRlVecEnvWrapper(raw, clip_actions=agent_cfg.clip_actions)
-        e = raw.unwrapped
-        e.course_push_time = args.push_time
-        robot = e.scene["robot"]
+        simulation = raw.unwrapped
+        simulation.course_push_time = args.push_time
+        robot = simulation.scene["robot"]
         assert cfg.scene.robot.spawn.fix_root_link is not True
         runner = OnPolicyRunner(
             env,
             to_dict(handle_deprecated_rsl_rl_cfg(agent_cfg, version("rsl-rl-lib"))),
             log_dir=None,
-            device=e.device,
+            device=simulation.device,
         )
         runner.load(str(args.checkpoint))
-        policy = runner.get_inference_policy(device=e.device)
+        policy = runner.get_inference_policy(device=simulation.device)
         obs = env.get_observations()
         applied = []
         actions = None
@@ -173,17 +173,17 @@ def main():
                         assert actions is not None
                         held = actions.clone()
                         for index, (speed, direction, vector) in enumerate(cases):
-                            ids = torch.arange(index * args.trials, (index + 1) * args.trials, device=e.device)
-                            ids = ids[e.course_metrics.active[ids]]
+                            ids = torch.arange(index * args.trials, (index + 1) * args.trials, device=simulation.device)
+                            ids = ids[simulation.course_metrics.active[ids]]
                             before = robot.data.root_vel_w.torch[ids].clone()
                             kick = {
                                 axis: (speed * component, speed * component)
                                 for axis, component in zip(("x", "y"), vector, strict=True)
                             }
-                            push_by_setting_velocity(e, ids, kick)
+                            push_by_setting_velocity(simulation, ids, kick)
                             delta = robot.data.root_vel_w.torch[ids] - before
                             expected = torch.zeros_like(delta)
-                            expected[:, :2] = torch.tensor(vector, device=e.device) * speed
+                            expected[:, :2] = torch.tensor(vector, device=simulation.device) * speed
                             torch.testing.assert_close(delta, expected, atol=1e-6, rtol=1e-5)
                             applied.append(
                                 {
@@ -193,33 +193,33 @@ def main():
                                     "measured_delta_velocity_m_s": delta[:, :2].cpu().tolist(),
                                 }
                             )
-                        e.obs_buf = e.observation_manager.compute(update_history=False)
+                        simulation.obs_buf = simulation.observation_manager.compute(update_history=False)
                         obs = env.get_observations()
                     actions = held if args.hold_targets and step >= round(args.push_time / dt) else policy(obs)
                     obs, _, dones, _ = env.step(actions)
                     policy.reset(dones)
-                    if not e.course_metrics.active.any():
+                    if not simulation.course_metrics.active.any():
                         break
-            m = e.course_metrics
+            metrics = simulation.course_metrics
             results = []
             for i, (speed, direction, _) in enumerate(cases):
                 group = slice(i * args.trials, (i + 1) * args.trials)
-                recovered = torch.isfinite(m.recovery[group]) & m.timed_out[group]
+                recovered = torch.isfinite(metrics.recovery[group]) & metrics.timed_out[group]
                 results.append(
                     {
                         "speed_m_s": speed,
                         "direction_world": direction,
                         "trials": args.trials,
-                        "completed": int(m.timed_out[group].sum()),
-                        "failed": int(m.failed[group].sum()),
-                        "invalid_state_trials": int(m.invalid_state[group].sum()),
-                        "censored": int(m.active[group].sum()),
+                        "completed": int(metrics.timed_out[group].sum()),
+                        "failed": int(metrics.failed[group].sum()),
+                        "invalid_state_trials": int(metrics.invalid_state[group].sum()),
+                        "censored": int(metrics.active[group].sum()),
                         "recovered_and_completed": int(recovered.sum()),
-                        "mean_recovery_window_end_s": float(m.recovery[group][recovered].mean())
+                        "mean_recovery_window_end_s": float(metrics.recovery[group][recovered].mean())
                         if recovered.any()
                         else None,
-                        "max_trunk_tilt_deg": float(m.peak_tilt[group][torch.isfinite(m.peak_tilt[group])].max())
-                        if torch.isfinite(m.peak_tilt[group]).any()
+                        "max_trunk_tilt_deg": float(metrics.peak_tilt[group][torch.isfinite(metrics.peak_tilt[group])].max())
+                        if torch.isfinite(metrics.peak_tilt[group]).any()
                         else None,
                     }
                 )
@@ -251,7 +251,7 @@ def main():
             }
             (args.output / "results.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
             if args.video:
-                (args.output / "trace.json").write_text(json.dumps(m.trace, allow_nan=False) + "\n")
+                (args.output / "trace.json").write_text(json.dumps(metrics.trace, allow_nan=False) + "\n")
             print(json.dumps(results, indent=2))
         finally:
             env.close()

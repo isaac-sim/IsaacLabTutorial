@@ -1,9 +1,9 @@
-# Copyright (c) 2022-2026, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
+#
 # SPDX-License-Identifier: BSD-3-Clause
 """The regular Microduck asset, assembled in the robot lesson."""
 
-# BEGIN robot-joints
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
@@ -31,10 +31,8 @@ MICRODUCK_JOINT_NAMES = [
     "right_knee",
     "right_ankle",
 ]
-# END robot-joints
 
 
-# BEGIN robot-pose
 STANDING_JOINT_POS = {
     ".*hip_yaw": 0.0,
     "left_hip_roll": -0.0873,
@@ -50,10 +48,8 @@ STANDING_JOINT_POS = {
     "head_yaw": 0.0,
     "head_roll": 0.0,
 }
-# END robot-pose
 
 
-# BEGIN robot-servos
 SERVOS_CFG = BamActuatorCfg(
     joint_names_expr=["^(?!passive_).*"],
     motor=XL330_MOTOR_CFG,
@@ -65,10 +61,8 @@ SERVOS_CFG = BamActuatorCfg(
     min_delay=3,
     max_delay=6,
 )
-# END robot-servos
 
 
-# BEGIN robot-articulation
 MICRODUCK_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/PollenRobotics/MicroDuck/microduck_walk.usd",
@@ -83,4 +77,3 @@ MICRODUCK_CFG = ArticulationCfg(
     soft_joint_pos_limit_factor=0.9,
     actuators={"servos": SERVOS_CFG},
 )
-# END robot-articulation

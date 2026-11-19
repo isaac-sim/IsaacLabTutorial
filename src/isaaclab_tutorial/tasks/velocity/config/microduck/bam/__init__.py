@@ -1,3 +1,5 @@
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
 """Project-owned BAM support for the unmodified Isaac Lab 3.0.0 package.
 
 Call install before constructing an environment. The hooks add support only for
