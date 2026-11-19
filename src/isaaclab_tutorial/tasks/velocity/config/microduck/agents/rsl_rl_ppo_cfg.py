@@ -5,6 +5,11 @@
 
 """MicroDuck PPO configuration."""
 
+from isaaclab_rl.rsl_rl import RslRlSymmetryCfg
+from isaaclab_tasks.utils import preset
+
+from isaaclab_tutorial.tasks.velocity.mdp.symmetry import compute_symmetric_states
+
 from isaaclab.utils.configclass import configclass
 
 from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
@@ -45,3 +50,23 @@ class BalancePPORunnerCfg(RslRlOnPolicyRunnerCfg):
 class BalanceHeadPPORunnerCfg(BalancePPORunnerCfg):
     experiment_name = "course_microduck_balance_head"
     max_iterations = 1000
+
+
+@configclass
+class WalkPPORunnerCfg(BalancePPORunnerCfg):
+    experiment_name = preset(default="course_microduck_walk", backlash="course_microduck_walk_backlash")
+    max_iterations = "${microduck_scale:50000,${env.ngpus},${env.nnodes}}"
+    save_interval = "${microduck_scale:250,${env.ngpus},${env.nnodes}}"
+
+
+@configclass
+class SymmetricWalkPPORunnerCfg(WalkPPORunnerCfg):
+    experiment_name = preset(default="course_microduck_walk_symmetry", backlash="course_microduck_walk_backlash_symmetry")
+
+    def __post_init__(self):
+        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=True,
+            use_mirror_loss=False,
+            mirror_loss_coeff=0.0,
+            data_augmentation_func=compute_symmetric_states,
+        )

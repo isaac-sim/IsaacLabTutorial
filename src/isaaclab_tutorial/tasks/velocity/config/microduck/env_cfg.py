@@ -7,6 +7,13 @@
 
 import math
 
+from isaaclab.envs.mdp import modify_term_cfg
+from isaaclab.managers import CurriculumTermCfg as Curriculum
+
+from isaaclab_tutorial.tasks.velocity.mdp.curriculums import staged_value
+
+from .walking import CurriculumCfg, RewardsCfg, WalkingSceneCfg
+
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp import action_rate_l2
 from isaaclab.managers import RewardTermCfg as Reward
@@ -152,3 +159,82 @@ class BalanceHeadEnvCfg(BalanceEnvCfg):
     """Keep the balance objective and add a neutral neck/head pose."""
 
     rewards = BalanceHeadRewardsCfg()
+
+
+@configclass
+class TrackingRewardsCfg(BalanceHeadRewardsCfg):
+    still_xy = None
+    still_yaw = None
+
+    # Move the bull's-eye: these terms now track sampled velocity commands.
+    track_lin_vel = Reward(
+        func=rewards.track_linear_velocity_heading, weight=4.0, params={"command_name": "base_velocity", "std": 0.15}
+    )
+    track_ang_vel = Reward(
+        func=rewards.track_angular_velocity_world, weight=4.0, params={"command_name": "base_velocity", "std": 0.35}
+    )
+    # Give each moving foot a useful interval in the air.
+    air_time = Reward(
+        func=rewards.feet_air_time_windowed,
+        weight=3.0,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=["ankle_left", "ankle_right"], preserve_order=True
+            ),
+            "command_name": "base_velocity",
+            "threshold_min": 0.125,
+            "threshold_max": 0.3,
+            "command_threshold": 0.01,
+        },
+    )
+    # A planted shoe: ankle-frame speed during contact is a proxy for sliding.
+    foot_slip = Reward(
+        func=rewards.foot_slip,
+        weight=-0.1,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=["ankle_left", "ankle_right"], preserve_order=True
+            ),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["ankle_left", "ankle_right"], preserve_order=True),
+            "command_name": "base_velocity",
+            "command_threshold": 0.01,
+        },
+    )
+
+
+@configclass
+class TrackingCurriculumCfg:
+    # Increase the price of abrupt target changes as practice progresses.
+    action_rate_weight = Curriculum(
+        func=modify_term_cfg,
+        params={
+            "address": "rewards.action_rate.weight",
+            "modify_fn": staged_value,
+            "modify_params": {
+                "stages": [
+                    (3000 * 24, -0.2),
+                    (4000 * 24, -0.4),
+                    (5000 * 24, -0.6),
+                    (6000 * 24, -0.8),
+                    (7000 * 24, -1.0),
+                ]
+            },
+        },
+    )
+
+
+@configclass
+class TrackingEnvCfg(BaseEnvCfg):
+    rewards = TrackingRewardsCfg()
+    curriculum = TrackingCurriculumCfg()
+
+    def __post_init__(self):
+        # Keep sampled commands; BaseEnvCfg.__post_init__ makes them all zero.
+        self.configure_simulation()
+
+
+@configclass
+class WalkEnvCfg(TrackingEnvCfg):
+    scene = WalkingSceneCfg(num_envs=4096, env_spacing=2.0)
+    rewards = RewardsCfg()
+    curriculum = CurriculumCfg()

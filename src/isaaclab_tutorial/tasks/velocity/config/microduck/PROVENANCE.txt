@@ -25,3 +25,5 @@ managers.py <- contrib/microduck/flat_env_cfg.py (observations, events and termi
 ../../mdp/{events,observations,terminations}.py <- contrib/microduck/mdp/
 agents/rsl_rl_ppo_cfg.py <- contrib/microduck/agents/rsl_rl_ppo_cfg.py
 ../../mdp/rewards.py <- contrib/microduck/mdp/rewards.py (balance and head-pose terms)
+
+Lesson 06 adapts the flat walking scene, rewards and curriculum from contrib/microduck/flat_env_cfg.py, the backlash asset settings from robots/microduck.py, and mirror augmentation from contrib/microduck/mdp/symmetry.py at the revision above.
