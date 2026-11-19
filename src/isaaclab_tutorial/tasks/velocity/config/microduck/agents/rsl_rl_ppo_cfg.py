@@ -70,3 +70,13 @@ class SymmetricWalkPPORunnerCfg(WalkPPORunnerCfg):
             mirror_loss_coeff=0.0,
             data_augmentation_func=compute_symmetric_states,
         )
+
+
+@configclass
+class LessSlipPPORunnerCfg(WalkPPORunnerCfg):
+    experiment_name = "course_microduck_less_slip"
+
+
+@configclass
+class SymmetricLessSlipPPORunnerCfg(SymmetricWalkPPORunnerCfg):
+    experiment_name = "course_microduck_less_slip_symmetry"

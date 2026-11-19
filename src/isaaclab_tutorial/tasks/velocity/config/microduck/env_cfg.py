@@ -238,3 +238,10 @@ class WalkEnvCfg(TrackingEnvCfg):
     scene = WalkingSceneCfg(num_envs=4096, env_spacing=2.0)
     rewards = RewardsCfg()
     curriculum = CurriculumCfg()
+
+
+@configclass
+class LessSlipEnvCfg(WalkEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards.foot_slip.weight = -0.5

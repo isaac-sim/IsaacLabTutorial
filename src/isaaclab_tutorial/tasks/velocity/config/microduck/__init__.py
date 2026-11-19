@@ -39,3 +39,10 @@ register_task(
     "WalkPPORunnerCfg",
     symmetry_agent_cfg="SymmetricWalkPPORunnerCfg",
 )
+
+register_task(
+    "LessSlip",
+    "LessSlipEnvCfg",
+    "LessSlipPPORunnerCfg",
+    symmetry_agent_cfg="SymmetricLessSlipPPORunnerCfg",
+)
