@@ -1,3 +1,5 @@
+# Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
 """Check the MicroDuck robot configuration assembled in lesson 02."""
 
 from isaaclab_tutorial.tasks.velocity.config.microduck import robot
