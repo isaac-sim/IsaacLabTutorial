@@ -13,13 +13,41 @@ course for guided lessons.
 ## Setup
 
 Linux x86-64 or Windows 11, Python 3.12, Git LFS, an NVIDIA GPU with a CUDA 13-compatible driver, and `uv`.
+
+Install [Git Large File Storage (Git LFS)](https://git-lfs.com/) on the machine
+where you'll clone the project. Git LFS is required for the repository's media
+and assets, including when course checkout commands skip downloading them.
+On Ubuntu, install it with:
+
+```bash
+sudo apt-get update
+sudo apt-get install git-lfs
+```
+
+For Windows or other Linux distributions, follow the
+[Git LFS installation instructions](https://git-lfs.com/).
+Confirm that `git lfs version` prints a version before cloning.
+
+Clone the repository, initialize Git LFS for this checkout, and download the
+assets before installing Python dependencies. If you're following the course,
+use its pinned checkout commands, then run the Git LFS initialization and
+asset-download steps for that lesson.
+
 Every command below is a single line, so it runs unchanged in bash, PowerShell and Command Prompt.
 
 ```bash
+git clone https://github.com/isaac-sim/IsaacLabTutorial.git
+cd IsaacLabTutorial
+git lfs install --local
 git lfs pull
 uv sync --locked
 uv run pytest -q
 ```
+
+If you already cloned the repository without Git LFS, install it, then run
+`git lfs install --local` and `git lfs pull` from the repository root. This
+replaces LFS pointer files with the actual assets. Course checkouts that
+intentionally skip assets should follow their lesson's download instructions.
 
 Check that the task builds and steps before training:
 
