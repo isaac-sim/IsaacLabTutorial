@@ -1,4 +1,4 @@
-# SO-101 vial placement
+# Isaac Lab Tutorial
 
 <p align="center"><img src="media/demo.gif" alt="SO-101 workshop demonstration" width="100%"></p>
 
@@ -7,8 +7,16 @@ An Isaac Lab tutorial that trains an SO-101 arm to pick up a vial lying on the d
 distilled from it, and that camera policy is the one that runs on the real robot.
 Training uses **Newton MJWarp physics** and the **Newton renderer** for the camera.
 
-Follow the [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
-course for guided lessons.
+This branch also includes a complete Microduck locomotion project. Train a
+two-legged robot to balance and follow walking commands, then compare how
+different rewards affect its gait.
+
+The [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
+course provides two guided modules. [Train a Robot Arm](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/train-a-robot-arm/index.html)
+uses the upstream `learning-path` scaffold. Train a Microduck uses the
+[`learning-path-microduck` scaffold](https://github.com/anthonyjclark/IsaacLabTutorial/tree/learning-path-microduck).
+Follow the setup for each module to use both from one `IsaacLabTutorial`
+directory.
 
 ## Setup
 
@@ -36,7 +44,7 @@ asset-download steps for that lesson.
 Every command below is a single line, so it runs unchanged in bash, PowerShell and Command Prompt.
 
 ```bash
-git clone https://github.com/isaac-sim/IsaacLabTutorial.git
+git clone --branch lp/adding-microduck https://github.com/anthonyjclark/IsaacLabTutorial.git
 cd IsaacLabTutorial
 git lfs install --local
 git lfs pull
@@ -71,6 +79,23 @@ Then add `--extra wandb` to the training command and set `agent.logger=wandb` an
 and temporarily pins a compatible W&B version in [pyproject.toml](pyproject.toml), because
 the Isaac Lab logger uses the legacy `wandb.util.generate_id` API. Both extras can be
 combined as `uv run --extra video --extra wandb` when recording and tracking a run.
+
+## Microduck Locomotion
+
+The Microduck tasks use Newton MJWarp on an NVIDIA GPU. They cover standing
+balance, head control, walking, a stronger foot-slip penalty, and rough
+terrain. The pretrained policies are in [`checkpoints/microduck/`](checkpoints/microduck/)
+and are downloaded by Git LFS.
+
+Play the supplied walking checkpoint after setup:
+
+```bash
+uv run --extra viser isaaclab play --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 1 --checkpoint checkpoints/microduck/walk.pt --viz viser --real-time
+```
+
+Use [`scripts/evaluate.py`](scripts/evaluate.py) to compare how closely policies
+track the same commands. Use [`scripts/evaluate_pushes.py`](scripts/evaluate_pushes.py)
+to test recovery from pushes.
 
 ## Tasks
 
