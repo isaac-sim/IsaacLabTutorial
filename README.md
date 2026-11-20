@@ -1,22 +1,17 @@
 # Isaac Lab Tutorial
 
-<p align="center"><img src="media/demo.gif" alt="SO-101 workshop demonstration" width="100%"></p>
+Train and evaluate policies for two robotics tasks in Isaac Lab:
 
-An Isaac Lab tutorial that trains an SO-101 arm to pick up a vial lying on the desk and place it upright in
-**any of the four holes** of a rack. A state policy learns the task with PPO. A wrist-camera policy is then
-distilled from it, and that camera policy is the one that runs on the real robot.
-Training uses **Newton MJWarp physics** and the **Newton renderer** for the camera.
-
-This branch also includes a complete Microduck locomotion project. Train a
-two-legged robot to balance and follow walking commands, then compare how
-different rewards affect its gait.
+- [**SO-101 vial placement**](#so-101-vial-placement). Teach a robot arm to
+  pick up a vial and place it upright in a rack, then distill the state
+  teacher into a wrist-camera policy.
+- [**Microduck locomotion**](#microduck-locomotion). Teach a two-legged robot
+  to balance, walk at a requested speed, and turn. Compare how changes to
+  the rewards affect its gait.
 
 The [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
-course provides two guided modules. [Train a Robot Arm](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/train-a-robot-arm/index.html)
-uses the upstream `learning-path` scaffold. Train a Microduck uses the
-[`learning-path-microduck` scaffold](https://github.com/anthonyjclark/IsaacLabTutorial/tree/learning-path-microduck).
-Follow the setup for each module to use both from one `IsaacLabTutorial`
-directory.
+course walks through both tasks in **Train a Robot Arm** and **Train a
+Microduck**.
 
 ## Setup
 
@@ -44,7 +39,7 @@ asset-download steps for that lesson.
 Every command below is a single line, so it runs unchanged in bash, PowerShell and Command Prompt.
 
 ```bash
-git clone --branch lp/adding-microduck https://github.com/anthonyjclark/IsaacLabTutorial.git
+git clone https://github.com/isaac-sim/IsaacLabTutorial.git
 cd IsaacLabTutorial
 git lfs install --local
 git lfs pull
@@ -56,12 +51,6 @@ If you already cloned the repository without Git LFS, install it, then run
 `git lfs install --local` and `git lfs pull` from the repository root. This
 replaces LFS pointer files with the actual assets. Course checkouts that
 intentionally skip assets should follow their lesson's download instructions.
-
-Check that the task builds and steps before training:
-
-```bash
-uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --max_steps 100 --visualizer none presets=newton_mjwarp
-```
 
 ### Optional Recording and Experiment Tracking
 
@@ -80,24 +69,22 @@ and temporarily pins a compatible W&B version in [pyproject.toml](pyproject.toml
 the Isaac Lab logger uses the legacy `wandb.util.generate_id` API. Both extras can be
 combined as `uv run --extra video --extra wandb` when recording and tracking a run.
 
-## Microduck Locomotion
+## SO-101 Vial Placement
 
-The Microduck tasks use Newton MJWarp on an NVIDIA GPU. They cover standing
-balance, head control, walking, a stronger foot-slip penalty, and rough
-terrain. The pretrained policies are in [`checkpoints/microduck/`](checkpoints/microduck/)
-and are downloaded by Git LFS.
+<p align="center"><img src="media/demo.gif" alt="SO-101 workshop demonstration" width="100%"></p>
 
-Play the supplied walking checkpoint after setup:
+The SO-101 picks up a vial lying on the desk and places it upright in any of
+the four holes in the rack. A state policy learns the task with PPO. A
+wrist-camera policy is then distilled from it and can run on the real robot.
+Training uses Newton MJWarp physics and the Newton renderer for the camera.
+
+Check that the task builds and steps before training:
 
 ```bash
-uv run --extra viser isaaclab play --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 1 --checkpoint checkpoints/microduck/walk.pt --viz viser --real-time
+uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --max_steps 100 --visualizer none presets=newton_mjwarp
 ```
 
-Use [`scripts/evaluate.py`](scripts/evaluate.py) to compare how closely policies
-track the same commands. Use [`scripts/evaluate_pushes.py`](scripts/evaluate_pushes.py)
-to test recovery from pushes.
-
-## Tasks
+### Task Variants
 
 | Task | Inputs | Training |
 | --- | --- | --- |
@@ -108,7 +95,7 @@ Add `presets=sim2real` to either task to enable robot-transfer randomization. Th
 identical in both tasks, so a teacher and its student train under the same physics. See
 [docs/SIM2REAL.md](docs/SIM2REAL.md).
 
-## Train
+### Train
 
 ```bash
 # State teacher
@@ -129,7 +116,7 @@ iterations.
 uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_renderer
 ```
 
-## Evaluate
+### Evaluate
 
 Play starts every episode from the home pose. The exact-evaluation callback counts one episode per
 environment and prints a `SO101_EVAL_RESULT` JSON line. Set `SO101_EVALUATION_OUTPUT=path.json` to also save
@@ -145,7 +132,7 @@ To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,
 Do not pass `--deterministic`. On this pin it also enables Warp-wide deterministic physics, which overflows a
 collision-kernel buffer in this scene. Playback already uses deterministic policy actions.
 
-## Task design
+### Task design
 
 **Control and actions**
 - The policy runs at 30 Hz, and physics runs at 120 Hz.
@@ -171,6 +158,34 @@ uv run generate-so101-resets --output outputs/reset_poses.pt --visualizer none p
 uv run view-so101-resets --dataset outputs/reset_poses.pt --visualizer newton presets=newton_mjwarp
 ```
 
+## Microduck Locomotion
+
+The Microduck tasks use Newton MJWarp on an NVIDIA GPU. They cover standing
+balance, head control, walking, a stronger foot-slip penalty, and rough
+terrain. The pretrained policies are in [`checkpoints/microduck/`](checkpoints/microduck/)
+and are downloaded by Git LFS.
+
+### Play a Trained Policy
+
+Play the supplied walking checkpoint after setup:
+
+```bash
+uv run --extra viser isaaclab play --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 1 --checkpoint checkpoints/microduck/walk.pt --viz viser --real-time
+```
+
+### Train and Evaluate
+
+Start with a short run to check that the walking task trains and saves a
+checkpoint:
+
+```bash
+uv run isaaclab train --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 64 --max_iterations 2 --seed 42
+```
+
+Use [`scripts/evaluate.py`](scripts/evaluate.py) to compare how closely policies
+track the same commands. Use [`scripts/evaluate_pushes.py`](scripts/evaluate_pushes.py)
+to test recovery from pushes.
+
 ## Layout
 
 ```
@@ -180,9 +195,13 @@ src/isaaclab_tutorial/
   tasks/place_vial/config/so101/agents/             RSL-RL PPO and distillation configs
   tasks/place_vial/mdp/                             observations, rewards, terminations, events
   tasks/place_vial/reset/                           reset dataset format and generator
+  tasks/velocity/config/microduck/                   Microduck environment, controls, and training configs
+  tasks/velocity/mdp/                               walking commands, rewards, and task terms
   utils/                                            evaluation, LEAPP export, real-robot scripts
+checkpoints/microduck/                              pretrained balance and walking policies
+scripts/                                           Microduck evaluation and inspection tools
 docs/SIM2REAL.md                                    training for and deploying to the real robot
 ```
 
 PhysX and OVRTX are available for sim-to-sim checks: install them with `uv sync --extra ovphysx --extra ovrtx`
-and run with `presets=physx,ovrtx`. The tutorial is not tuned for those backends.
+and run with `presets=physx,ovrtx`. The SO-101 task is not tuned for those backends.
