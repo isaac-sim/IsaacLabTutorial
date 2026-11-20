@@ -13,6 +13,9 @@ The [Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-a
 course walks through both tasks in **Train a Robot Arm** and **Train a
 Microduck**.
 
+The Isaac Lab 3.0 documentation also includes a [walkthrough of SO-101 vial
+placement](https://isaac-sim.github.io/IsaacLab/v3.0.0/source/isaaclab/tutorial.html).
+
 ## Setup
 
 Linux x86-64 or Windows 11, Python 3.12, Git LFS, an NVIDIA GPU with a CUDA 13-compatible driver, and `uv`.
