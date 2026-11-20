@@ -103,8 +103,8 @@ benchmark_*.json
 !src/isaaclab_tutorial/assets/reset_poses.pt
 
 # Reference policies for the Microduck learning path.
-!/checkpoints/balance-head.pt
-!/checkpoints/balance.pt
-!/checkpoints/comparison-baseline.pt
-!/checkpoints/comparison-less-slip.pt
-!/checkpoints/walk.pt
+!/checkpoints/microduck/balance-head.pt
+!/checkpoints/microduck/balance.pt
+!/checkpoints/microduck/comparison-baseline.pt
+!/checkpoints/microduck/comparison-less-slip.pt
+!/checkpoints/microduck/walk.pt
