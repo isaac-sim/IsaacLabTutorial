@@ -1,18 +1,25 @@
 # Isaac Lab Tutorial Learning Path
 
 This branch is the exercise scaffold for the completed code on `main`.
-Follow the **Train a Robot Arm** module in the
-[Getting Started With Isaac Lab](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/index.html)
-course, applying its marked regions in lesson order.
+Follow [Train a Robot Arm](https://docs.nvidia.com/learning/physical-ai/getting-started-with-isaac-lab/latest/train-a-robot-arm/index.html)
+in the Getting Started With Isaac Lab course. Fill in the marked regions in
+lesson order.
 Imports, workshop assets, the reset dataset, and supporting utilities are supplied.
 The initial scene intentionally has no robot. Lesson 02 makes inspection runnable;
 lesson 04 adds actions, lesson 05 the state teacher, and lesson 06 camera distillation.
 Run the upstream tests after completing lesson 06, not against unfinished exercises.
 
-Compare with the completed reference without switching branches:
+The course also offers Train a Microduck, which uses its own starter branch
+in the same `IsaacLabTutorial` directory. Follow that module’s setup to add
+the [Microduck scaffold](https://github.com/anthonyjclark/IsaacLabTutorial/tree/learning-path-microduck)
+and create your local `microduck-course` branch. Commit your lesson edits
+before switching branches.
+
+If you set up this branch through the course, compare with the pinned
+`tutorial-reference` tag:
 
 ```bash
-git diff main -- src/
+git diff tutorial-reference -- src/
 ```
 
 The reference documentation below describes the completed task and includes
