@@ -1525,7 +1525,6 @@ class _Generator:
         return valid, target, local_pose, initial_world_position
 
     def _valid(self, phase: int, initial_vial_position: torch.Tensor) -> torch.Tensor:
-
         joint_position = _tensor(self.robot.data.joint_pos)
         joint_velocity = _tensor(self.robot.data.joint_vel)
         vial_position = _tensor(self.vial.data.root_pos_w)

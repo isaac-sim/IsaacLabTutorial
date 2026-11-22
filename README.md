@@ -161,12 +161,31 @@ uv run view-so101-resets --dataset outputs/reset_poses.pt --visualizer newton pr
 
 ## Microduck Locomotion
 
-Train a two-legged robot to balance and follow walking commands, then compare
-how different rewards affect its gait. To build the Microduck tasks, follow
-**Train a Microduck** and use the
-[`learning-path-microduck` scaffold](https://github.com/anthonyjclark/IsaacLabTutorial/tree/learning-path-microduck).
-See [Microduck Locomotion in the completed tutorial](https://github.com/anthonyjclark/IsaacLabTutorial/blob/lp/adding-microduck/README.md#microduck-locomotion)
-for playback, training, and evaluation commands.
+The Microduck tasks use Newton MJWarp on an NVIDIA GPU. They cover standing
+balance, head control, walking, a stronger foot-slip penalty, and rough
+terrain. The pretrained policies are in [`checkpoints/microduck/`](checkpoints/microduck/)
+and are downloaded by Git LFS.
+
+### Play a Trained Policy
+
+Play the supplied walking checkpoint after setup:
+
+```bash
+uv run --extra viser isaaclab play --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 1 --checkpoint checkpoints/microduck/walk.pt --viz viser --real-time
+```
+
+### Train and Evaluate
+
+Start with a short run to check that the walking task trains and saves a
+checkpoint:
+
+```bash
+uv run isaaclab train --task Course-Microduck-Walk-v0 --rl_library rsl_rl --num_envs 64 --max_iterations 2 --seed 42
+```
+
+Use [`scripts/evaluate.py`](scripts/evaluate.py) to compare how closely policies
+track the same commands. Use [`scripts/evaluate_pushes.py`](scripts/evaluate_pushes.py)
+to test recovery from pushes.
 
 ## Layout
 
@@ -177,7 +196,11 @@ src/isaaclab_tutorial/
   tasks/place_vial/config/so101/agents/             RSL-RL PPO and distillation configs
   tasks/place_vial/mdp/                             observations, rewards, terminations, events
   tasks/place_vial/reset/                           reset dataset format and generator
+  tasks/velocity/config/microduck/                   Microduck environment, controls, and training configs
+  tasks/velocity/mdp/                               walking commands, rewards, and task terms
   utils/                                            evaluation, LEAPP export, real-robot scripts
+checkpoints/microduck/                              pretrained balance and walking policies
+scripts/                                           Microduck evaluation and inspection tools
 docs/SIM2REAL.md                                    training for and deploying to the real robot
 ```
 

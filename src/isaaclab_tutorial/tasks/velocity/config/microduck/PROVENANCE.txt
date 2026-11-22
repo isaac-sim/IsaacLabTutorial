@@ -1,0 +1,31 @@
+Project-owned compatibility implementation for the released Isaac Lab 3.0.0 package.
+Framework tag v3.0.0: e3f7d9ff1f5d7f8280de3ece9000b7117f66bcf4.
+No installed framework source files are replaced.
+
+BAM and Microduck reference source:
+https://github.com/isaac-sim/IsaacLab/tree/2742c2d5e6b950d0150781e384bcd8388c29e3ee
+License: BSD-3-Clause; see LICENSE and retained file headers.
+
+Source mapping:
+bam/bam_cfg.py <- source/isaaclab/isaaclab/actuators/actuator_bam_cfg.py
+bam/bam.py, bam/bam_kernels.py <- source/isaaclab_newton/isaaclab_newton/actuators/
+bam/mjwarp_actuator_bridge*.py <- source/isaaclab_newton/isaaclab_newton/physics/
+bam/xl330.py (fitted motor coefficients) <- source/isaaclab_assets/isaaclab_assets/robots/microduck.py
+../../mdp/actions.py and ../../mdp/commands.py <- source/isaaclab_tasks/isaaclab_tasks/contrib/microduck/mdp/
+
+GA adaptations:
+- integration.py authors BAM USD definitions, reactivates replaced prims, samples
+  startup voltage, binds native actuators and connects the MJWarp solver channels.
+  DOF/group selection and backlash binding derive from upstream actuator_control.py.
+- bam.py gathers external load before computing torque, then publishes friction.
+  The upstream motor, voltage, delay and friction equations are preserved.
+
+Lesson 03 source mapping at the same pinned revision:
+managers.py <- contrib/microduck/flat_env_cfg.py (observations, events and terminations)
+../../mdp/{events,observations,terminations}.py <- contrib/microduck/mdp/
+agents/rsl_rl_ppo_cfg.py <- contrib/microduck/agents/rsl_rl_ppo_cfg.py
+../../mdp/rewards.py <- contrib/microduck/mdp/rewards.py (balance and head-pose terms)
+
+Lesson 06 adapts the flat walking scene, rewards and curriculum from contrib/microduck/flat_env_cfg.py, the backlash asset settings from robots/microduck.py, and mirror augmentation from contrib/microduck/mdp/symmetry.py at the revision above.
+
+Lesson 10 adapts the rough scene, terrain generator and curriculum from contrib/microduck/rough_env_cfg.py and the terrain-level update from contrib/microduck/mdp/curriculums.py at the same revision.
