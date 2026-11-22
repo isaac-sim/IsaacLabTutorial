@@ -33,8 +33,10 @@ def test_fixture_is_not_present_in_learning_tasks():
     assert config("Course-Microduck-Walk-v0").commands.base_velocity.ranges.lin_vel_x[1] > 0
 
 
-def test_tracking_builds_on_balance_without_duplicate_velocity_rewards():
-    track = config("Course-Microduck-Track-v0")
+@pytest.mark.parametrize("world_size", [1, 2, 8])
+def test_tracking_builds_on_balance_without_duplicate_velocity_rewards(world_size, monkeypatch):
+    monkeypatch.setenv("WORLD_SIZE", str(world_size))
+    track, agent = resolve_task_config("Course-Microduck-Track-v0", "rsl_rl_cfg_entry_point", overrides=[])
     walk = config("Course-Microduck-Walk-v0")
     assert track.rewards.still_xy is None
     assert track.rewards.still_yaw is None
@@ -44,6 +46,13 @@ def test_tracking_builds_on_balance_without_duplicate_velocity_rewards():
     assert to_dict(track.rewards.head_pose) == to_dict(walk.rewards.head_pose_tracking)
     stages = track.curriculum.action_rate_weight.params["modify_params"]["stages"]
     assert stages == walk.curriculum.action_rate_weight.params["modify_params"]["stages"]
+    assert stages == [
+        (iteration * agent.num_steps_per_env // world_size, weight)
+        for iteration, weight in ((3000, -0.2), (4000, -0.4), (5000, -0.6), (6000, -0.8), (7000, -1.0))
+    ]
+    assert track.curriculum.action_rate_weight.params["address"] == "rewards.action_rate.weight"
+    assert agent.max_iterations == 50000 // world_size
+    assert stages[-1][0] < agent.max_iterations * agent.num_steps_per_env
 
 
 def test_head_balance_adds_only_the_head_reward():

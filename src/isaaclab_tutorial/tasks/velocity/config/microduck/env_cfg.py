@@ -7,15 +7,10 @@
 
 import math
 
-from isaaclab.envs.mdp import modify_term_cfg
-from isaaclab.managers import CurriculumTermCfg as Curriculum
-
-from isaaclab_tutorial.tasks.velocity.mdp.curriculums import staged_value
-
 from isaaclab_tutorial.tasks.velocity.mdp.commands import MicroDuckRoughVelocityCommand, MicroDuckVelocityCommand
 
 from .rough import MicroDuckRoughCurriculumCfg, MicroDuckRoughSceneCfg, MicroDuckTerrainImporter, rough_terrain_generator
-from .walking import CurriculumCfg, RewardsCfg, WalkingSceneCfg
+from .walking import CurriculumCfg, RewardsCfg, WalkingSceneCfg, _schedule
 
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp import action_rate_l2
@@ -208,21 +203,8 @@ class TrackingRewardsCfg(BalanceHeadRewardsCfg):
 @configclass
 class TrackingCurriculumCfg:
     # Increase the price of abrupt target changes as practice progresses.
-    action_rate_weight = Curriculum(
-        func=modify_term_cfg,
-        params={
-            "address": "rewards.action_rate.weight",
-            "modify_fn": staged_value,
-            "modify_params": {
-                "stages": [
-                    (3000 * 24, -0.2),
-                    (4000 * 24, -0.4),
-                    (5000 * 24, -0.6),
-                    (6000 * 24, -0.8),
-                    (7000 * 24, -1.0),
-                ]
-            },
-        },
+    action_rate_weight = _schedule(
+        "rewards.action_rate.weight", (3000, -0.2), (4000, -0.4), (5000, -0.6), (6000, -0.8), (7000, -1.0)
     )
 
 
