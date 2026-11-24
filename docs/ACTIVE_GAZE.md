@@ -28,13 +28,16 @@ The critic sees the privileged state, including the target opening, in every var
 
 - The camera is an ideal square pinhole; the retina spans its field of view, so the gaze can reach anything the
   camera sees.
+- The gaze is `isaaclab_fovi`'s: `GazeAction` moves it in software, turning the retina within the fixed camera's
+  image, `gaze_state` observes it, and `gaze_teacher_labels` supervises it.
 - Two of the eight actions move the gaze (tilt, pan). An action of 1 moves an angle by 0.1 field radii, a field
   radius being half the retina's field of view, and the gaze stays within 1 field radius of the optical axis.
   The actor observes the gaze and its velocity in the same units.
-- A teacher supervises the gaze actions: it looks at the vial until the grasp, then at the goal. The PPO loss adds
-  the teacher's gaze actions as labels (`agent.algorithm.oracle_weight`, 1.0); `presets=no_gaze_supervision`
-  turns this off.
-- Episodes start the gaze at random, on the vial or the goal, or a few degrees off either.
+- The teacher looks at a point in the world that the task picks: the vial until the grasp, then the goal. The PPO
+  loss adds the teacher's gaze actions as labels (`agent.algorithm.oracle_weight`, 1.0);
+  `presets=no_gaze_supervision` turns this off.
+- Episodes start the gaze at random, on the vial or the goal, or a few degrees off either
+  (`env.actions.gaze.mixed_resets`).
 
 ## Train
 
@@ -42,16 +45,17 @@ The task trains with its own script, because action chunking wraps the environme
 needs its own runner:
 
 ```bash
-uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train train --output runs/numbered presets=numbered,newton_renderer
+uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train train --output runs/numbered presets=numbered,newton_warp
 ```
 
 Every argument that is not a script option is an Isaac Lab configuration override, as with `isaaclab train`.
 Useful presets and overrides:
 
-- `newton_renderer` renders with Newton; the default is OVRTX path-traced RGB (`--extra ovrtx`). The faster
+- `newton_warp` renders with Newton; the default is OVRTX path-traced RGB (`--extra ovrtx`). The faster
   OVRTX Minimal modes (`minimal_full_mdl`, `minimal_diffuse_mdl`, with `_shadows` variants) draw no background.
 - `sim2real` adds the tutorial's physical randomization, scene colours, a camera mount that moves each episode,
-  and photometric variation of the retina. On `dino_language`, the actor also learns to predict the mount's move.
+  and photometric variation of the retina. The gaze stays relative to the moved mount, and its teacher aims from
+  it (`mount="tracked"`). On `dino_language`, the actor also learns to predict the mount's move.
 - `chunking` makes each policy decision a plan of three control steps.
 - `env.observations.vision.tokens.params.num_layers=N` runs only the first `N` DINO layers, to cut the cost of
   perception while keeping pretrained features.
@@ -65,7 +69,7 @@ value, and `presets=…,finetune` warm-starts at a lower learning rate. Add `--l
 
 ```bash
 uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train play --checkpoint runs/numbered/model_4999.pt --output runs/numbered_play
-uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train inspect --num_envs 4 --output runs/inspect presets=numbered,newton_renderer
+uv run --extra fovi python -m isaaclab_tutorial.active_gaze.train inspect --num_envs 4 --output runs/inspect presets=numbered,newton_warp
 ```
 
 `play` builds the run's saved configuration; a `presets=` argument would replace the saved preset list. Both write
