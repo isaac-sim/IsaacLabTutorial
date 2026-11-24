@@ -93,6 +93,7 @@ uv run isaaclab zero_agent --task IsaacTutorial-Place-Vial-SO101 --num_envs 8 --
 | --- | --- | --- |
 | `IsaacTutorial-Place-Vial-SO101` | Full state | PPO |
 | `IsaacTutorial-Place-Vial-SO101-Camera` | Wrist RGB (2 frames, 64×48) + proprioception | Distillation from a state teacher, or PPO from scratch |
+| `IsaacTutorial-Place-Vial-SO101-ActiveGaze` | Foveated scene camera whose gaze the policy moves + proprioception | PPO with a gaze teacher; see [docs/ACTIVE_GAZE.md](docs/ACTIVE_GAZE.md) |
 
 Add `presets=sim2real` to either task to enable robot-transfer randomization. The physical randomization is
 identical in both tasks, so a teacher and its student train under the same physics. See
@@ -105,7 +106,7 @@ identical in both tasks, so a teacher and its student train under the same physi
 uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 4096 --visualizer none presets=newton_mjwarp
 
 # Camera student, distilled from the teacher checkpoint
-uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/to/state/model_799.pt --visualizer none presets=newton_mjwarp,newton_renderer
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/to/state/model_799.pt --visualizer none presets=newton_mjwarp,newton_warp
 ```
 
 During distillation the student acts and the frozen teacher labels every state it visits. The labels are
@@ -116,7 +117,7 @@ images and proprioception as the student; the critic sees the privileged state. 
 iterations.
 
 ```bash
-uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_renderer
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_warp
 ```
 
 ### Evaluate
@@ -129,7 +130,7 @@ per-episode outcomes.
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 1024 --checkpoint /abs/path/to/model.pt --visualizer none --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter presets=newton_mjwarp
 ```
 
-To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,newton_renderer`, and add
+To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,newton_warp`, and add
 `--agent rsl_rl_ppo_cfg_entry_point` for one trained from scratch.
 
 Do not pass `--deterministic`. On this pin it also enables Warp-wide deterministic physics, which overflows a
@@ -201,9 +202,11 @@ src/isaaclab_tutorial/
   tasks/velocity/config/microduck/                   Microduck environment, controls, and training configs
   tasks/velocity/mdp/                               walking commands, rewards, and task terms
   utils/                                            evaluation, LEAPP export, real-robot scripts
+  active_gaze/                                      ActiveGaze task, training script and deployment (fovi extra)
 checkpoints/microduck/                              pretrained balance and walking policies
 scripts/                                           Microduck evaluation and inspection tools
 docs/SIM2REAL.md                                    training for and deploying to the real robot
+docs/ACTIVE_GAZE.md                                 the ActiveGaze task, from install to the real robot
 ```
 
 PhysX and OVRTX are available for sim-to-sim checks: install them with `uv sync --extra ovphysx --extra ovrtx`

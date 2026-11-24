@@ -37,15 +37,21 @@ def _state(*presets):
 
 
 def _camera(*presets):
-    return resolve_presets(SO101VialCameraEnvCfg(), ["newton_mjwarp", "newton_renderer", *presets])
+    return resolve_presets(SO101VialCameraEnvCfg(), ["newton_mjwarp", "newton_warp", *presets])
 
 
 def test_tasks_are_registered_with_rsl_rl_entry_points():
     ids = sorted(task for task in gym.registry if task.startswith("IsaacTutorial-"))
-    assert ids == ["IsaacTutorial-Place-Vial-SO101", "IsaacTutorial-Place-Vial-SO101-Camera"]
-    state, camera = (gym.spec(task).kwargs for task in ids)
+    assert ids == [
+        "IsaacTutorial-Place-Vial-SO101",
+        "IsaacTutorial-Place-Vial-SO101-ActiveGaze",
+        "IsaacTutorial-Place-Vial-SO101-Camera",
+    ]
+    state, active_gaze, camera = (gym.spec(task).kwargs for task in ids)
     assert state["env_cfg_entry_point"].endswith("env_cfg:SO101VialEnvCfg")
     assert state["rsl_rl_cfg_entry_point"].endswith("rsl_rl_ppo_cfg:SO101StatePPORunnerCfg")
+    assert active_gaze["env_cfg_entry_point"].endswith("active_gaze.env_cfg:ActiveGazeEnvCfg")
+    assert active_gaze["rsl_rl_cfg_entry_point"].endswith("active_gaze.agents:ActiveGazeAgentCfg")
     assert camera["env_cfg_entry_point"].endswith("camera_env_cfg:SO101VialCameraEnvCfg")
     assert camera["rsl_rl_cfg_entry_point"].endswith("rsl_rl_distillation_cfg:SO101CameraDistillationRunnerCfg")
 

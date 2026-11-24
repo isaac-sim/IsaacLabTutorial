@@ -21,18 +21,17 @@ from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
-from isaaclab.physics import PhysicsEvent, PhysicsManager, PhysxAutoCfg
+from isaaclab.physics import PhysxAutoCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim.utils import bind_physics_material, clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
+from isaaclab_isaacsim.physics import PhysxCfg
+from isaaclab_isaacsim.sim.schemas import PhysxRigidBodyCfg
+from isaaclab_isaacsim.sim.spawners.materials import PhysxRigidBodyMaterialCfg
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg
-from isaaclab_newton.physics.newton_manager_cfg import NewtonBuilderCfg
 from isaaclab_ov.physics import OvPhysxCfg
-from isaaclab_physx.physics import PhysxCfg
-from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
-from isaaclab_physx.sim.spawners.materials import PhysxRigidBodyMaterialCfg
 
 from isaaclab_tasks.utils import PresetCfg, preset
 
@@ -75,7 +74,6 @@ _TORSIONAL_FRICTION = 0.005
 _CONDIM = 3
 _SOLIMP = (0.7, 0.95, 0.0001, 0.5, 2.0)
 _SOLREF = (0.002, 1.5)
-_contact_model_registered = False
 
 
 # Bound to every collider so both backends see the same friction. PhysX also uses it as a compliant contact matching
@@ -152,12 +150,12 @@ class SupportSpawnCfg(sim_utils.CuboidCfg):
     torsional_friction_range: tuple[float, float] = (0.001, 0.005)
 
 
-def _initialize_contacts(_event: PhysicsEvent) -> None:
-    """Apply the workshop-validated contact model to every Newton shape."""
-    sim = sim_utils.SimulationContext.instance()
-    builder = sim.get_or_create_backend(NewtonBuilderCfg(physics_cfg=sim.cfg.physics))
+def initialize_contacts(builder: Any, stage: Any) -> None:
+    """Apply the workshop-validated contact model to every shape of a Newton model builder.
 
-    vial_prim = sim.stage.GetPrimAtPath("/World/envs/env_0/Vial")
+    :class:`~.newton_manager.ContactModelNewtonManager` calls this when its simulation builds the model.
+    """
+    vial_prim = stage.GetPrimAtPath("/World/envs/env_0/Vial")
     body_range = vial_prim.GetAttribute("tutorial:bodyDiameterRange").Get() if vial_prim else None
     cap_range = vial_prim.GetAttribute("tutorial:capDiameterRange").Get() if vial_prim else None
     if body_range is not None and cap_range is not None:
@@ -203,7 +201,7 @@ def _initialize_contacts(_event: PhysicsEvent) -> None:
     # The vial's cap is wider than its body, so on its side it rolls in circles unless the desk resists rolling.
     rolling = (_ROLLING_FRICTION, _ROLLING_FRICTION)
     torsional = (_TORSIONAL_FRICTION, _TORSIONAL_FRICTION)
-    support = sim.stage.GetPrimAtPath("/World/envs/env_0/Support")
+    support = stage.GetPrimAtPath("/World/envs/env_0/Support")
     if support:
         support_rolling = support.GetAttribute("tutorial:rollingFrictionRange").Get()
         support_torsional = support.GetAttribute("tutorial:torsionalFrictionRange").Get()
@@ -233,22 +231,6 @@ def configure_support_rolling_contacts(builder, rolling_range, torsional_range) 
         builder.shape_material_mu_torsional[index] = per_world[world][1] if surface else 0.0
         if surface:
             condim[index] = 6
-
-
-def _register_contact_model() -> None:
-    """Register the contact initializer once per process."""
-    global _contact_model_registered
-    if _contact_model_registered:
-        return
-    PhysicsManager.register_callback(
-        _initialize_contacts,
-        PhysicsEvent.MODEL_INIT,
-        name="so101_workshop_contact_model",
-    )
-    _contact_model_registered = True
-
-
-_register_contact_model()
 
 
 def _remove_non_gripper_colliders(robot_prim: Any) -> None:
@@ -755,6 +737,8 @@ class TerminationsCfg:
 @configclass
 class PhysicsCfg(PresetCfg):
     newton_mjwarp = NewtonCfg(
+        # Referenced by name: the manager imports the Newton runtime, which configurations must not.
+        class_type="isaaclab_tutorial.tasks.place_vial.config.so101.newton_manager:ContactModelNewtonManager",
         solver_cfg=MJWarpSolverCfg(
             solver="newton",
             integrator="implicitfast",

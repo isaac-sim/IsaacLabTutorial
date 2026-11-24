@@ -35,7 +35,7 @@ from .env_cfg import (
 def _camera_renderer_cfg() -> MultiBackendRendererCfg:
     """Enable the supported shadow settings on both standalone renderers."""
     cfg = MultiBackendRendererCfg()
-    cfg.newton_renderer.enable_shadows = True
+    cfg.newton_warp.enable_shadows = True
     cfg.default.enable_shadows = True
     cfg.ovrtx.enable_shadows = True
     return cfg
