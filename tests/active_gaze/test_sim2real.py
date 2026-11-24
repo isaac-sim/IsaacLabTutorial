@@ -28,7 +28,8 @@ def test_sim2real_adds_camera_randomization_and_extrinsics_labels_but_keeps_the_
     # The tutorial's own sim2real preset also retunes arm action scales and rewards; this covers what active gaze adds.
     base, base_agent, _ = compose(["presets=dino_language"])
     varied, varied_agent, _ = compose(["presets=dino_language,sim2real"])
-    assert base.actions.gaze.to_dict() == varied.actions.gaze.to_dict()
+    # The gaze changes only in where its teacher takes the camera's mount from.
+    assert base.actions.gaze.to_dict() == varied.actions.gaze.replace(mount="fixed").to_dict()
     assert base.scene.eye.to_dict() == varied.scene.eye.to_dict()
     assert base.observations.critic.to_dict() == varied.observations.critic.to_dict()
     assert base.observations.proprio.to_dict() == varied.observations.proprio.to_dict()

@@ -5,7 +5,10 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
-from isaaclab_fovi.sensors.calibrated_geometry import resolve_camera_model, sampling_geometry
+from fovi.sensing.projection import CameraModel
+
+from isaaclab_fovi.sensors import FoveatedCameraCfg
+from isaaclab_fovi.sensors.calibrated_geometry import camera_model_from_spawn
 
 from isaaclab_tasks.utils import resolve_task_config
 
@@ -15,7 +18,18 @@ from . import RUN_FILE, TASK_ID
 from .goals import NumberedResetFromDataset
 from .language import INSTRUCTIONS
 
-__all__ = ["RUN_FILE", "compose", "describe", "resume_overrides"]
+__all__ = ["RUN_FILE", "camera_model", "compose", "describe", "field_of_view_deg", "resume_overrides"]
+
+
+def camera_model(eye: FoveatedCameraCfg) -> CameraModel:
+    """The physical camera a configured eye looks through, as its sensor resolves it: its ``camera_model``, or the
+    camera its ``spawn`` creates."""
+    return CameraModel(**(eye.camera_model or camera_model_from_spawn(eye.spawn)))
+
+
+def field_of_view_deg(eye: FoveatedCameraCfg) -> float:
+    """Field of view [deg] of a configured eye's retina: the window its sensor takes from the physical camera."""
+    return camera_model(eye).field_of_view(eye.retinal_window_reference_side, eye.retinal_window_fraction)
 
 
 def compose(overrides: Sequence[str] = (), saved: dict | None = None):
@@ -70,7 +84,7 @@ def resume_overrides(overrides: Sequence[str], agent) -> list[str]:
 def describe(env, agent) -> dict:
     """What a run trains: task, policy, retina, gaze and control, read from its resolved configuration."""
     eye = env.scene.eye
-    fov_deg, cmf_a_deg = sampling_geometry(eye)
+    fov_deg = field_of_view_deg(eye)
     gaze = env.actions.gaze
     algorithm = agent.algorithm
     language = getattr(env.observations, "vision", None) is not None
@@ -84,9 +98,9 @@ def describe(env, agent) -> dict:
         sim2real="camera_mount" in vars(env.events),
         retina=dict(
             fov_deg=fov_deg,
-            cmf_a_deg=cmf_a_deg,
+            cmf_a_deg=eye.cmf_a_deg,
             resolution=eye.foveated_res,
-            camera_model=dataclasses.asdict(resolve_camera_model(eye)),
+            camera_model=dataclasses.asdict(camera_model(eye)),
             mount_position=eye.offset.pos,
             mount_rotation=eye.offset.rot,
         ),

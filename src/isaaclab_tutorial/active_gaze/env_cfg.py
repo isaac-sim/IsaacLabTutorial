@@ -16,13 +16,14 @@ from __future__ import annotations
 import math
 
 import torch
-from isaaclab_fovi.sensors import FoveatedCameraCfg
 
 from isaaclab.assets import VisualMaterialCfg
 from isaaclab.managers import CurriculumTermCfg, EventTermCfg, ManagerTermBase, ObservationGroupCfg, ObservationTermCfg
 from isaaclab.sensors import CameraCfg
 from isaaclab.sim import PinholeCameraCfg
 from isaaclab.utils import configclass
+from isaaclab_fovi.mdp import gaze_state
+from isaaclab_fovi.sensors import FoveatedCameraCfg
 
 from isaaclab_tasks.utils import PresetCfg, preset
 
@@ -40,7 +41,7 @@ from isaaclab_tutorial.tasks.place_vial.config.so101.env_cfg import (
 )
 from isaaclab_tutorial.tasks.place_vial.reset.curriculum import ALL_PHASES
 
-from .gaze import GazeActionCfg, oracle_labels
+from .gaze import MixedResetGazeActionCfg, oracle_labels
 from .goals import (
     NumberedResetFromDataset,
     TargetPlacementSuccess,
@@ -176,10 +177,6 @@ class SceneRGB(ManagerTermBase):
         return self.cached
 
 
-def gaze_state(env) -> torch.Tensor:
-    return env.action_manager.get_term("gaze").proprioception()
-
-
 def motor_action_rate(env) -> torch.Tensor:
     """The stock action-rate penalty on the six motor actions only; gaze moves freely."""
     actions = env.action_manager
@@ -188,7 +185,8 @@ def motor_action_rate(env) -> torch.Tensor:
 
 @configclass
 class ActiveGazeActionsCfg(ActionsCfg):
-    gaze = GazeActionCfg()
+    # The sim2real preset moves the camera's mount every episode, so the gaze's teacher follows the mount.
+    gaze = MixedResetGazeActionCfg(asset_name="eye", mount=preset(default="fixed", sim2real="tracked"))
 
 
 PHOTOMETRIC = preset(default=None, sim2real=PHOTOMETRIC_RANGES)

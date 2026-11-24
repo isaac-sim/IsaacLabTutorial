@@ -1,4 +1,5 @@
-"""Contracts of the visual actor, the scene camera, the gaze action and its teacher, without launching physics."""
+"""Contracts of the visual actor, the scene camera, the gaze's start and its teacher's target, without launching
+physics."""
 
 import math
 from types import SimpleNamespace
@@ -7,24 +8,7 @@ import pytest
 import torch
 from tensordict import TensorDict
 
-from isaaclab_tutorial.active_gaze.configuration import compose
-
-
-def gaze_term(field_of_view_deg=78.0, gaze=None):
-    """A gaze action term on an ideal pinhole scene camera, without an environment."""
-    from isaaclab_fovi.sensors.calibrated_geometry import resolve_camera_model
-
-    from isaaclab_tutorial.active_gaze.env_cfg import scene_camera
-    from isaaclab_tutorial.active_gaze.gaze import GazeAction, GazeActionCfg
-
-    term = object.__new__(GazeAction)
-    term.cfg = GazeActionCfg()
-    term.camera_model = resolve_camera_model(scene_camera((0.5, 0.0, 0.4), (0.0, 0.0, 0.0), field_of_view_deg))
-    term.field_radius_deg = field_of_view_deg / 2
-    term._gaze = torch.zeros(2, 2) if gaze is None else gaze.clone()
-    # Points are given as camera-frame directions.
-    term.directions = lambda points, env_ids=slice(None): torch.nn.functional.normalize(points, dim=-1)
-    return term
+from isaaclab_tutorial.active_gaze.configuration import camera_model, compose, field_of_view_deg
 
 
 @pytest.mark.parametrize("resolution", [64, 128])
@@ -72,20 +56,18 @@ def test_stock_critic_and_motor_penalty():
     assert torch.equal(motor_action_rate(env), torch.full((2,), 4.0))
 
 
-@pytest.mark.parametrize("field_of_view_deg", [65.0, 80.0])
-def test_scene_camera_is_an_ideal_square_pinhole_that_the_retina_spans(field_of_view_deg):
-    from isaaclab_fovi.sensors.calibrated_geometry import resolve_camera_model, sampling_geometry
-
+@pytest.mark.parametrize("fov_deg", [65.0, 80.0])
+def test_scene_camera_is_an_ideal_square_pinhole_that_the_retina_spans(fov_deg):
     from isaaclab_tutorial.active_gaze.env_cfg import scene_camera
     from isaaclab_tutorial.active_gaze.train import add_diagnostic_camera
 
-    camera = scene_camera((0.5, 0.0, 0.4), (0.0, 0.0, 0.0), field_of_view_deg, resolution=128)
-    model = resolve_camera_model(camera)
+    camera = scene_camera((0.5, 0.0, 0.4), (0.0, 0.0, 0.0), fov_deg, resolution=128)
+    model = camera_model(camera)
     height, width = model.image_size
     fx, fy, cx, cy = model.intrinsics
     assert model.model == "pinhole" and height == width and fx == pytest.approx(fy)
-    assert fx == pytest.approx(width / 2 / math.tan(math.radians(field_of_view_deg / 2)))
-    assert sampling_geometry(camera)[0] == pytest.approx(field_of_view_deg)
+    assert fx == pytest.approx(width / 2 / math.tan(math.radians(fov_deg / 2)))
+    assert field_of_view_deg(camera) == pytest.approx(fov_deg)
     cfg = compose(["presets=numbered"])[0]
     add_diagnostic_camera(cfg)
     assert cfg.scene.diagnostic_camera.spawn.to_dict() == cfg.scene.eye.spawn.to_dict()
@@ -96,7 +78,7 @@ def test_scene_camera_is_an_ideal_square_pinhole_that_the_retina_spans(field_of_
 
 def test_stronger_foveation_increases_central_density_at_fixed_camera():
     from fovi.sensing.coords import SamplingCoords
-    from isaaclab_fovi.sensors.calibrated_geometry import sampling_geometry
+
     from isaaclab_fovi.sensors.native_grid import GRID_STYLE, native_grid_directions
 
     baseline = compose(["presets=numbered"])[0]
@@ -106,23 +88,22 @@ def test_stronger_foveation_increases_central_density_at_fixed_camera():
     assert stronger.scene.eye.offset.to_dict() == baseline.scene.eye.offset.to_dict()
     counts = []
     for cfg in (baseline, stronger):
-        fov_deg, cmf_a_deg = sampling_geometry(cfg.scene.eye)
+        eye = cfg.scene.eye
         coords = SamplingCoords(
-            fov=fov_deg, cmf_a=cmf_a_deg, res=64, style=GRID_STYLE, field_geometry="spherical", device="cpu"
+            fov=field_of_view_deg(eye),
+            cmf_a=eye.cmf_a_deg,
+            res=64,
+            style=GRID_STYLE,
+            field_geometry="spherical",
+            device="cpu",
         )
         rays = native_grid_directions(coords)
         counts.append(int((-rays[:, 2] >= math.cos(math.radians(1))).sum()))
     assert counts[1] > 1.5 * counts[0]
 
 
-def test_gaze_angle_helpers_round_trip_and_stay_inside_their_limits():
-    from isaaclab_tutorial.active_gaze.gaze import (
-        angles_to_direction,
-        clamp_gaze,
-        direction_to_angles,
-        nearby_directions,
-        random_gaze,
-    )
+def test_gaze_angles_and_directions_round_trip_in_the_camera_frame():
+    from isaaclab_tutorial.active_gaze.gaze import angles_to_direction, direction_to_angles, nearby_directions
 
     torch.manual_seed(5)
     angles = torch.tensor([[0.0, 0.0], [20.0, -30.0], [-35.0, 10.0]])
@@ -130,13 +111,33 @@ def test_gaze_angle_helpers_round_trip_and_stay_inside_their_limits():
     # Positive tilt looks up (-y in the OpenCV camera frame), positive pan looks left (-x).
     up_left = angles_to_direction(torch.tensor([[10.0, 10.0]]))[0]
     assert up_left[0] < 0 and up_left[1] < 0 and up_left[2] > 0
-    gaze = random_gaze(1000, 0.8)
-    assert (gaze.norm(dim=-1) <= 0.8 + 1e-6).all()
-    clamped = clamp_gaze(torch.tensor([[3.0, 4.0], [0.3, 0.4]]), 1.0)
-    torch.testing.assert_close(clamped, torch.tensor([[0.6, 0.8], [0.3, 0.4]]))
     direction = angles_to_direction(angles)
     offset = torch.acos((nearby_directions(direction) * direction).sum(-1).clamp(-1, 1)).rad2deg()
     assert ((offset >= 2 - 1e-3) & (offset <= 5 + 1e-3)).all()
+
+
+def test_mixed_resets_start_on_or_near_the_vial_or_the_goal_when_the_gaze_can_reach_them():
+    from isaaclab_tutorial.active_gaze.gaze import RESET_MODES, angles_to_direction, mixed_reset_gaze
+
+    torch.manual_seed(11)
+    radius, limit, count = 39.0, 1.0, 4000
+    vial_gaze, goal_gaze = torch.tensor([0.3, -0.4]), torch.tensor([-0.2, 0.5])
+    vial = angles_to_direction(vial_gaze * radius).expand(count, -1)
+    goal = angles_to_direction(goal_gaze * radius).expand(count, -1)
+    # A camera that sees everything in front of it.
+    modes, gaze = mixed_reset_gaze(vial, goal, lambda direction: direction[:, 2] > 0, radius, limit)
+    assert torch.bincount(modes, minlength=len(RESET_MODES)).min() > count / len(RESET_MODES) / 2
+    torch.testing.assert_close(gaze[modes == 1], vial_gaze.expand(int((modes == 1).sum()), -1), atol=1e-5, rtol=0)
+    torch.testing.assert_close(gaze[modes == 2], goal_gaze.expand(int((modes == 2).sum()), -1), atol=1e-5, rtol=0)
+    for mode, target in ((3, vial), (4, goal)):
+        chosen = modes == mode
+        offset = torch.acos((angles_to_direction(gaze[chosen] * radius) * target[chosen]).sum(-1).clamp(-1, 1))
+        assert ((offset.rad2deg() >= 2 - 1e-2) & (offset.rad2deg() <= 5 + 1e-2)).all()
+    # A target the camera does not see, or beyond the gaze limit, leaves the episode to the random start.
+    modes, _ = mixed_reset_gaze(vial, goal, lambda direction: torch.zeros(count, dtype=torch.bool), radius, limit)
+    assert not modes.any()
+    modes, _ = mixed_reset_gaze(vial, goal, lambda direction: direction[:, 2] > 0, radius, 0.1)
+    assert not modes.any()
 
 
 def test_gaze_supervision_keeps_actor_and_critic_inputs():
@@ -212,20 +213,17 @@ def test_teacher_looks_at_the_vial_until_the_grasp_then_at_the_goal():
     torch.testing.assert_close(teacher_target(env), torch.stack((object_center[0], goal[1], object_center[2])))
 
 
-@pytest.mark.parametrize("field_of_view_deg", [65.0, 80.0])
-def test_teacher_reaches_its_target_from_the_edge_of_the_gaze_range(field_of_view_deg):
-    from isaaclab_tutorial.active_gaze.gaze import angles_to_direction, clamp_gaze
+def test_gaze_is_isaaclab_fovis_action_with_a_teacher_that_follows_the_sim2real_mount():
+    from isaaclab_fovi.mdp import GazeAction, gaze_state, gaze_teacher_labels
 
-    radius = field_of_view_deg / 2
-    target = torch.tensor([[0.15, -0.2], [-0.3, 0.25]])
-    term = gaze_term(field_of_view_deg, gaze=torch.tensor([[-0.7, 0.7], [0.7, -0.7]]))
-    direction = angles_to_direction(target * radius)
-    for _ in range(20):
-        actions, valid = term.teacher_action(direction)
-        assert valid.all() and (actions.abs() <= 1).all()
-        term._gaze = clamp_gaze(term._gaze + actions * term.cfg.step_size, term.cfg.gaze_limit)
-    torch.testing.assert_close(term._gaze, target, atol=1e-5, rtol=0)
-    assert (term.fixation_error_deg(direction) < 1e-2).all()
-    # Behind the camera or undefined: no valid target and no action.
-    actions, valid = term.teacher_action(torch.tensor([[0.0, 0.0, -1.0], [float("nan"), 0.0, 1.0]]))
-    assert not valid.any() and torch.equal(actions, torch.zeros(2, 2))
+    from isaaclab_tutorial.active_gaze.gaze import MixedResetGazeAction, oracle_labels
+
+    base, varied = (compose([f"presets={names}"])[0] for names in ("numbered", "numbered,sim2real"))
+    gaze = base.actions.gaze
+    assert issubclass(MixedResetGazeAction, GazeAction) and gaze.class_type is MixedResetGazeAction
+    assert (gaze.asset_name, gaze.mode, gaze.step_size, gaze.gaze_limit) == ("eye", "software", 0.1, 1.0)
+    assert base.observations.gaze.state.func is gaze_state
+    assert base.observations.oracle.labels.func is oracle_labels and issubclass(oracle_labels, gaze_teacher_labels)
+    # A fixed-mount teacher rejects a camera whose mount turns, as the sim2real camera's does every episode.
+    assert gaze.mount == "fixed" and varied.actions.gaze.mount == "tracked"
+    assert varied.actions.gaze.replace(mount="fixed").to_dict() == gaze.to_dict()

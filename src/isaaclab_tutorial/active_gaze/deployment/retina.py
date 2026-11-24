@@ -3,9 +3,10 @@
 import torch
 from fovi.sensing.coords import SamplingCoords
 from fovi.sensing.projection import CameraModel, gaze_rotation
-from isaaclab_fovi.sensors.native_grid import GRID_STYLE, native_grid_directions
 from torch import nn
 from torch.nn import functional as F
+
+from isaaclab_fovi.sensors.native_grid import GRID_STYLE, native_grid_directions
 
 
 class SoftwareRetina(nn.Module):

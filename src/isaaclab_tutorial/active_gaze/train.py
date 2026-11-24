@@ -462,6 +462,8 @@ def task_visible_fraction(env, gaze) -> float:
     """Fraction of the robot's bodies, the vial and the rack that the physical camera sees."""
     import torch
 
+    from .gaze import target_directions
+
     points = torch.cat(
         (
             env.scene["robot"].data.body_pos_w.torch,
@@ -470,7 +472,7 @@ def task_visible_fraction(env, gaze) -> float:
         ),
         dim=1,
     )
-    visible = torch.stack([gaze.visible(gaze.directions(points[:, k])) for k in range(points.shape[1])], dim=1)
+    visible = torch.stack([gaze.visible(target_directions(gaze, points[:, k])) for k in range(points.shape[1])], dim=1)
     return float(visible.float().mean())
 
 
@@ -478,14 +480,15 @@ def diagnostic_markers(gaze):
     """Image positions of the vial, the goal and the gaze, as fractions of the camera image, shape (num_envs, 3, 2)."""
     import torch
 
-    from .gaze import angles_to_direction
+    from .gaze import angles_to_direction, target_directions
 
-    directions = [gaze.directions(point) for point in gaze_points(gaze)]
+    directions = [target_directions(gaze, point) for point in gaze_points(gaze)]
     directions.append(angles_to_direction(gaze.angles_deg))
-    height, width = gaze.camera_model.image_size
+    camera = gaze.camera.camera_model
+    height, width = camera.image_size
     size = torch.tensor((width, height), dtype=torch.float32, device=gaze.device)
     # Pixel coordinates have integer centres.
-    pixels = [(gaze.camera_model.project(direction)[0] + 0.5) / size for direction in directions]
+    pixels = [(camera.project(direction)[0] + 0.5) / size for direction in directions]
     return torch.stack(pixels, dim=1).cpu().numpy()
 
 

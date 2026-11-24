@@ -66,7 +66,8 @@ class randomize_camera_mount(ManagerTermBase):
     """Move the scene camera's mount by up to ``position_range`` [m] and ``rotation_range_deg`` [deg] each episode.
 
     A fraction ``nominal_fraction`` of episodes keep the nominal mount. The ranges ramp up from 10 % over
-    ``ramp_steps`` control steps. This term owns the camera's mount pose and the move's extrinsics labels.
+    ``ramp_steps`` control steps. This term owns the camera's mount pose and the move's extrinsics labels. The gaze
+    stays relative to the moved mount, and a gaze action with ``mount="tracked"`` aims its teacher from it.
     """
 
     def __init__(self, cfg, env):

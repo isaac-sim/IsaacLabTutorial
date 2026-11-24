@@ -94,11 +94,9 @@ def test_partial_resets_preserve_cap_and_restore_matching_stock_rows(monkeypatch
 
 
 def test_numbered_configuration_keeps_the_target_in_the_critic_only():
-    from isaaclab_fovi.sensors.calibrated_geometry import sampling_geometry
-
     from isaaclab.sim import MultiAssetSpawnerCfg
 
-    from isaaclab_tutorial.active_gaze.configuration import compose, describe
+    from isaaclab_tutorial.active_gaze.configuration import compose, describe, field_of_view_deg
 
     plain, plain_agent, _ = compose(["presets=nearest,newton_renderer"])
     numbered, numbered_agent, _ = compose(["presets=numbered,newton_renderer"])
@@ -107,7 +105,7 @@ def test_numbered_configuration_keeps_the_target_in_the_critic_only():
     )
     # The numbered scene's camera sits closer and narrower, so the labels stay legible.
     assert numbered.scene.eye.offset.pos[0] < plain.scene.eye.offset.pos[0]
-    assert sampling_geometry(numbered.scene.eye)[0] < sampling_geometry(plain.scene.eye)[0]
+    assert field_of_view_deg(numbered.scene.eye) < field_of_view_deg(plain.scene.eye)
     for group in ("scene_rgb", "proprioception", "gaze"):
         assert getattr(numbered.observations, group).to_dict() == getattr(plain.observations, group).to_dict()
     assert (
