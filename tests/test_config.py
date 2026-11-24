@@ -37,7 +37,7 @@ def _state(*presets):
 
 
 def _camera(*presets):
-    return resolve_presets(SO101VialCameraEnvCfg(), ["newton_mjwarp", "newton_renderer", *presets])
+    return resolve_presets(SO101VialCameraEnvCfg(), ["newton_mjwarp", "newton_warp", *presets])
 
 
 def test_tasks_are_registered_with_rsl_rl_entry_points():

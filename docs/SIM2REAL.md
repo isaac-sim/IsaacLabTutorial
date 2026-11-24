@@ -41,14 +41,14 @@ uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 
 uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 4096 --checkpoint /abs/path/state/model_799.pt --visualizer none presets=newton_mjwarp,sim2real
 
 # 3. Distill a camera student from that teacher under the same randomization.
-uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/sim2real_state/model_XXX.pt --visualizer none presets=newton_mjwarp,newton_renderer,sim2real
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/sim2real_state/model_XXX.pt --visualizer none presets=newton_mjwarp,newton_warp,sim2real
 ```
 
 To evaluate in simulation, run play from home starts and count exactly one episode per environment. The
 sim2real preset keeps its physics randomization during evaluation.
 
 ```bash
-uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/distillation/model_XXX.pt --visualizer none --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter presets=newton_mjwarp,newton_renderer,sim2real
+uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/distillation/model_XXX.pt --visualizer none --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter presets=newton_mjwarp,newton_warp,sim2real
 ```
 
 ## 2. Physical setup

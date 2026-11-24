@@ -98,8 +98,8 @@ def test_numbered_configuration_keeps_the_target_in_the_critic_only():
 
     from isaaclab_tutorial.active_gaze.configuration import compose, describe, field_of_view_deg
 
-    plain, plain_agent, _ = compose(["presets=nearest,newton_renderer"])
-    numbered, numbered_agent, _ = compose(["presets=numbered,newton_renderer"])
+    plain, plain_agent, _ = compose(["presets=nearest,newton_warp"])
+    numbered, numbered_agent, _ = compose(["presets=numbered,newton_warp"])
     assert (
         describe(plain, plain_agent)["goal"] == "nearest" and describe(numbered, numbered_agent)["goal"] == "numbered"
     )
@@ -115,7 +115,7 @@ def test_numbered_configuration_keeps_the_target_in_the_critic_only():
     assert numbered.observations.critic.numbered_goal is not None
     assert isinstance(numbered.scene.vial.spawn, MultiAssetSpawnerCfg)
     assert [vial.vial_number for vial in numbered.scene.vial.spawn.assets_cfg] == [1, 2, 3, 4]
-    language = compose(["presets=dino_language,newton_renderer"])[0]
+    language = compose(["presets=dino_language,newton_warp"])[0]
     assert language.scene.eye.data_types == ["rgb"]
     assert language.observations.vision.tokens.params["data_type"] == "rgb"
 

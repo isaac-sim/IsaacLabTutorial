@@ -48,7 +48,7 @@ def test_resume_replays_saved_overrides_and_lets_new_values_replace_them():
 
 
 def test_resume_preserves_explicit_opt_outs():
-    explicit, agent, saved = saved_run(["presets=nearest,no_gaze_supervision,uniform,newton_renderer"])
+    explicit, agent, saved = saved_run(["presets=nearest,no_gaze_supervision,uniform,newton_warp"])
     restored, restored_agent, _ = compose(saved=saved)
     assert explicit.to_dict() == restored.to_dict()
     assert agent.to_dict() == restored_agent.to_dict()

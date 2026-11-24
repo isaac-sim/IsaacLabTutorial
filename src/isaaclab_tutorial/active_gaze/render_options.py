@@ -11,7 +11,7 @@ from isaaclab_tasks.utils import PresetCfg
 class CameraOutputCfg(PresetCfg):
     # Path-traced RGB by default: RTX Minimal mode draws no background or dome light.
     default = ["rgb"]
-    newton_renderer = ["rgb"]
+    newton_warp = ["rgb"]
     rtpt = ["rgb"]
     minimal_diffuse_mdl = ["simple_shading_diffuse_mdl"]
     minimal_diffuse_mdl_shadows = minimal_diffuse_mdl
@@ -22,7 +22,7 @@ class CameraOutputCfg(PresetCfg):
 @configclass
 class CameraOutputNameCfg(PresetCfg):
     default = "rgb"
-    newton_renderer = "rgb"
+    newton_warp = "rgb"
     rtpt = "rgb"
     minimal_diffuse_mdl = "simple_shading_diffuse_mdl"
     minimal_diffuse_mdl_shadows = minimal_diffuse_mdl
@@ -45,7 +45,7 @@ class ShadowsCfg(PresetCfg):
 class CameraRenderSettingsCfg(PresetCfg):
     """Author native sample settings directly on each camera's render product."""
 
-    newton_renderer = {}
+    newton_warp = {}
     _minimal = {
         "omni:rtx:post:aa:op": ("Token", "none"),
         "omni:rtx:newDenoiser:enabled": ("Bool", True),
@@ -61,6 +61,6 @@ class CameraRenderSettingsCfg(PresetCfg):
 @configclass
 class FoviRendererCfg(PresetCfg):
     # Newton ignores USD lights and lights the scene with its own directional light; shadow rays are opt-in.
-    newton_renderer = NewtonWarpRendererCfg(render_order="pixel_priority", enable_shadows=True)
+    newton_warp = NewtonWarpRendererCfg(render_order="pixel_priority", enable_shadows=True)
     ovrtx = OVRTXRendererCfg(enable_shadows=ShadowsCfg())
     default = ovrtx

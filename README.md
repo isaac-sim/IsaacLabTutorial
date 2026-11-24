@@ -106,7 +106,7 @@ identical in both tasks, so a teacher and its student train under the same physi
 uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 4096 --visualizer none presets=newton_mjwarp
 
 # Camera student, distilled from the teacher checkpoint
-uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/to/state/model_799.pt --visualizer none presets=newton_mjwarp,newton_renderer
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --num_envs 1024 --checkpoint /abs/path/to/state/model_799.pt --visualizer none presets=newton_mjwarp,newton_warp
 ```
 
 During distillation the student acts and the frozen teacher labels every state it visits. The labels are
@@ -117,7 +117,7 @@ images and proprioception as the student; the critic sees the privileged state. 
 iterations.
 
 ```bash
-uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_renderer
+uv run isaaclab train --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101-Camera --agent rsl_rl_ppo_cfg_entry_point --num_envs 1024 --visualizer none presets=newton_mjwarp,newton_warp
 ```
 
 ### Evaluate
@@ -130,7 +130,7 @@ per-episode outcomes.
 uv run isaaclab play --rl_library rsl_rl --task IsaacTutorial-Place-Vial-SO101 --num_envs 1024 --checkpoint /abs/path/to/model.pt --visualizer none --external_callback isaaclab_tutorial.utils.evaluation.install_episode_counter presets=newton_mjwarp
 ```
 
-To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,newton_renderer`, and add
+To evaluate a camera policy, use the `-Camera` task with `presets=newton_mjwarp,newton_warp`, and add
 `--agent rsl_rl_ppo_cfg_entry_point` for one trained from scratch.
 
 Do not pass `--deterministic`. On this pin it also enables Warp-wide deterministic physics, which overflows a

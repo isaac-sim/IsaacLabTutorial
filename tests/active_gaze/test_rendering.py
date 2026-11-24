@@ -74,7 +74,7 @@ def test_minimal_requires_ovrtx():
     from isaaclab_tutorial.active_gaze.configuration import compose
 
     with pytest.raises(ValueError, match="unsupported types"):
-        compose(["presets=minimal_full_mdl", "env.scene.eye.renderer_cfg=newton_renderer"])
+        compose(["presets=minimal_full_mdl", "env.scene.eye.renderer_cfg=newton_warp"])
 
 
 @pytest.mark.parametrize("mode, output, shadows", [MODES[0], MODES[-1]])
