@@ -148,7 +148,9 @@ def test_chunk_ppo_stores_executed_prefix_and_bootstraps_final_timeout_state(ora
         for _ in range(2):
             actions = alg.act(obs)
             following, rewards, dones, extras = env.step(actions)
-            alg.process_env_step(following, rewards, dones, extras)
+            logged = alg.process_env_step(following, rewards, dones, extras)
+            # Episode logging excludes the value estimate added for chunk timeouts.
+            torch.testing.assert_close(logged["Training/mean_reward"], rewards)
             obs = following
         alg.compute_returns(obs)
     torch.testing.assert_close(alg.storage.rewards[0, :, 0], torch.tensor([1.0, 2.0, 1.875]))
@@ -159,8 +161,9 @@ def test_chunk_ppo_stores_executed_prefix_and_bootstraps_final_timeout_state(ora
         torch.testing.assert_close(alg.storage.observations[0]["chunk_oracle"][2, :, 0], torch.arange(4) / 10)
     else:
         assert not alg.storage.observations["chunk_oracle"].any()
-    result = alg.update()
-    assert all(torch.isfinite(torch.tensor(value)) for value in result.values())
+    losses, stats = alg.update()
+    assert all(torch.isfinite(torch.tensor(value)) for value in losses.values())
+    assert set(stats) == {"Optimizer/learning_rate", "Model/mean_policy_std"}
 
 
 def test_discarded_chunk_suffix_holds_absolute_hand_targets():

@@ -2,9 +2,9 @@
 # All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""RSL-RL 5.5 PPO with RND and constant-weight Gaussian gaze supervision.
+"""RSL-RL PPO with RND and constant-weight Gaussian gaze supervision.
 
-The update follows rsl_rl.algorithms.PPO (BSD-3-Clause). The native runner,
+The update follows rsl_rl.algorithms.PPO at ea39cc2 (5.5.2 development, BSD-3-Clause). The native runner,
 storage, GAE, optimizer, and checkpointing are retained. Chunk transitions add
 executed-prefix likelihoods, per-control oracle targets, and final-state timeout
 bootstrapping. The auxiliary targets never enter the actor.
@@ -108,6 +108,7 @@ class OraclePPO(PPO):
             self.transition.observations = self.transition.observations.clone(recurse=False)
             for key in self.rnd.obs_groups["rnd_state"]:
                 self.transition.observations[key] = obs[key]
+        bootstrap = None
         if "chunk_valid" in extras:
             transition = self.transition
             transition.observations = transition.observations.clone(recurse=False)
@@ -128,15 +129,24 @@ class OraclePPO(PPO):
                 ),
             ):
                 final_values = self.critic(extras["chunk_timeout_observations"]).squeeze(-1)
-            rewards = rewards + extras["chunk_timeout_discount"] * final_values.float()
-        super().process_env_step(obs, rewards, dones, extras)
+            bootstrap = extras["chunk_timeout_discount"] * final_values.float()
+            rewards = rewards + bootstrap
+        step_dict = super().process_env_step(obs, rewards, dones, extras)
+        if bootstrap is not None:
+            # The logger sums these over each episode. Report the environment's rewards, without the value estimate
+            # added for chunk timeouts.
+            for key in ("Training/mean_reward", "Rnd/mean_extrinsic_reward"):
+                if key in step_dict:
+                    step_dict[key] = step_dict[key] - bootstrap
+        return step_dict
 
     def update(self):
+        """Return mean losses and logger statistics, as the native PPO update does."""
         totals = torch.zeros(6, device=self.device)
         auxiliary_totals = {}
         updates = 0
         for batch in self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs):
-            if self.normalize_advantage_per_mini_batch:
+            if self.normalize_advantage_per_mini_batch and batch.advantages.numel() > 1:
                 with torch.no_grad():
                     batch.advantages = (batch.advantages - batch.advantages.mean()) / (batch.advantages.std() + 1e-8)
             with torch.autocast(
@@ -222,7 +232,8 @@ class OraclePPO(PPO):
                 (
                     value_loss,
                     surrogate,
-                    entropy,
+                    # Native PPO reports the entropy loss, the negated entropy.
+                    -entropy,
                     oracle,
                     (labels[:, 2] > 0.5).float().mean(),
                     rnd_loss,
@@ -235,15 +246,21 @@ class OraclePPO(PPO):
         if self.rnd is not None:
             self.rnd.update_normalization(obs)
         self.storage.clear()
-        result = dict(
+        loss_dict = dict(
             zip(
                 ("value", "surrogate", "entropy", "oracle", "oracle_valid", "rnd"),
                 (totals / updates).tolist(),
                 strict=True,
             )
         )
-        result.update({key: (value / updates).item() for key, value in auxiliary_totals.items()})
-        return result
+        loss_dict.update({key: (value / updates).item() for key, value in auxiliary_totals.items()})
+        stats_dict = {
+            "Optimizer/learning_rate": self.learning_rate,
+            "Model/mean_policy_std": self.actor.output_std.mean().item(),
+        }
+        if self.rnd is not None:
+            stats_dict["Rnd/rnd_weight"] = self.rnd.weight
+        return loss_dict, stats_dict
 
     def auxiliary_loss(self, observations):
         """Optional task-supervised loss on the shared actor forward pass."""

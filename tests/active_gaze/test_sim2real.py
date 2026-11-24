@@ -209,7 +209,7 @@ def test_auxiliary_updates_shared_vision_without_leaking_labels(tmp_path):
             algorithm.act(obs)
             algorithm.process_env_step(obs, torch.ones(4), torch.zeros(4), {})
         algorithm.compute_returns(obs)
-    metrics = algorithm.update()
+    metrics, _ = algorithm.update()
     assert metrics["extrinsics"] > 0 and metrics["oracle_valid"] == 0
 
 
