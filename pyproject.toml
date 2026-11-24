@@ -30,7 +30,7 @@ view-so101-resets = "isaaclab_tutorial.tasks.place_vial.reset.generator:view_mai
 fovi = ["isaaclab[fovi]", "transformers==5.19.0", "imageio-ffmpeg>=0.5"]
 leapp = ["leapp==0.7.2"]
 ovphysx = ["ovphysx"]
-ovrtx = ["ovrtx==0.5.0.377615", "ovstage==0.1.1.355824"]
+ovrtx = ["ovrtx==0.7.0.1794596436", "ovstage==0.4.0.1794520352"]
 video = ["isaaclab[video]"]
 viser = ["isaaclab[viser]"]
 # Temporary compatibility pin: Isaac Lab's logger calls wandb.util.generate_id,
