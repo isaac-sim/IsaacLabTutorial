@@ -27,11 +27,11 @@ from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim.utils import bind_physics_material, clone
 from isaaclab.utils.configclass import configclass
 from isaaclab.visualizers import VisualizerCfg
+from isaaclab_isaacsim.physics import PhysxCfg
+from isaaclab_isaacsim.sim.schemas import PhysxRigidBodyCfg
+from isaaclab_isaacsim.sim.spawners.materials import PhysxRigidBodyMaterialCfg
 from isaaclab_newton.physics import MJWarpSolverCfg, NewtonCfg, NewtonCollisionPipelineCfg
 from isaaclab_ov.physics import OvPhysxCfg
-from isaaclab_physx.physics import PhysxCfg
-from isaaclab_physx.sim.schemas import PhysxRigidBodyCfg
-from isaaclab_physx.sim.spawners.materials import PhysxRigidBodyMaterialCfg
 
 from isaaclab_tasks.utils import PresetCfg, preset
 
