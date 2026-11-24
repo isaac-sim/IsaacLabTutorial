@@ -1013,7 +1013,7 @@ wheels = [
 [[package]]
 name = "isaaclab"
 version = "3.0.0"
-source = { git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=refs%2Fpull%2F9183%2Fhead#030f94b2511cac2ac45dd76b134f53a624c2066c" }
+source = { git = "https://github.com/isaac-sim/IsaacLab.git?subdirectory=tools%2Fwheel_builder&rev=refs%2Fpull%2F9183%2Fhead#a5fb082b02702b35b453bed9c8ee9b0f9cb8675a" }
 dependencies = [
     { name = "alphashape", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "botocore", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
