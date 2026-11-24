@@ -48,9 +48,9 @@ prerelease = "allow"
 environments =["sys_platform == 'linux' and platform_machine == 'x86_64'", "sys_platform == 'win32' and platform_machine == 'AMD64'", "sys_platform == 'linux' and platform_machine == 'aarch64'"]
 
 [tool.uv.sources]
-# The ActiveGaze task needs isaaclab_fovi, which is under review in Isaac Lab (isaac-sim/IsaacLab#9074). Until it
-# merges, the tutorial builds Isaac Lab from that pull request.
-isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "refs/pull/9074/head", subdirectory = "tools/wheel_builder" }
+# The ActiveGaze task aims isaaclab_fovi's gaze teacher at a world point, which is under review in Isaac Lab
+# (isaac-sim/IsaacLab#9183, on top of #9181). Until it merges, the tutorial builds Isaac Lab from that pull request.
+isaaclab = { git = "https://github.com/isaac-sim/IsaacLab.git", rev = "refs/pull/9183/head", subdirectory = "tools/wheel_builder" }
 ovphysx = { index = "nvidia" }
 ovrtx = { index = "nvidia" }
 torch = { index = "pytorch-cu130" }

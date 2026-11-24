@@ -4,9 +4,12 @@
 `isaaclab_fovi` package. Its retina samples densely where it looks and sparsely in the periphery, and the policy
 moves the gaze while it moves the arm.
 
-The task needs the `fovi` extra. Until the `isaaclab_fovi` pull request merges, the tutorial is pinned to that pull
-request's branch of Isaac Lab, and one of that branch's Git LFS files is missing, so skip LFS downloads when
-syncing:
+The task needs the `fovi` extra. `isaaclab_fovi` is on Isaac Lab's main branch, and the gaze teacher's world-point
+target is still under review there (isaac-sim/IsaacLab#9183). Until that merges, the tutorial builds Isaac Lab from
+that pull request. Two things follow:
+
+- The Microduck tasks, written for Isaac Lab 3.0.0, do not run in this environment.
+- Isaac Lab's main branch references a Git LFS file its server does not have, so skip LFS downloads when syncing:
 
 ```bash
 GIT_LFS_SKIP_SMUDGE=1 uv sync --locked --extra fovi
