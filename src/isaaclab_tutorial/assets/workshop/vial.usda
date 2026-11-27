@@ -1,3 +1,75 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:21689f823db57bcb1a3ad33cdc65e8e7aca605e9cba2e13cdf1574a17ec8a7d1
-size 1987
+#usda 1.0
+(
+    defaultPrim = "Vial"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Vial" (
+    prepend references = @vial_opaque.usda@</Vial>
+)
+{
+    over "collider" (
+        delete apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        bool physics:collisionEnabled = 0
+    }
+
+    def Cylinder "body_collider" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        uniform token axis = "Z"
+        double height = 0.088
+        bool physics:collisionEnabled = 1
+        double radius = 0.01445
+        token visibility = "invisible"
+        double3 xformOp:translate = (0, 0, 0.04261283875417914)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Cylinder "cap_collider" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        uniform token axis = "Z"
+        double height = 0.01277
+        bool physics:collisionEnabled = 1
+        double radius = 0.0177
+        token visibility = "invisible"
+        double3 xformOp:translate = (0, 0, 0.093145)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    over "Mesh_002"
+    {
+        float3 xformOp:scale = (0.92212147, 0.92212147, 1)
+    }
+
+    over "Mesh_001"
+    {
+        float3 xformOp:scale = (1.0443767, 1.0443767, 0.8788713)
+        double3 xformOp:translate = (0, 0, 0.012055939436)
+        uniform token[] xformOpOrder = ["xformOp:scale", "xformOp:translate"]
+    }
+
+    over "Mesh"
+    {
+        float3 xformOp:scale = (1.0443767, 1.0443767, 0.8788713)
+        double3 xformOp:translate = (0, 0, 0.012055939436)
+        uniform token[] xformOpOrder = ["xformOp:scale", "xformOp:translate"]
+    }
+
+    def Sphere "bottom_collider" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        bool physics:collisionEnabled = 1
+        double radius = 0.01445
+        token visibility = "invisible"
+        double3 xformOp:translate = (0, 0, -0.00255)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+

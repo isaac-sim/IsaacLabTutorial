@@ -1,3 +1,48 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:1ce273ddd9054c173d0a6f9eead693a280fa5bcae35e670c2edc9f1690559956
-size 1538
+#usda 1.0
+(
+    defaultPrim = "Desk"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Desk"
+{
+    def Scope "Looks"
+    {
+        def Material "Wood"
+        {
+            token outputs:surface.connect = </Desk/Looks/Wood/Shader.outputs:surface>
+            def Shader "Shader"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.35, 0.22, 0.12)
+                float inputs:roughness = 0.7
+                token outputs:surface
+            }
+        }
+    }
+
+    def Mesh "geometry" (prepend apiSchemas = ["MaterialBindingAPI"])
+    {
+        rel material:binding = </Desk/Looks/Wood>
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4, 7]
+        point3f[] points = [
+            (-0.50292, -0.4572, -0.003), (0.50292, -0.4572, -0.003),
+            (0.50292, 0.4572, -0.003), (-0.50292, 0.4572, -0.003),
+            (-0.50292, -0.4572, 0.003), (0.50292, -0.4572, 0.003),
+            (0.50292, 0.4572, 0.003), (-0.50292, 0.4572, 0.003)
+        ]
+        token subdivisionScheme = "none"
+        color3f[] primvars:displayColor = [(0.35, 0.22, 0.12)]
+    }
+
+    def Cube "collision" (prepend apiSchemas = ["PhysicsCollisionAPI"])
+    {
+        bool physics:collisionEnabled = true
+        double size = 1
+        token purpose = "guide"
+        double3 xformOp:scale = (1.00584, 0.9144, 0.006)
+        uniform token[] xformOpOrder = ["xformOp:scale"]
+    }
+}
